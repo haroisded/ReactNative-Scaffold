@@ -45,10 +45,10 @@ app.config.ts              derives the Google iOS URL scheme from .env
 
 ```bash
 npm install
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Fill in `.env.local` as you complete the steps below, then restart the dev server — Expo only
+Fill in `.env` as you complete the steps below, then restart the dev server — Expo only
 reads env vars at startup.
 
 ## 2. Supabase project
