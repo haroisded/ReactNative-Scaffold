@@ -17,14 +17,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: config.name ?? 'Quick-RN-Supabase',
     slug: config.slug ?? 'Quick-RN-Supabase',
+    // Bundle ID and Android package live in app.json — Google's OAuth clients are registered
+    // against that exact package, so overriding it here silently breaks native Google Sign-In.
     ios: {
       ...config.ios,
-      bundleIdentifier: 'com.example.quickrnsupabase',
       usesAppleSignIn: true,
-    },
-    android: {
-      ...config.android,
-      package: 'com.example.quickrnsupabase',
     },
     plugins: [
       ...(config.plugins ?? []),

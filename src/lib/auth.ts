@@ -18,15 +18,7 @@ export async function signInWithGoogle(): Promise<SignInResult> {
   // The Google native module has no web build, so the browser flow covers web.
   if (Platform.OS === 'web') return browserOAuth('google');
 
-  const { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } = await import(
-    '@react-native-google-signin/google-signin'
-  );
-
-  GoogleSignin.configure({
-    // Android verifies the ID token against the *web* client ID, iOS against its own.
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  });
+  const { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } = await googleModule();
 
   try {
     await GoogleSignin.hasPlayServices();
@@ -79,8 +71,27 @@ export async function signInWithApple(): Promise<SignInResult> {
 }
 
 export async function signOut() {
+  // Supabase alone leaves the native Google session cached, so the next sign-in silently
+  // reuses the last account instead of showing the account picker.
+  if (Platform.OS !== 'web') {
+    const { GoogleSignin } = await googleModule();
+    await GoogleSignin.signOut().catch(() => {}); // never signed in with Google: nothing to clear
+  }
+
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
+}
+
+/** The Google native module, configured — configure() must run before any other call. */
+function googleModule() {
+  return import('@react-native-google-signin/google-signin').then((mod) => {
+    mod.GoogleSignin.configure({
+      // Android verifies the ID token against the *web* client ID, iOS against its own.
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    });
+    return mod;
+  });
 }
 
 /** PKCE in a system browser, finished by a deep link back into the app. */

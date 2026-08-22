@@ -8,6 +8,7 @@
     "scheme": "quickrnsupabase",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "com.merchant.quickrnsupabase",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -35,6 +36,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.merchant.quickrnsupabase"
     }
   }
 }

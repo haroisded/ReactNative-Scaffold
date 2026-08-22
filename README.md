@@ -80,7 +80,7 @@ In the [Google Cloud console](https://console.cloud.google.com/apis/credentials)
 | --- | --- |
 | **Web** | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, **and** Supabase → Auth → Providers → Google (Client ID + secret) |
 | **iOS** | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` — also derives the app's iOS URL scheme in `app.config.ts` |
-| **Android** | needs your package name `com.example.quickrnsupabase` and the signing-certificate SHA-1 |
+| **Android** | needs your package name `com.merchant.quickrnsupabase` and the signing-certificate SHA-1 |
 
 Android has no separate ID in `.env`: the native module sends an ID token that Google issues
 against the **web** client ID, which is what Supabase verifies.
@@ -92,16 +92,16 @@ so `signInWithIdToken` accepts tokens minted by the native SDKs.
 
 In the [Apple developer portal](https://developer.apple.com/account/resources/identifiers/list):
 
-1. Enable **Sign in with Apple** on the App ID for `com.example.quickrnsupabase`.
+1. Enable **Sign in with Apple** on the App ID for `com.merchant.quickrnsupabase`.
 2. Create a **Services ID** (for the web/Android browser flow) with return URL
    `https://YOUR-PROJECT.supabase.co/auth/v1/callback`.
 3. Create a **Sign in with Apple key** (`.p8`) and note the Team ID and Key ID.
 
 In Supabase → Auth → Providers → Apple, paste the Services ID, Team ID, Key ID and key, and add
-your **bundle identifier** (`com.example.quickrnsupabase`) to the **Client IDs** list — the
+your **bundle identifier** (`com.merchant.quickrnsupabase`) to the **Client IDs** list — the
 native iOS token is issued to the bundle ID, not the Services ID.
 
-Change the bundle ID / package name in `app.config.ts` before shipping anything real.
+Change the bundle ID / package name in `app.json` before shipping anything real.
 
 ## 5. Run it
 
