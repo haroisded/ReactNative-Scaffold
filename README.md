@@ -11,11 +11,12 @@ This one ships:
 - **Google and Apple social login** — native sheets on device, browser OAuth on web
 - **TOTP MFA (opt-in)** with an `aal2` route guard
 - **Session handling** in one context: restore, auto-refresh, sign-out, MFA level
+- **Lint** — oxlint with a local `anti-slop` plugin in `tools/oxlint/`, wired up in `.oxlintrc.json`
 - **Runs on web** (`npm run web`), so the whole session lifecycle is debuggable in a browser
 
 | Package | Version |
 | --- | --- |
-| `expo` | ~57.0.13 |
+| `expo` | ~57.0.14 |
 | `react-native` | 0.86.2 |
 | `@supabase/supabase-js` | ^2.112.3 |
 | `@react-native-async-storage/async-storage` | 2.2.0 |
@@ -39,6 +40,8 @@ src/app/mfa.tsx            code screen, shown only when the session is aal1 but 
 src/app/(app)/index.tsx    signed-in screen: claims, MFA enrollment, sign out
 src/components/            MFA enrollment card + small UI kit
 app.config.ts              derives the Google iOS URL scheme from .env
+.oxlintrc.json             oxlint config: rule list + the local plugin it loads
+tools/oxlint/anti-slop/    that plugin — TypeScript rules, not shipped in the app bundle
 ```
 
 ## 1. Setup
@@ -175,6 +178,7 @@ metadata right there or it is lost forever.
 ```bash
 npm test        # the aal1/aal2 gate rule
 npm run typecheck
+npm run lint    # oxlint + the anti-slop rules
 ```
 
 End-to-end, on web:
