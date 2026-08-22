@@ -65,7 +65,10 @@ export async function signInWithApple(): Promise<SignInResult> {
     }
     return 'signed-in';
   } catch (error) {
-    if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') return 'cancelled';
+    // Apple's native sheet rejects with this code when the user dismisses it.
+    if (error instanceof Error && 'code' in error && error.code === 'ERR_REQUEST_CANCELED') {
+      return 'cancelled';
+    }
     throw error;
   }
 }
@@ -94,6 +97,11 @@ function googleModule() {
   });
 }
 
+/** A repeated query param arrives as an array; only the first copy is the value. */
+function oneValue(param: Linking.QueryParams[string]): string | undefined {
+  return Array.isArray(param) ? param[0] : param;
+}
+
 /** PKCE in a system browser, finished by a deep link back into the app. */
 async function browserOAuth(provider: 'google' | 'apple'): Promise<SignInResult> {
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -111,9 +119,11 @@ async function browserOAuth(provider: 'google' | 'apple'): Promise<SignInResult>
   if (result.type !== 'success') return 'cancelled';
 
   // Linking.parse, not `new URL` — React Native's URLSearchParams is still incomplete.
-  const { code, error_description: errorDescription } = Linking.parse(result.url).queryParams ?? {};
-  if (typeof errorDescription === 'string') throw new Error(errorDescription);
-  if (typeof code !== 'string') throw new Error('No authorization code in the redirect URL.');
+  const params = Linking.parse(result.url).queryParams ?? {};
+  const errorDescription = oneValue(params.error_description);
+  const code = oneValue(params.code);
+  if (errorDescription) throw new Error(errorDescription);
+  if (!code) throw new Error('No authorization code in the redirect URL.');
 
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (exchangeError) throw exchangeError;
