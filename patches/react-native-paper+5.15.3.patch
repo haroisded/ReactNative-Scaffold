@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-paper/lib/commonjs/components/Surface.js b/node_modules/react-native-paper/lib/commonjs/components/Surface.js
+index 548d671..b0ed91b 100644
+--- a/node_modules/react-native-paper/lib/commonjs/components/Surface.js
++++ b/node_modules/react-native-paper/lib/commonjs/components/Surface.js
+@@ -107,7 +107,7 @@ const SurfaceIOS = (0, _forwardRef.forwardRef)(({
+       ...(isElevated && getStyleForShadowLayer(elevation, 1)),
+       ...filteredStyles,
+       ...borderRadiusStyles,
+-      flex: flattenedStyles.height || !container && flattenedStyles.flex ? 1 : undefined,
++      flex: flattenedStyles.height || !container && (flattenedStyles.flex || flattenedStyles.flexGrow) ? 1 : undefined,
+       backgroundColor: bgColor
+     };
+     return [outerLayerViewStyles, innerLayerViewStyles];
+diff --git a/node_modules/react-native-paper/lib/module/components/Surface.js b/node_modules/react-native-paper/lib/module/components/Surface.js
+index df43fbb..b873017 100644
+--- a/node_modules/react-native-paper/lib/module/components/Surface.js
++++ b/node_modules/react-native-paper/lib/module/components/Surface.js
+@@ -99,7 +99,7 @@ const SurfaceIOS = forwardRef(({
+       ...(isElevated && getStyleForShadowLayer(elevation, 1)),
+       ...filteredStyles,
+       ...borderRadiusStyles,
+-      flex: flattenedStyles.height || !container && flattenedStyles.flex ? 1 : undefined,
++      flex: flattenedStyles.height || !container && (flattenedStyles.flex || flattenedStyles.flexGrow) ? 1 : undefined,
+       backgroundColor: bgColor
+     };
+     return [outerLayerViewStyles, innerLayerViewStyles];

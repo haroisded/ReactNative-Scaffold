@@ -1,4 +1,3 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
@@ -37,40 +36,9 @@ export async function signInWithGoogle(): Promise<SignInResult> {
   }
 }
 
-export async function signInWithApple(): Promise<SignInResult> {
-  // Sign in with Apple is native on iOS only; Android and web go through the browser.
-  if (Platform.OS !== 'ios') return browserOAuth('apple');
-
-  try {
-    const credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-    });
-    if (!credential.identityToken) throw new Error('Apple returned no identity token.');
-
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'apple',
-      token: credential.identityToken,
-    });
-    if (error) throw error;
-
-    // Apple hands over the user's name on the very first sign-in and never again.
-    const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
-      .filter(Boolean)
-      .join(' ');
-    if (fullName && !data.user?.user_metadata?.full_name) {
-      await supabase.auth.updateUser({ data: { full_name: fullName } });
-    }
-    return 'signed-in';
-  } catch (error) {
-    // Apple's native sheet rejects with this code when the user dismisses it.
-    if (error instanceof Error && 'code' in error && error.code === 'ERR_REQUEST_CANCELED') {
-      return 'cancelled';
-    }
-    throw error;
-  }
+/** Facebook has no native module here: Supabase hosts the whole handshake in the browser. */
+export function signInWithFacebook(): Promise<SignInResult> {
+  return browserOAuth('facebook');
 }
 
 export async function signOut() {
@@ -103,11 +71,14 @@ function oneValue(param: Linking.QueryParams[string]): string | undefined {
 }
 
 /** PKCE in a system browser, finished by a deep link back into the app. */
-async function browserOAuth(provider: 'google' | 'apple'): Promise<SignInResult> {
+async function browserOAuth(provider: 'google' | 'facebook'): Promise<SignInResult> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo,
+      // Facebook's own cookie survives Cancel, so the next attempt re-offers the same account.
+      // auth_type=reauthenticate forces its login screen, where another account can be entered.
+      queryParams: provider === 'facebook' ? { auth_type: 'reauthenticate' } : undefined,
       // On web let supabase-js redirect the page itself; detectSessionInUrl finishes on return.
       skipBrowserRedirect: Platform.OS !== 'web',
     },
@@ -115,7 +86,10 @@ async function browserOAuth(provider: 'google' | 'apple'): Promise<SignInResult>
   if (error) throw error;
   if (Platform.OS === 'web') return 'signed-in';
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+    // iOS only: no shared browser cookies, so each attempt starts logged out of the provider.
+    preferEphemeralSession: true,
+  });
   if (result.type !== 'success') return 'cancelled';
 
   // Linking.parse, not `new URL` — React Native's URLSearchParams is still incomplete.

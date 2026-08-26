@@ -2,7 +2,6 @@ import type { JwtPayload } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { MfaEnroll } from '@/components/mfa-enroll';
 import { Body, Button, Card, Mono, Muted, Screen, Title } from '@/components/ui';
 import { signOut } from '@/lib/auth';
 import { useSession } from '@/lib/session';
@@ -36,15 +35,12 @@ export default function HomeScreen() {
         <Card>
           <Muted>Verified JWT claims</Muted>
           <Mono>sub: {claims?.sub ?? '…'}</Mono>
-          <Mono>aal: {claims?.aal ?? '…'}</Mono>
           <Mono>expires: {expiresAt}</Mono>
           <Muted>
             The token is refreshed in the background while the app is foregrounded, so this
             expiry keeps moving.
           </Muted>
         </Card>
-
-        <MfaEnroll />
 
         <View style={{ marginTop: 8 }}>
           <Button title="Sign out" variant="danger" onPress={() => void signOut()} />
