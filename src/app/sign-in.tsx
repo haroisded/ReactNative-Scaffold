@@ -1,61 +1,63 @@
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { Button, HelperText, Surface, Text } from 'react-native-paper';
 
-import { Body, Button, Card, ErrorText, Muted, Screen, Title } from '@/components/ui';
-import { signInWithFacebook, signInWithGoogle } from '@/lib/auth';
+import { signInWithFacebook, signInWithGoogle } from '../lib/auth';
 
-export default function SignInScreen() {
-  const [busy, setBusy] = useState<'google' | 'facebook' | null>(null);
+type Provider = 'google' | 'facebook';
+
+export default function SignIn() {
+  const [busy, setBusy] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function run(provider: 'google' | 'facebook') {
-    return async () => {
-      setError(null);
-      setBusy(provider);
-      try {
-        await (provider === 'google' ? signInWithGoogle() : signInWithFacebook());
-        // No navigation here: the session change flips the guard in app/_layout.tsx.
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setBusy(null);
-      }
-    };
-  }
+  const run = async (provider: Provider) => {
+    setBusy(provider);
+    setError(null);
+    try {
+      await (provider === 'google' ? signInWithGoogle() : signInWithFacebook());
+    } catch (e) {
+      // A cancelled sign-in resolves quietly, so anything caught here is a real failure.
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      // Nothing here navigates. On success the session changes and the root layout's guard moves
+      // the user; this screen only has to stop looking busy.
+      setBusy(null);
+    }
+  };
 
   return (
-    <Screen>
-      <View style={{ flex: 1, justifyContent: 'center', gap: 20 }}>
-        <View style={{ gap: 6 }}>
-          <Title>Sign in</Title>
-          <Muted>
-            Social login only. Sessions persist across restarts and are refreshed automatically.
-          </Muted>
-        </View>
+    <Surface style={styles.screen}>
+      <Text variant="headlineMedium">Sign in</Text>
 
-        <Card>
-          <Button
-            title="Continue with Google"
-            onPress={run('google')}
-            loading={busy === 'google'}
-            disabled={busy !== null}
-          />
-          <Button
-            title="Continue with Facebook"
-            variant="secondary"
-            onPress={run('facebook')}
-            loading={busy === 'facebook'}
-            disabled={busy !== null}
-          />
-          <ErrorText>{error}</ErrorText>
-        </Card>
+      {/* disabled is load-bearing, not polish: a second signInWithOAuth overwrites the first
+          one's PKCE code verifier, and the returning single-use code would then be exchanged
+          against the wrong verifier and burned. One flow at a time. */}
+      <Button
+        icon="google"
+        mode="contained"
+        onPress={() => run('google')}
+        loading={busy === 'google'}
+        disabled={busy !== null}
+      >
+        Continue with Google
+      </Button>
+      <Button
+        icon="facebook"
+        mode="contained-tonal"
+        onPress={() => run('facebook')}
+        loading={busy === 'facebook'}
+        disabled={busy !== null}
+      >
+        Continue with Facebook
+      </Button>
 
-        <Body style={{ opacity: 0.7 }}>
-          {Platform.OS === 'web'
-            ? 'On web both providers use the redirect flow, so you can debug the whole session lifecycle in the browser.'
-            : 'Google uses the native sheet. Facebook goes through the system browser.'}
-        </Body>
-      </View>
-    </Screen>
+      <HelperText type="error" visible={error !== null}>
+        {error}
+      </HelperText>
+    </Surface>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, justifyContent: 'center', gap: 12, padding: 24 },
+});
