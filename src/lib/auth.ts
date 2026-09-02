@@ -64,6 +64,22 @@ export async function signOut() {
   if (error) throw error;
 }
 
+/**
+ * Ends the account, not just the session — irreversible, so the screen confirms first.
+ *
+ * The delete itself runs in Postgres (`delete_current_user`, in the profiles migration) because no
+ * client-side key may write to auth.users: the publishable key is in the app bundle, and the
+ * service role key must never be. The cascade on public.profiles.id takes the profile row with it.
+ */
+export async function deleteAccount() {
+  const { error } = await supabase.rpc('delete_current_user');
+  if (error) throw error;
+
+  // The account is gone, so there is no server-side session left to revoke — this is only here to
+  // clear local storage and emit the SIGNED_OUT event the root layout's guard is watching for.
+  await signOut();
+}
+
 /** A repeated query param arrives as an array; only the first copy is the value. */
 function oneValue(param: Linking.QueryParams[string]): string | undefined {
   return Array.isArray(param) ? param[0] : param;

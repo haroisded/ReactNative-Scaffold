@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
+
+import { secureStorage } from './secure-storage';
 
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -17,7 +18,10 @@ if (!url || !publishableKey) {
 
 export const supabase = createClient(url, publishableKey, {
   auth: {
-    storage: AsyncStorage,
+    // Keychain / Keystore rather than plaintext AsyncStorage, and still load-bearing: without a
+    // `storage` the client falls back to an in-memory adapter (GoTrueClient.js:237-251) and the
+    // session dies with the process.
+    storage: secureStorage,
     flowType: 'pkce',
 
     // The only instrumentation that reaches inside detectSessionInUrl on web, where failures

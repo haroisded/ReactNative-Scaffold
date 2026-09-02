@@ -1,0 +1,5 @@
+# Minimal on purpose: enough for the CLI to recognise this directory, so `supabase link` and
+# `supabase db push` work against a hosted project. `supabase init` writes a much longer file that
+# configures the whole local Docker stack; nothing here needs it, and running init would overwrite
+# this one. project_id names the local stack's containers, not the hosted project.
+project_id = "quick-rn-supabase"

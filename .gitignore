@@ -45,3 +45,7 @@ example
 
 # Claude Code local overrides (per-machine permission grants)
 .claude/settings.local.json
+
+# Supabase CLI (link state, local stack scratch)
+supabase/.temp/
+supabase/.branches/

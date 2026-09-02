@@ -32,6 +32,8 @@ JWTs.
 - **Google and Facebook social login** — native Google sheet on device, browser OAuth for Facebook
   and on web
 - **Session handling** in one zustand store — restore, auto-refresh, sign-out
+- **Session stored in the Keychain / Keystore** via `expo-secure-store`, not plaintext AsyncStorage
+- **SQL migrations** for a `profiles` table with RLS, and in-app account deletion
 - **React Native Paper** for the whole UI, themed from `src/themes.js`
 - **Patched dependency** via `patch-package`, applied automatically on install
 - **Lint** — oxlint with a local `anti-slop` plugin in `tools/oxlint/`, wired up in `.oxlintrc.json`
@@ -46,6 +48,7 @@ JWTs.
 | `react-native` | 0.86.2 |
 | `@supabase/supabase-js` | ^2.112.3 |
 | `@react-native-async-storage/async-storage` | 2.2.0 |
+| `expo-secure-store` | ~57.0.3 |
 | `@react-native-google-signin/google-signin` | ^16.1.4 |
 | `zustand` | ^5.0.15 |
 | `react-native-paper` | ^5.15.3 |
@@ -129,6 +132,37 @@ session back to the app. The second is the Expo web dev server.
 > on return. `auth-js` then treats the incoming `?code=` as *not a callback* at all — no exchange,
 > no error, no log. A wrong Site URL is the single most likely cause of a sign-in that appears to
 > do nothing.
+
+### Database schema
+
+`supabase/migrations/` holds one migration: a `profiles` table keyed to `auth.users`, its RLS
+policies, a trigger that creates the profile row on signup, and `delete_current_user()` — the
+function behind the **Delete account** button, since the App Store requires in-app account deletion
+(Guideline 5.1.1(v)) and no client-side key may write to `auth.users`.
+
+```bash
+supabase link --project-ref <ref>
+supabase db push
+```
+
+Every statement is re-runnable, so pasting the file into the dashboard's **SQL Editor** works just
+as well and is the quickest route if the CLI stalls at `Initialising login role…`.
+
+> **You have to enable RLS on every table you add.** Nothing in this scaffold does it for you.
+> A new table in `public` is published over HTTP by PostgREST the moment it exists, and the
+> publishable key that reaches it is inside your app bundle — so a table without
+> `alter table … enable row level security` is world-readable to anyone who opens the binary.
+> The migration sets it explicitly for `profiles`; copy that line into yours.
+
+Check the ones you missed under **Advisors → Security** in the dashboard, which reports
+`rls_disabled_in_public`. Worth a look before any release. (`supabase db lint` is a different
+tool — it type-checks plpgsql and says nothing about policies.)
+
+`supabase/optional/rls_auto_enable.sql` will enforce this for you instead: a DDL event trigger that
+enables RLS on every table created in `public`. It is deliberately **not** a migration — the CLI
+only reads `migrations/`, so nothing runs it — because an event trigger is invisible to whoever
+inherits the schema, and it needs superuser to install. Its header explains how and when to turn it
+on. See [.claude/new-features.md](./.claude/new-features.md) for the full reasoning.
 
 ---
 
