@@ -97,10 +97,10 @@ to contain. Removing the first removes the need for the other two. A comment in
 `supabase/migrations/`, so a file under `supabase/optional/` is inert. Turning it on means moving
 it into `migrations/` under a version prefix and pushing.
 
-### Why it was moved out
+### Why it is not a migration
 
-It was written as the first migration, then pulled back out on a deliberate call. The reasoning is
-worth keeping, because the obvious argument against it is the wrong one.
+The reasoning is worth recording, because the obvious argument against installing it is the wrong
+one.
 
 **The weak argument** is that auto-enabling RLS breaks complicated schemas. Mostly it does not.
 RLS enabled with zero policies is *deny-all*: `anon` and `authenticated` see nothing, the table

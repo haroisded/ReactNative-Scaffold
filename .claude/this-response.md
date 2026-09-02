@@ -21,7 +21,10 @@ claude mcp add --transport http sgai --scope user https://mcp.scrapegraphai.com/
 Single quotes matter in PowerShell — `${SGAI_API_KEY}` is valid PowerShell variable syntax, so
 double quotes would have expanded it to an empty string at add time.
 
-## One step left, and it has to be done by hand
+## The key itself, which has to be set by hand
+
+Done on this machine — `credits` returns a live balance, so the server is connected and
+authenticating. Repeat this on any other machine that clones the setup.
 
 > **Do not paste the API key into a Claude Code prompt.** Anything typed at the prompt, including
 > with the `!` prefix, is stored in the session transcript.

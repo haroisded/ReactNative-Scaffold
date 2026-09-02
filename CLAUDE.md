@@ -9,7 +9,7 @@
 3. [The UI](#3-the-ui)
 4. [Verified findings for `@supabase/supabase-js@2.112.3`](#4-verified-findings-for-supabasesupabase-js21123)
 5. [Cookie isolation in the auth browser](#5-cookie-isolation-in-the-auth-browser)
-6. [Prior research in `.claude/info-updates/`](#6-prior-research-in-claudeinfo-updates)
+6. [The database](#6-the-database)
 
 ---
 
@@ -21,17 +21,18 @@ build on top.
 
 It got here by being rebuilt rather than patched. Supabase's published React Native + Expo guidance
 is out of date for SDK 57 and for `@supabase/supabase-js@2.112.3`, and a lot of the OAuth behavior
-that actually decides whether sign-in works is not documented anywhere. So `src/lib/` was deleted
-deliberately and written back one file at a time, each step explained — which is why the write-ups
-in `.claude/` read as a reference guide and are worth keeping alongside the code.
+that actually decides whether sign-in works is not documented anywhere. So `src/lib/` was written
+back one file at a time, each step explained — which is why the comments read as a reference guide
+and why the reasoning lives in the tree alongside the code.
 
 ### The order the files explain each other in
 
 ```
-supabase.ts → auth.ts → Store/StoreUser.ts → src/app/_layout.tsx → the two screens
+secure-storage.ts → supabase.ts → auth.ts → Store/StoreUser.ts → src/app/_layout.tsx → the two screens
 ```
 
-Same order to read them in, same order to change them in.
+Same order to read them in, same order to change them in. `supabase/` is independent of that chain
+and can be read at any point — see [§6](#6-the-database).
 
 ### The bar for anything added
 
@@ -53,37 +54,52 @@ node_modules/@supabase/auth-js/dist/module/GoTrueClient.js
 node_modules/@supabase/auth-js/dist/module/lib/helpers.js
 node_modules/@supabase/auth-js/dist/module/lib/types.d.ts
 node_modules/@supabase/supabase-js/dist/index.d.cts
+node_modules/expo-secure-store/build/SecureStore.js
+node_modules/expo-secure-store/android/src/main/java/expo/modules/securestore/
+node_modules/expo-secure-store/ios/SecureStoreModule.swift
 ```
 
-Every claim written into the guide should be traceable to a line in one of those.
+Every claim written into the guide should be traceable to a line in one of those. The native
+directories matter as much as the JS: several limits attributed to `expo-secure-store` in tutorials
+are enforced nowhere in the version installed here.
 
 ### Pin Expo docs to `v57.0.0`
 
 Use `https://docs.expo.dev/versions/v57.0.0/`. `versions/latest` drifts to SDK 58 and stops
 describing this project.
 
-### Keep the write-ups
+### Where the documentation lives
 
-Each step's written explanation is saved as `.claude/response-vN.md`.
+Four files, and a change usually touches more than one:
+
+| File | Holds |
+| --- | --- |
+| `README.md` | setup and dashboard configuration — the clone-and-run path |
+| `ARCHITECTURE.md` | the file map and how the session flows through it |
+| `CLAUDE.md` | this file: the rules, and findings that contradict published docs |
+| `.claude/new-features.md` | why each non-obvious piece is shaped the way it is, including what was rejected |
+
+A decision that cost real investigation goes in `.claude/new-features.md` with its reasoning, not
+just its outcome. Rejected options are worth as much as chosen ones — they are what stops the same
+ground being re-walked.
 
 ---
 
 ## 3. The UI
 
-`src/components/` and `src/styles/` were deleted, and nothing replaced them — there is no local UI
-kit and there should not be one.
+There is no local UI kit and there should not be one — no `src/components/`, no `src/styles/`.
 
 ### Rules
 
 1. No custom components — React Native Paper only.
-2. No hardcoded or inline colors — everything from `src/themes.js` (MD3 light/dark, the file that
-   survived `src/styles/`).
-3. Extract a component only when other screens needs it.
+2. No hardcoded or inline colors — everything from `src/themes.js`, the MD3 light/dark palettes.
+   Where a color has to be picked by hand, read it from Paper's `useTheme()` rather than inline it.
+3. Extract a component only when a second screen needs it.
 
 ### Paper, its patch, and icons
 
-- `react-native-paper` and its `patches/react-native-paper+5.15.3.patch` are back in the tree, so the
-  `postinstall` / `patch-package` hook is live again.
+- `react-native-paper` is patched by `patches/react-native-paper+5.15.3.patch`, applied by the
+  `postinstall` / `patch-package` hook.
 - Paper's icons are pointed at `@expo/vector-icons` through `PaperProvider`'s `settings` prop;
   Paper's own default goes through `react-native-vector-icons`, whose fonts nothing loads, so icons
   would otherwise be blank boxes.
@@ -93,8 +109,8 @@ kit and there should not be one.
 
 ## 4. Verified findings for `@supabase/supabase-js@2.112.3`
 
-These correct the older material in `.claude/info-updates/`
-(see [§6](#6-prior-research-in-claudeinfo-updates)) and every current tutorial.
+Each of these contradicts the current tutorials, including Supabase's own. Every one is traceable
+to a line in `node_modules`; check it there before changing anything below.
 
 ### 4.1 Client options to leave off
 
@@ -127,9 +143,10 @@ native never reaches one.
 `flowType: 'pkce'` is load-bearing — it is what makes Supabase return `?code=` instead of a
 `#fragment`.
 
-**`storage: AsyncStorage` is load-bearing.**
+**`storage` is load-bearing.**
 Without it, `GoTrueClient.js:237-251` falls back to an in-memory adapter and the session does not
-survive an app restart.
+survive an app restart. It points at `secureStorage` (`src/lib/secure-storage.ts`), not
+AsyncStorage — see [§6](#6-the-database) for why, and for the one thing that must not be re-added.
 
 **The `AppState` start/stop auto-refresh listener is still correct and still required** on native —
 the library's doc comment still states that refresh runs *continuously* in the background on
@@ -143,8 +160,8 @@ This is why a returning `?code=` with no verifier is silently treated as *not a 
 no log.
 
 **`exchangeCodeForSession` now fails locally on a missing verifier**, throwing
-`AuthPKCECodeVerifierMissingError` (`GoTrueClient.js:1611`). It no longer sends an empty verifier for
-the server to reject — this supersedes `RSP-PKCE-Flow-Links.md` section 2.
+`AuthPKCECodeVerifierMissingError` (`GoTrueClient.js:1611`). It no longer sends an empty verifier
+for the server to reject, so the failure is visible at the call site rather than as a server error.
 
 **Pass `exchangeCodeForSession(code, { flowId })`.**
 `signInWithOAuth` returns `data.flowId` (`types.d.ts:232-258`); it selects the verifier that flow
@@ -225,34 +242,64 @@ removes.
 
 ---
 
-## 6. Prior research in `.claude/info-updates/`
+## 6. The database
 
-### What is in there
+`supabase/migrations/` holds one migration: `public.profiles`, its policies, the signup trigger, and
+`public.delete_current_user()`. `ARCHITECTURE.md` describes what they do. The rules below are what
+must not be broken when adding to them.
 
-Thirteen files from an earlier review of the deleted implementation:
+### 6.1 Every new table needs its own RLS line
 
-- `MAIN.MD` — 14-topic study guide
-- `Bugs-Fixes.md`
-- eleven `RSP-*.md` deep dives
-- plus `supabase-ts-setup.md`, which is step 1's write-up and belongs with the responses, not with
-  the prior research
+`alter table … enable row level security` is set explicitly per table, and nothing sets it for you.
+PostgREST publishes a new table in `public` over HTTP the moment it exists, and the publishable key
+that reaches it ships inside the app bundle — so a table without that line is world-readable to
+anyone who opens the binary.
 
-Still valuable for the **dashboard** side — the three-URL split, Site URL fallback, Meta Development
-mode, Google consent-screen Testing mode — and for the corrections to Supabase's and Expo's own
-reference pages.
+`supabase/optional/rls_auto_enable.sql` would enforce it globally with a DDL event trigger. It sits
+outside `migrations/` so nothing runs it: an event trigger is invisible to whoever inherits the
+schema, and it needs superuser to install. Do not move it into `migrations/` without saying so.
 
-### Two cautions when reading them
+The dashboard's Security Advisor reports the tables missing RLS as `rls_disabled_in_public`.
+`supabase db lint` is a different tool — it type-checks plpgsql and says nothing about policies.
 
-1. They describe files that **no longer exist**, with line numbers that no longer apply.
-2. `RSP-Supabase-Client-Init.md` section 3 recommends `lock: processLock`. That recommendation is
-   **superseded** — see [§4](#4-verified-findings-for-supabasesupabase-js21123).
+### 6.2 Three things every `security definer` function needs
 
-### The original open bug
+`security definer` runs the body with the owner's privileges instead of the caller's. All three of
+these, every time, or the escalation is reachable:
 
-Unresolved, and never a code defect: OAuth redirect failures traced to dashboard configuration,
-ranked —
+1. **Out of reach** — put it in `private`, or `revoke execute`, or both. A function in `public` is
+   a `/rest/v1/rpc/<name>` URL for anyone holding the publishable key.
+2. **`set search_path = ''`, and qualify every name in the body.** An unqualified name resolves
+   against the *caller's* `search_path`, so without the pin a caller can point it at their own
+   table or function and have that run as the owner. `pg_catalog` is still searched implicitly, so
+   builtins resolve; everything else needs a schema.
+3. **A `(select auth.uid())` check inside the body**, so the function can only ever act on the
+   caller's own rows regardless of who reaches it.
 
-1. Supabase **Site URL** still at the default `http://localhost:3000`
-2. Meta app in Development mode
-3. Google consent screen in Testing
-4. missing Authorized Client IDs on the Supabase Google provider
+Name `public, anon, authenticated, service_role` in the revoke, not just `PUBLIC`. Supabase's
+default privileges grant `EXECUTE` on new functions in `public` to the last three **directly**, so
+revoking from `PUBLIC` alone leaves three live grants behind.
+
+Revoking `EXECUTE` does not break a trigger function. Postgres checks that privilege at
+`CREATE TRIGGER`, not on each fire.
+
+### 6.3 Policy shape
+
+Scope policies `to authenticated` so they are never evaluated for `anon`. Wrap
+`auth.uid()` as `(select auth.uid())` — unwrapped it runs once per row scanned. Give every `update`
+policy both `using` and `with check`; without the second, a row can be reassigned to another user.
+
+### 6.4 `profiles` is not `force row level security`
+
+Deliberate, and it must stay that way while the signup trigger exists. Forcing RLS subjects the
+table owner to the policies, and the trigger inserts as the owner at a moment when there is no JWT
+— `auth.uid()` is null, and `profiles_insert_own` would reject the row signup exists to create.
+
+### 6.5 Do not re-add session chunking
+
+`src/lib/secure-storage.ts` writes the session to SecureStore in one piece. Tutorials and other
+scaffolds split it across numbered keys to stay under a 2048-byte limit; that limit belonged to the
+RSA hybrid encryptor, which `HybridAESEncryptor.kt` keeps only as a read path for Android API 22
+and below — beneath SDK 57's floor. The live write path is AES into SharedPreferences, and
+`setItemAsync` validates only that the value is a string. Chunking now buys nothing and reintroduces
+a torn-write window across the pieces.
