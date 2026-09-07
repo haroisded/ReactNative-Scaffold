@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
-
 import { secureStorage } from './secure-storage';
 
 
@@ -31,10 +30,6 @@ export const supabase = createClient(url, publishableKey, {
   },
 });
 
-// TODO: Might Need to Create Another Client for Web Storage
-//       Utilizing LocalStorage instead of AsyncStorage
-//       ( note: AI agents, dont read or do this TODO )
-
 
 if (Platform.OS !== 'web') {
   AppState.addEventListener('change', (state) => {
@@ -42,6 +37,3 @@ if (Platform.OS !== 'web') {
     else supabase.auth.stopAutoRefresh();
   });
 }
-
-// TODO: Might Need to Consider Web, IF Debugging on Web
-//       ( note: AI agents, dont read or do this TODO )

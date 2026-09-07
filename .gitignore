@@ -1,5 +1,8 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# reference material for AI agents — vendored third-party docs, not this project's
+.claude/context/Documentations-for-AI-Agents
+
 # dependencies
 node_modules/
 
@@ -53,3 +56,6 @@ desktop.ini
 # Supabase CLI (link state, local stack scratch)
 supabase/.temp/
 supabase/.branches/
+
+# graphify knowledge graph output
+graphify-out/

@@ -19,11 +19,10 @@ A **scaffold**: the starting point for a React Native + Expo **SDK 57** app with
 Authentication, Session handling, Deep Linking and OAuth already wired up. Clone it, fill in `.env`,
 build on top.
 
-It got here by being rebuilt rather than patched. Supabase's published React Native + Expo guidance
-is out of date for SDK 57 and for `@supabase/supabase-js@2.112.3`, and a lot of the OAuth behavior
-that actually decides whether sign-in works is not documented anywhere. So `src/lib/` was written
-back one file at a time, each step explained — which is why the comments read as a reference guide
-and why the reasoning lives in the tree alongside the code.
+Supabase's published React Native + Expo guidance does not describe SDK 57 or
+`@supabase/supabase-js@2.112.3`, and most of the OAuth behavior that decides whether sign-in works
+is undocumented. Treat the comments in `src/lib/` as the reference for this project: they name the
+mechanism and cite the file it is enforced in. Keep them that way.
 
 ### The order the files explain each other in
 
@@ -70,31 +69,46 @@ describing this project.
 
 ### Where the documentation lives
 
-Four files, and a change usually touches more than one:
+Three files at the root, and a change usually touches more than one:
 
 | File | Holds |
 | --- | --- |
 | `README.md` | setup and dashboard configuration — the clone-and-run path |
 | `ARCHITECTURE.md` | the file map and how the session flows through it |
 | `CLAUDE.md` | this file: the rules, and findings that contradict published docs |
-| `.claude/new-features.md` | why each non-obvious piece is shaped the way it is, including what was rejected |
 
-A decision that cost real investigation goes in `.claude/new-features.md` with its reasoning, not
-just its outcome. Rejected options are worth as much as chosen ones — they are what stops the same
-ground being re-walked.
+`docs/` holds the conventions for code that does not exist yet. **Read the relevant one before
+writing in its area** — each opens with its rules, and the rest of the file is the reasoning behind
+them:
+
+| File | Governs |
+| --- | --- |
+| [`docs/structure.md`](./docs/structure.md) | which directories may exist under `src/`, and what is not a feature |
+| [`docs/data-layer.md`](./docs/data-layer.md) | Supabase calls, Zod, TanStack Query keys and cache |
+| [`docs/tenancy.md`](./docs/tenancy.md) | merchant scoping and the RLS shape every business table takes |
+| [`docs/layout.md`](./docs/layout.md) | phone and tablet, column counts, no breakpoints |
+| [`docs/typography.md`](./docs/typography.md) | Paper `Text` variants, no type at a call site |
+
+Record a rejected option alongside the chosen one wherever the reasoning lives. A rule without its
+rejected alternative gets re-litigated.
 
 ---
 
 ## 3. The UI
 
-There is no local UI kit and there should not be one — no `src/components/`, no `src/styles/`.
+There is no local UI kit and there should not be one — no `src/styles/`, and no `src/components/`
+until rule 4 below calls for it.
 
 ### Rules
 
 1. No custom components — React Native Paper only.
 2. No hardcoded or inline colors — everything from `src/themes.js`, the MD3 light/dark palettes.
    Where a color has to be picked by hand, read it from Paper's `useTheme()` rather than inline it.
-3. Extract a component only when a second screen needs it.
+3. No hardcoded or inline type — every string is a Paper `Text` with a `variant`. Never set
+   `fontSize`, `lineHeight`, `fontWeight` or `letterSpacing` at a call site. Sizes are Paper's MD3
+   defaults today; `src/themes.js` overrides `colors` only, so changing one means adding a `fonts`
+   key there — [`docs/typography.md`](./docs/typography.md) §2.
+4. Extract a component only when a second screen needs it.
 
 ### Paper, its patch, and icons
 
@@ -159,9 +173,9 @@ This is why a returning `?code=` with no verifier is silently treated as *not a 
 `_isPKCECallback()` requires both `params.code` and stored verifier content — no exchange, no error,
 no log.
 
-**`exchangeCodeForSession` now fails locally on a missing verifier**, throwing
-`AuthPKCECodeVerifierMissingError` (`GoTrueClient.js:1611`). It no longer sends an empty verifier
-for the server to reject, so the failure is visible at the call site rather than as a server error.
+**`exchangeCodeForSession` fails locally on a missing verifier**, throwing
+`AuthPKCECodeVerifierMissingError` (`GoTrueClient.js:1611`) before any request goes out. Expect that
+failure at the call site, not as a server error.
 
 **Pass `exchangeCodeForSession(code, { flowId })`.**
 `signInWithOAuth` returns `data.flowId` (`types.d.ts:232-258`); it selects the verifier that flow
@@ -188,7 +202,7 @@ a response type (`SignInResponse = success | cancelled`), not a thrown error, so
 - The dismiss path (`result.type !== 'success'`) is a *different* cancel — Android reports a genuine
   user cancel that way too, which is why both exist and neither is redundant.
 
-### 4.6 New in 2.112.3, both left off deliberately
+### 4.6 Two options that exist and stay off
 
 - `experimental.appendPkceFlowIdToRedirects` — appends `sb_flow_id` to `redirectTo`; breaks
   exact-match redirect allow-list entries.
@@ -198,9 +212,9 @@ a response type (`SignInResponse = success | cancelled`), not a thrown error, so
 
 ## 5. Cookie isolation in the auth browser
 
-Researched, recorded so it is not re-walked. The recurring request is "clear the provider's cookies
-after sign-in / cancel / sign-out, so the browser behaves as a throwaway authenticator." Verified
-against `expo-web-browser` 57.0.2.
+**Do not attempt to clear the provider's cookies after sign-in, cancel, or sign-out.** The sections
+below give the per-platform reason and name the lever that is already in place. Verified against
+`expo-web-browser` 57.0.2.
 
 ### iOS — already solved and already on
 
@@ -255,9 +269,12 @@ PostgREST publishes a new table in `public` over HTTP the moment it exists, and 
 that reaches it ships inside the app bundle — so a table without that line is world-readable to
 anyone who opens the binary.
 
-`supabase/optional/rls_auto_enable.sql` would enforce it globally with a DDL event trigger. It sits
-outside `migrations/` so nothing runs it: an event trigger is invisible to whoever inherits the
-schema, and it needs superuser to install. Do not move it into `migrations/` without saying so.
+`supabase/migrations/20260902000003_rls_auto_enable.sql` installs a DDL event trigger that enables
+RLS on every table created in `public`. It **is** a migration and `supabase db push` applies it —
+but it is a safety net, not the mechanism. Creating an event trigger needs superuser, and its `DO`
+block warns and continues rather than failing the push, so on a hosted project the trigger may
+quietly not be there. It is also invisible: nothing leads a reader from an empty result back to that
+file. Write the `enable row level security` line in every migration anyway.
 
 The dashboard's Security Advisor reports the tables missing RLS as `rls_disabled_in_public`.
 `supabase db lint` is a different tool — it type-checks plpgsql and says nothing about policies.

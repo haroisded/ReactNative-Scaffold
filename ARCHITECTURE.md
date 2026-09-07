@@ -13,7 +13,7 @@ configuration live in [README.md](./README.md).
 - [Sign-in paths — `src/lib/auth.ts`](#sign-in-paths--srclibauthts)
 - [How a cancel reaches the app](#how-a-cancel-reaches-the-app)
 - [The database — `supabase/`](#the-database--supabase)
-- [Frontend rules](#frontend-rules)
+- [Frontend wiring](#frontend-wiring)
 
 ---
 
@@ -30,8 +30,10 @@ src/app/sign-in.tsx        provider buttons
 src/app/(app)/_layout.tsx  layout for the signed-in group
 src/app/(app)/index.tsx    signed-in screen: account card, sign out, delete account
 app.config.ts              derives the Google iOS URL scheme from .env
-supabase/migrations/       profiles table, its policies, the signup trigger, delete_current_user
-supabase/optional/         SQL nothing runs — each file's header says what it is and when to use it
+supabase/migrations/       profiles table, its policies, the signup trigger, delete_current_user,
+                           and the event trigger that auto-enables RLS on new public tables
+docs/                      conventions for code not written yet — structure, data layer, tenancy,
+                           layout, typography. See CLAUDE.md §2
 patches/                   patch-package diffs, applied by the postinstall hook
 .oxlintrc.json             oxlint config: rule list + the local plugin it loads
 tools/oxlint/anti-slop/    that plugin — TypeScript rules, not shipped in the app bundle
@@ -235,25 +237,35 @@ last three **directly**. Revoking from `PUBLIC` alone leaves three live grants b
 Revoking `EXECUTE` does not break the signup trigger: Postgres checks that privilege when a trigger
 is *created*, not each time it fires.
 
-### RLS is per-table, and manual
+### RLS is per-table, and still written by hand
 
-`alter table … enable row level security` is set explicitly for `profiles`, and **nothing sets it
-for tables added later**. A new table in `public` is served over HTTP by PostgREST the moment it
-exists. The dashboard's Security Advisor reports the ones missing it under `rls_disabled_in_public`.
+`alter table … enable row level security` is set explicitly for `profiles`, and every migration
+added later must carry that line for its own tables. A new table in `public` is served over HTTP by
+PostgREST the moment it exists. The dashboard's Security Advisor reports the ones missing it under
+`rls_disabled_in_public`.
 
-`supabase/optional/rls_auto_enable.sql` is a DDL event trigger that would enforce it globally. It
-sits outside `migrations/`, so the CLI never runs it — an event trigger is invisible to whoever
-inherits the schema, and it needs superuser to install. Its header covers how and when to enable it.
+`20260902000003_rls_auto_enable.sql` is a second line of defence: a DDL event trigger, installed by
+`supabase db push` like any other migration, that enables RLS on every table subsequently created in
+`public`. It does not replace the explicit line, for two reasons its header spells out. Creating an
+event trigger needs superuser, and the `DO` block around it warns and continues instead of failing
+the push — so on a hosted project it may not be installed at all. And it is invisible: `\d` does not
+mention it, the table's own migration does not mention it, and an unexpectedly empty query result
+leads nowhere near it.
+
+The function behind it lives in `private` and is revoked from `public, anon, authenticated,
+service_role`, for the reasons in the section above.
 
 ---
 
-## Frontend rules
+## Frontend wiring
 
-1. No custom components — React Native Paper only.
-2. No hardcoded or inline colors — everything comes from `src/themes.js`. Where a color has to be
-   picked by hand, read it from Paper's `useTheme()` so it follows whichever palette is active. The
-   **Delete account** button is the one place this happens, using the MD3 `error` role.
-3. Extract a component only when a second screen needs it.
+The UI rules themselves are in [CLAUDE.md §3](./CLAUDE.md#3-the-ui). What follows is only how the
+tree is put together.
+
+`src/themes.js` holds the two MD3 palettes and reaches every screen through `PaperProvider`, so a
+color is read from the theme rather than written at a call site. The **Delete account** button in
+`src/app/(app)/index.tsx` is the single place a color is chosen by hand — `useTheme().colors.error`,
+the MD3 `error` role.
 
 Paper's icons are wired to `@expo/vector-icons` through `PaperProvider`'s `settings` prop in
 `src/app/_layout.tsx`. Paper's own default goes through `react-native-vector-icons`, whose font

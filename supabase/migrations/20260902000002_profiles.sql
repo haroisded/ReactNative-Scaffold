@@ -18,10 +18,11 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
--- Nothing turns this on for you. supabase/optional/rls_auto_enable.sql would, for every table in
--- `public`, but it is opt-in and not installed — so every table you add needs this line of its own.
--- Without it PostgREST serves the whole table to anyone holding the anon key, which ships in the
--- app bundle. The dashboard's Security Advisor flags the tables that are missing it.
+-- Every table you add needs this line of its own. The next migration installs an event trigger that
+-- would also catch it, but that needs superuser and warns rather than failing when it cannot install
+-- — so it is a safety net, not a substitute for writing the line. Without it PostgREST serves the
+-- whole table to anyone holding the publishable key, which ships in the app bundle. The dashboard's
+-- Security Advisor flags the tables that are missing it.
 alter table public.profiles enable row level security;
 
 -- Deliberately NOT `force row level security`, which is otherwise the stricter default worth

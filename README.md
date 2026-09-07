@@ -4,18 +4,15 @@ A starting point for an app that needs Supabase auth on day one: clone it, fill 
 your screens on top. Authentication, session handling, deep linking and OAuth are already wired
 together and explained inline.
 
-It doubles as a current replacement for Supabase's React Native auth quickstart, which still
-installs `react-native-url-polyfill` and `@rneui/themed`, shows email/password only, and predates
-expo-router's `Stack.Protected` guards, the publishable/secret API key migration, and asymmetric
-JWTs.
-
 > How the pieces work — the file map, the client options, the session store, the route guard, the
 > sign-in paths and the frontend rules — is in [ARCHITECTURE.md](./ARCHITECTURE.md).
+>
+> The conventions for what you build on top — feature folders, the data layer, tenancy, layout and
+> typography — are in [`docs/`](./docs/), indexed in [CLAUDE.md §2](./CLAUDE.md#2-how-to-work-on-this).
 
 **Contents**
 
 - [What ships](#what-ships)
-- [Versions](#versions)
 - [1. Setup](#1-setup)
 - [2. Patched dependencies](#2-patched-dependencies)
 - [3. Supabase project](#3-supabase-project)
@@ -39,20 +36,7 @@ JWTs.
 - **Lint** — oxlint with a local `anti-slop` plugin in `tools/oxlint/`, wired up in `.oxlintrc.json`
 - **Runs on web** (`npm run web`), so the whole session lifecycle is debuggable in a browser
 
-## Versions
-
-| Package | Version |
-| --- | --- |
-| `expo` | ~57.0.14 |
-| `expo-router` | ~57.0.16 |
-| `react-native` | 0.86.2 |
-| `@supabase/supabase-js` | ^2.112.3 |
-| `@react-native-async-storage/async-storage` | 2.2.0 |
-| `expo-secure-store` | ~57.0.3 |
-| `@react-native-google-signin/google-signin` | ^16.1.4 |
-| `zustand` | ^5.0.15 |
-| `react-native-paper` | ^5.15.3 |
-| `@expo/vector-icons` | ^15.0.2 |
+Exact versions are in `package.json`.
 
 > **Expo Go will not work.** The Google sign-in module is native code, and a custom `scheme` has
 > no effect in Expo Go at all, so device testing needs a development build (`npm run ios` /
@@ -158,11 +142,15 @@ Check the ones you missed under **Advisors → Security** in the dashboard, whic
 `rls_disabled_in_public`. Worth a look before any release. (`supabase db lint` is a different
 tool — it type-checks plpgsql and says nothing about policies.)
 
-`supabase/optional/rls_auto_enable.sql` will enforce this for you instead: a DDL event trigger that
-enables RLS on every table created in `public`. It is deliberately **not** a migration — the CLI
-only reads `migrations/`, so nothing runs it — because an event trigger is invisible to whoever
-inherits the schema, and it needs superuser to install. Its header explains how and when to turn it
-on. See [.claude/new-features.md](./.claude/new-features.md) for the full reasoning.
+`supabase/migrations/20260902000003_rls_auto_enable.sql` is a second line of defence, applied by
+`supabase db push` along with everything else: a DDL event trigger that enables RLS on every table
+created in `public` from then on.
+
+**It does not excuse you from the line above.** Creating an event trigger needs superuser, and the
+`DO` block around it warns and continues rather than failing the push — so on a hosted project it
+may not be installed at all. It is also invisible: nothing leads a reader from an unexpectedly empty
+query result back to it. Keep writing `alter table … enable row level security` in your own
+migrations; treat the trigger as the thing that catches the one you forget.
 
 ---
 
