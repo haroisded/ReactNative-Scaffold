@@ -41,13 +41,12 @@ async function loadItemStock(productId: string) {
     .is('receipt.voided_at', null)
     .order('expires_on', { nullsFirst: false })
     .order('created_at')
+    // Embeds come back unordered; PostgREST orders them by alias.
+    .order('code', { referencedTable: 'cases' })
+    .order('code', { referencedTable: 'packs' })
     .throwOnError();
 
-  return data.map((lot) => ({
-    ...lot,
-    cases: [...lot.cases].sort((a, b) => a.code.localeCompare(b.code)),
-    packs: [...lot.packs].sort((a, b) => a.code.localeCompare(b.code)),
-  }));
+  return data;
 }
 
 export function useItemStockQuery({ productId }: { productId: string }) {

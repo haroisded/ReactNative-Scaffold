@@ -2,17 +2,18 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { ActivityIndicator } from '../../components/activity-indicator';
 import { Button } from '../../components/button';
+import { FactGrid } from '../../components/fact-grid';
+import type { Fact } from '../../components/fact-grid';
 import { displayDate } from '../../components/form-fields';
 import { Icon } from '../../components/icon';
 import { PageHeader } from '../../components/page-header';
+import { QueryState } from '../../components/query-state';
 import { Text } from '../../components/text';
 import { VoidReceiptDialog } from '../../components/void-receipt-dialog';
 import { RECEIPT_STATUS_LABEL, receiptStatus, receiptTotal, useStockReceiptQuery } from '../../features/stock-receipts/queries';
 import type { ReceiptDetail } from '../../features/stock-receipts/queries';
 import { useShellWide } from '../../lib/columns';
-import { failureMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { radius, spacing } from '../../themes';
@@ -38,19 +39,13 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
       <View style={styles.fill}>
         <PageHeader kicker="Stock" title="Receipt" onBack={() => router.back()} />
         <View style={styles.state}>
-          {/* Paused before pending (instruction_mds/data-layer.md §5). */}
-          {query.isPaused ? (
-            <Text variant="bodyMedium">You&apos;re offline. This receipt will load when you reconnect.</Text>
-          ) : query.isPending ? (
-            <ActivityIndicator />
-          ) : query.isError ? (
-            <>
-              <Text variant="bodyMedium">{failureMessage("Couldn't load this receipt. Try again.")}</Text>
-              <Button onPress={() => query.refetch()}>Try again</Button>
-            </>
-          ) : (
+          <QueryState
+            query={query}
+            offline="You're offline. This receipt will load when you reconnect."
+            failure="Couldn't load this receipt. Try again."
+          >
             <Text variant="bodyMedium">This receipt is no longer available.</Text>
-          )}
+          </QueryState>
         </View>
       </View>
     );
@@ -62,7 +57,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
     else router.push({ pathname: '/sheets/void-receipt', params: { receiptId: receipt.id } });
   };
   const muted = { color: colors.onSurfaceMuted };
-  const facts = [
+  const facts: Fact[] = [
     ['Supplier', receipt.supplier ? `${receipt.supplier.name} · ${receipt.supplier.code}` : 'Opening stock'],
     ['Received on', displayDate(receipt.received_on)],
     ['Invoice / DR', receipt.invoice_no],
@@ -70,7 +65,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
     ['Location', receipt.location],
     ['Freight', receipt.freight > 0 ? formatMoney(receipt.freight, currency) : null],
     ['Total', formatMoney(receiptTotal(receipt), currency)],
-  ].filter((fact): fact is [string, string] => Boolean(fact[1]));
+  ];
 
   return (
     <View style={styles.fill}>
@@ -97,16 +92,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
           </View>
         ) : null}
 
-        <View style={styles.facts}>
-          {facts.map(([label, value]) => (
-            <View key={label} style={wide ? styles.factWide : styles.factNarrow}>
-              <Text variant="labelMedium" style={muted}>
-                {label}
-              </Text>
-              <Text variant="bodyMedium">{value}</Text>
-            </View>
-          ))}
-        </View>
+        <FactGrid facts={facts} />
         {receipt.notes ? (
           <Text variant="bodyMedium" style={muted}>
             {receipt.notes}
@@ -132,13 +118,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
   const pack = lot.product?.pack_unit_name ?? 'packs';
   const muted = { color: colors.onSurfaceMuted };
   const loosePacks = lot.packs.filter((row) => row.case_id === null);
-  const received = lot.cases.length > 0 ? `${lot.cases.length} cases × ${lot.packs_per_case} ${pack}` : `${lot.packs_received} ${pack}`;
-  const summary = [
-    lot.loose_units ? `${received} + ${lot.loose_units} ${base}` : received,
-    lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const summary = lotSummary(lot, pack, base);
   const hasChildren = lot.cases.length > 0 || lot.packs.length > 0;
 
   return (
@@ -164,19 +144,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
             {`${lot.qty_remaining} of ${lot.qty_received ?? 0} ${base} left`}
           </Text>
         </View>
-        <View style={styles.money}>
-          <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
-            {formatMoney(lot.line_cost, currency)}
-          </Text>
-          {lot.freight_share ? (
-            <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
-              {`+ ${formatMoney(lot.freight_share, currency)} freight`}
-            </Text>
-          ) : null}
-          <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
-            {`${formatMoney(lot.unit_cost, currency)} / ${base}`}
-          </Text>
-        </View>
+        <LotMoney lot={lot} currency={currency} base={base} />
       </Pressable>
 
       {open ? (
@@ -189,6 +157,39 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** "2 cases × 12 packs + 3 pcs · expires 1 Oct 2026" */
+function lotSummary(lot: Lot, pack: string, base: string) {
+  const received = lot.cases.length > 0 ? `${lot.cases.length} cases × ${lot.packs_per_case} ${pack}` : `${lot.packs_received} ${pack}`;
+  return [
+    lot.loose_units ? `${received} + ${lot.loose_units} ${base}` : received,
+    lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The line's value, its freight share, and the landed cost per base unit. */
+function LotMoney({ lot, currency, base }: { lot: Lot; currency: string; base: string }) {
+  const { colors } = useAppTheme();
+  const muted = { color: colors.onSurfaceMuted };
+
+  return (
+    <View style={styles.money}>
+      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+        {formatMoney(lot.line_cost, currency)}
+      </Text>
+      {lot.freight_share ? (
+        <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+          {`+ ${formatMoney(lot.freight_share, currency)} freight`}
+        </Text>
+      ) : null}
+      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+        {`${formatMoney(lot.unit_cost, currency)} / ${base}`}
+      </Text>
     </View>
   );
 }
@@ -247,9 +248,6 @@ const styles = StyleSheet.create({
   state: { gap: spacing.ms, alignItems: 'flex-start', padding: spacing.md },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
   voided: { gap: spacing.xs, padding: spacing.md, borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous' },
-  facts: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.ms },
-  factWide: { width: '33%', gap: spacing.xs, paddingRight: spacing.md },
-  factNarrow: { width: '50%', gap: spacing.xs, paddingRight: spacing.md },
   card: { borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous', overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms, padding: spacing.md },
   money: { alignItems: 'flex-end', gap: spacing.xs },

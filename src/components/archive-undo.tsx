@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import { useSetProductStatusMutation } from '../features/products/queries';
 import { stockFailure } from '../features/stock-receipts/queries';
 import type { ProductStatus } from '../features/products/schema';
 import { failureMessage } from '../lib/errors';
+import { Button } from './button';
+import { IconButton } from './icon-button';
 import { Snackbar } from './snackbar';
 
 /** A row as archiving needs to know it: what to archive, and what to put back on Undo. */
@@ -48,6 +51,9 @@ export function useArchiveUndo() {
   // Back as a draft rather than active: an archived product may be months stale, so it is checked in
   // the edit form ("Save as active") before the register sells it again.
   const restore = (targets: ArchiveTarget[]) => write(targets, 'draft');
+  // A detail screen's one button: Restore in Archive's place once archived, never both.
+  const toggle = ({ id, name, status }: ArchiveTarget) =>
+    status === 'archived' ? restore([{ id, name, status }]) : archive([{ id, name, status }]);
 
   const undo = () => {
     const targets = undone ?? [];
@@ -60,17 +66,6 @@ export function useArchiveUndo() {
     }
   };
 
-  const single = undone?.length === 1 ? undone[0] : undefined;
-  const done = restored ? 'restored as a draft' : 'archived';
-  const message =
-    failed === 'stock'
-      ? 'Stock is still on hand. Adjust or write it off before archiving.'
-      : failed
-        ? failureMessage(restored ? "Couldn't restore. Try again." : "Couldn't archive. Try again.")
-        : single
-          ? `${single.name} ${done}`
-          : `${undone?.length ?? 0} items ${done}`;
-
   const snackbar: ReactNode = (
     <Snackbar
       visible={undone !== null || failed !== null}
@@ -81,9 +76,43 @@ export function useArchiveUndo() {
       duration={6000}
       action={failed ? undefined : { label: 'Undo', onPress: undo }}
     >
-      {message}
+      {snackbarMessage(failed, restored, undone)}
     </Snackbar>
   );
 
-  return { archive, restore, snackbar, archiving: setStatus.isPending && !setStatus.isPaused };
+  return { archive, restore, toggle, snackbar, archiving: setStatus.isPending && !setStatus.isPaused };
+}
+
+/**
+ * A detail screen's archive control: Restore in Archive's place once archived, never both. `compact`
+ * is the narrow header's icon.
+ */
+export function ArchiveButton({
+  status,
+  onPress,
+  compact,
+  style,
+}: {
+  status: ProductStatus;
+  onPress: () => void;
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const label = status === 'archived' ? 'Restore' : 'Archive';
+  const icon = status === 'archived' ? 'restore' : 'archive';
+  if (compact) return <IconButton icon={icon} onPress={onPress} accessibilityLabel={label} style={style} />;
+
+  return (
+    <Button mode="outlined" icon={icon} onPress={onPress} style={style}>
+      {label}
+    </Button>
+  );
+}
+
+function snackbarMessage(failed: 'error' | 'stock' | null, restored: boolean, undone: ArchiveTarget[] | null) {
+  if (failed === 'stock') return 'Stock is still on hand. Adjust or write it off before archiving.';
+  if (failed) return failureMessage(restored ? "Couldn't restore. Try again." : "Couldn't archive. Try again.");
+  const done = restored ? 'restored as a draft' : 'archived';
+  const single = undone?.length === 1 ? undone[0] : undefined;
+  return single ? `${single.name} ${done}` : `${undone?.length ?? 0} items ${done}`;
 }

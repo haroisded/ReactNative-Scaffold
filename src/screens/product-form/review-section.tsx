@@ -1,8 +1,11 @@
 import { useFormContext, useFormState, useWatch } from 'react-hook-form';
+import type { DeepPartialSkipArrayKey } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Field, FieldGrid } from '../../components/form-fields';
 import { Text } from '../../components/text';
+import { useCategoriesQuery } from '../../features/categories/queries';
+import type { ResourceScope } from '../../features/products/resources';
 import {
   FIELD_SECTION,
   SECTION_META,
@@ -19,8 +22,8 @@ type Props = {
   /** The sections this type has, in the order the merchant stepped through them. */
   sections: { id: SectionId; optional: boolean }[];
   currency: string;
-  /** The category and subcategory names, which the form holds only as ids. */
-  categoryPath: string;
+  merchantId: string;
+  scope: ResourceScope;
   /** Jump back to a section from its summary row. */
   onOpen: (section: SectionId) => void;
 };
@@ -33,7 +36,7 @@ type Props = {
  * Before this, the only way to save on a phone was to reach step 7 and find Publish there, with a
  * "Save as Draft" on every step competing with it — two primary actions and no ending.
  */
-export function ReviewSection({ sections, currency, categoryPath, onOpen }: Props) {
+export function ReviewSection({ sections, merchantId, scope, currency, onOpen }: Props) {
   const { colors } = useAppTheme();
   const { control } = useFormContext<ProductFormValues>();
   const { errors } = useFormState({ control });
@@ -47,28 +50,13 @@ export function ReviewSection({ sections, currency, categoryPath, onOpen }: Prop
       .map(([, section]) => section)
   );
 
-  const money = (amount: string | undefined) => (amount && amount !== '' ? formatMoney(Number(amount), currency) : '—');
-  const unit = (value: string | undefined) => {
-    const parsed = measureUnit.safeParse(value);
-    return parsed.success ? UNIT_META[parsed.data].label : '—';
-  };
-  const text = (value: string | undefined) => (value && value.trim() !== '' ? value : '—');
-
-  // One line per section, in the same order and with the same names as the steps behind it.
-  const summary = {
-    general: [text(values.name), categoryPath || '—', values.sku ? values.sku : 'no SKU'].join(' · '),
-    pricing: [money(values.sellingPrice), values.pricingUnit ? `per ${unit(values.pricingUnit)}` : 'each'].join(' '),
-    inventory: [unit(values.uom), values.trackInventory ? `${text(values.qtyOnHand)} on hand` : 'not counted'].join(' · '),
-    availability: [
-      values.totalUnits ? `${values.totalUnits} units` : 'no units',
-      values.operatingHours?.length ? `${values.operatingHours.length} days open` : 'any time',
-    ].join(' · '),
-    variants: values.hasVariants ? `${values.variants?.length ?? 0} combinations` : 'no variants',
-    recipe: values.isComposite ? `${values.components?.length ?? 0} components` : 'not a bundle',
-    media: 'Nothing yet',
-    advanced: `${values.customFields?.length ?? 0} custom fields`,
-    review: '',
-  } satisfies Record<SectionId, string>;
+  // The category path: the form holds only ids, and the summary shows the names.
+  const categories = useCategoriesQuery({ merchantId, scope });
+  const categoryPath = [values.categoryId, values.subcategoryId]
+    .map((id) => categories.data?.find((category) => category.id === id)?.name)
+    .filter(Boolean)
+    .join(' › ');
+  const summary = sectionSummary(values, currency, categoryPath);
 
   return (
     <FieldGrid>
@@ -104,6 +92,31 @@ export function ReviewSection({ sections, currency, categoryPath, onOpen }: Prop
       </Field>
     </FieldGrid>
   );
+}
+
+/** One line per section, in the same order and with the same names as the steps behind it. */
+function sectionSummary(values: DeepPartialSkipArrayKey<ProductFormValues>, currency: string, categoryPath: string) {
+  const money = (amount: string | undefined) => (amount && amount !== '' ? formatMoney(Number(amount), currency) : '—');
+  const unit = (value: string | undefined) => {
+    const parsed = measureUnit.safeParse(value);
+    return parsed.success ? UNIT_META[parsed.data].label : '—';
+  };
+  const text = (value: string | undefined) => (value && value.trim() !== '' ? value : '—');
+
+  return {
+    general: [text(values.name), categoryPath || '—', values.sku ? values.sku : 'no SKU'].join(' · '),
+    pricing: [money(values.sellingPrice), values.pricingUnit ? `per ${unit(values.pricingUnit)}` : 'each'].join(' '),
+    inventory: [unit(values.uom), values.trackInventory ? `${text(values.qtyOnHand)} on hand` : 'not counted'].join(' · '),
+    availability: [
+      values.totalUnits ? `${values.totalUnits} units` : 'no units',
+      values.operatingHours?.length ? `${values.operatingHours.length} days open` : 'any time',
+    ].join(' · '),
+    variants: values.hasVariants ? `${values.variants?.length ?? 0} combinations` : 'no variants',
+    recipe: values.isComposite ? `${values.components?.length ?? 0} components` : 'not a bundle',
+    media: 'Nothing yet',
+    advanced: `${values.customFields?.length ?? 0} custom fields`,
+    review: '',
+  } satisfies Record<SectionId, string>;
 }
 
 const styles = StyleSheet.create({

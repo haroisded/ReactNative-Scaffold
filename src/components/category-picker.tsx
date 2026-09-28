@@ -43,7 +43,8 @@ export function CategoryPicker({ merchantId, scope, parentId, value, onChange, a
   useSheetResult(resultKey, onChange);
 
   const all = categories.data ?? [];
-  const parent = parentId ? (all.find((category) => category.id === parentId) ?? null) : null;
+  // No category has a null id, so a top-level picker finds no parent.
+  const parent = all.find((category) => category.id === parentId) ?? null;
   const rows = parentId ? childrenOf(all, parentId) : topLevel(all);
   const options = rows.map((category) => ({ value: category.id, label: category.name }));
 
@@ -64,20 +65,12 @@ export function CategoryPicker({ merchantId, scope, parentId, value, onChange, a
         value={value}
         options={clearable ? [{ value: '', label: 'None' }, ...options] : options}
         onChange={onChange}
-        placeholder={
-          categories.isError
-            ? "Couldn't load categories"
-            : categories.isPending
-              ? 'Loading…'
-              : parentId
-                ? 'Optional'
-                : 'Select category'
-        }
+        placeholder={placeholder(categories, parentId !== null)}
         accessibilityLabel={accessibilityLabel}
         error={error}
         // A subcategory needs its parent picked first.
         disabled={parentId !== null && !parent}
-        createLabel={parentId ? 'New subcategory' : 'New category'}
+        createLabel={`New ${resultKey}`}
         onCreate={create}
       />
       {creating ? (
@@ -91,4 +84,10 @@ export function CategoryPicker({ merchantId, scope, parentId, value, onChange, a
       ) : null}
     </>
   );
+}
+
+function placeholder(categories: { isError: boolean; isPending: boolean }, sub: boolean) {
+  if (categories.isError) return "Couldn't load categories";
+  if (categories.isPending) return 'Loading…';
+  return sub ? 'Optional' : 'Select category';
 }

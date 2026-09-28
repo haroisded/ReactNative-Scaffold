@@ -3,7 +3,7 @@ import { onlineManager } from '@tanstack/react-query';
 
 // What a failed action puts on screen when there is no connection. One string, because the cause is
 // the same everywhere and the advice does not change with the action.
-export const OFFLINE_MESSAGE = "You're offline. Reconnect and try again.";
+const OFFLINE_MESSAGE = "You're offline. Reconnect and try again.";
 
 /**
  * The message a failed action shows the user. Never the provider's own string.
@@ -23,6 +23,19 @@ export const OFFLINE_MESSAGE = "You're offline. Reconnect and try again.";
  */
 export function failureMessage(fallback: string): string {
   return onlineManager.isOnline() ? fallback : OFFLINE_MESSAGE;
+}
+
+/** The line under a form or confirm: an offline wait, or what went wrong. */
+export type Notice = { type: 'error' | 'info'; text: string };
+
+/**
+ * A mutation's notice. Paused before error: a write queued while offline is waiting, not failed
+ * (instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects —
+ * usually a refusal from postgrestError(), else failureMessage().
+ */
+export function mutationNotice(mutation: { isPaused: boolean; isError: boolean }, errorText: string): Notice | null {
+  if (mutation.isPaused) return { type: 'info', text: 'Waiting for a connection. This finishes on its own when you reconnect.' };
+  return mutation.isError ? { type: 'error', text: errorText } : null;
 }
 
 /**

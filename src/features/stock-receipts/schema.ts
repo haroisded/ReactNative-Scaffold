@@ -60,21 +60,35 @@ export const receiptLineSchema = z
     serials: z.string(),
   })
   .superRefine((line, ctx) => {
-    const need = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
-    if (line.mode === 'existing' && line.productId === '') need('productId', 'Choose an item.');
-    if (line.mode === 'new') {
-      if (line.newName === '') need('newName', 'Enter a name.');
-      if (!(Number(line.newUnitsPerPack) > 0)) need('newUnitsPerPack', 'Enter how many base units one pack holds.');
-    }
-    if (line.useCases) {
-      if (!(Number(line.cases) > 0)) need('cases', 'Enter the number of cases.');
-      if (!(Number(line.packsPerCase) > 0)) need('packsPerCase', 'Enter the packs in one case.');
-      if (line.costPerCase === '') need('costPerCase', 'Enter the cost of one case.');
-    } else {
-      if (line.costPerPack === '') need('costPerPack', 'Enter the cost of one pack.');
-      if (!(Number(line.packs) > 0) && !(Number(line.looseUnits) > 0)) need('packs', 'Enter how many packs arrived.');
-    }
+    for (const [path, message] of [...itemIssues(line), ...amountIssues(line)])
+      ctx.addIssue({ code: 'custom', path: [path], message });
   });
+
+type LineIssue = [path: string, message: string];
+const positive = (value: string) => Number(value) > 0;
+
+/** What arrived: an existing item, or a new one named on the line. */
+function itemIssues(line: ReceiptLineValues): LineIssue[] {
+  if (line.mode === 'existing') return line.productId === '' ? [['productId', 'Choose an item.']] : [];
+  const issues: LineIssue[] = [];
+  if (line.newName === '') issues.push(['newName', 'Enter a name.']);
+  if (!positive(line.newUnitsPerPack)) issues.push(['newUnitsPerPack', 'Enter how many base units one pack holds.']);
+  return issues;
+}
+
+/** How much arrived and what it cost: by the case, or by the pack with loose units. */
+function amountIssues(line: ReceiptLineValues): LineIssue[] {
+  const issues: LineIssue[] = [];
+  if (line.useCases) {
+    if (!positive(line.cases)) issues.push(['cases', 'Enter the number of cases.']);
+    if (!positive(line.packsPerCase)) issues.push(['packsPerCase', 'Enter the packs in one case.']);
+    if (line.costPerCase === '') issues.push(['costPerCase', 'Enter the cost of one case.']);
+    return issues;
+  }
+  if (line.costPerPack === '') issues.push(['costPerPack', 'Enter the cost of one pack.']);
+  if (!positive(line.packs) && !positive(line.looseUnits)) issues.push(['packs', 'Enter how many packs arrived.']);
+  return issues;
+}
 
 export type ReceiptLineValues = z.infer<typeof receiptLineSchema>;
 

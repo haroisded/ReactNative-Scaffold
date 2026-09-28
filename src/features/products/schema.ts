@@ -333,50 +333,50 @@ export const productFormSchema = z
   // needs is required only once the status is not draft — the same line products_price_when_sold
   // draws in the database.
   .superRefine((values, ctx) => {
-    const publishing = values.status !== 'draft';
-    const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: 'custom', path, message });
-
-    if (publishing && values.soldDirectly && values.sellingPrice === '') {
-      issue(['sellingPrice'], 'Enter a selling price, or turn off "Sold directly".');
-    }
-    if (publishing && usesInventory(values.type) && values.uom === '') {
-      issue(['uom'], 'Pick a unit of measure.');
-    }
-    if (publishing && usesAvailability(values.type) && values.totalUnits === '') {
-      issue(['totalUnits'], 'Enter how many units there are.');
-    }
-    if (values.conversionFactor !== '' && Number(values.conversionFactor) <= 0) {
-      issue(['conversionFactor'], 'Enter a factor above 0.');
-    }
-    if (values.minDuration !== '' && values.minDurationUnit === '') {
-      issue(['minDurationUnit'], 'Pick a unit.');
-    }
-    if (values.maxDuration !== '' && values.maxDurationUnit === '') {
-      issue(['maxDurationUnit'], 'Pick a unit.');
-    }
-    if (
-      values.minDuration !== '' &&
-      values.maxDuration !== '' &&
-      values.minDurationUnit === values.maxDurationUnit &&
-      Number(values.minDuration) > Number(values.maxDuration)
-    ) {
-      issue(['maxDuration'], 'The maximum must be at least the minimum.');
-    }
-    if (publishing && values.hasVariants && usesVariants(values.type) && values.variantAttributes.length === 0) {
-      issue(['variantAttributes'], 'Add at least one attribute, or turn off variants.');
-    }
-    if (publishing && values.isComposite && values.components.length === 0) {
-      issue(['components'], 'Add at least one component, or turn this off.');
-    }
-    // product_components_once in the database, reported on the row instead of as a save failure.
-    const seen = new Set<string>();
-    values.components.forEach((component, index) => {
-      if (component.componentId !== '' && seen.has(component.componentId)) {
-        issue(['components', index, 'componentId'], 'This product is already in the list.');
-      }
-      seen.add(component.componentId);
-    });
+    for (const [path, message] of [...publishIssues(values), ...durationIssues(values), ...componentIssues(values)])
+      ctx.addIssue({ code: 'custom', path, message });
   });
+
+type FormIssue = [path: (string | number)[], message: string];
+
+/** What a sale needs. Required only once the status is not draft. */
+function publishIssues(values: ProductFormValues): FormIssue[] {
+  if (values.status === 'draft') return [];
+  const issues: FormIssue[] = [];
+  if (values.soldDirectly && values.sellingPrice === '')
+    issues.push([['sellingPrice'], 'Enter a selling price, or turn off "Sold directly".']);
+  if (usesInventory(values.type) && values.uom === '') issues.push([['uom'], 'Pick a unit of measure.']);
+  if (usesAvailability(values.type) && values.totalUnits === '')
+    issues.push([['totalUnits'], 'Enter how many units there are.']);
+  if (values.hasVariants && usesVariants(values.type) && values.variantAttributes.length === 0)
+    issues.push([['variantAttributes'], 'Add at least one attribute, or turn off variants.']);
+  if (values.isComposite && values.components.length === 0)
+    issues.push([['components'], 'Add at least one component, or turn this off.']);
+  return issues;
+}
+
+/** The conversion factor and the min / max duration pair, checked whatever the status. */
+function durationIssues(values: ProductFormValues): FormIssue[] {
+  const issues: FormIssue[] = [];
+  if (values.conversionFactor !== '' && Number(values.conversionFactor) <= 0)
+    issues.push([['conversionFactor'], 'Enter a factor above 0.']);
+  if (values.minDuration !== '' && values.minDurationUnit === '') issues.push([['minDurationUnit'], 'Pick a unit.']);
+  if (values.maxDuration !== '' && values.maxDurationUnit === '') issues.push([['maxDurationUnit'], 'Pick a unit.']);
+  const bothSet = values.minDuration !== '' && values.maxDuration !== '';
+  if (bothSet && values.minDurationUnit === values.maxDurationUnit && Number(values.minDuration) > Number(values.maxDuration))
+    issues.push([['maxDuration'], 'The maximum must be at least the minimum.']);
+  return issues;
+}
+
+/** product_components_once in the database, reported on the row instead of as a save failure. */
+function componentIssues(values: ProductFormValues): FormIssue[] {
+  const seen = new Set<string>();
+  return values.components.flatMap((component, index): FormIssue[] => {
+    const repeat = component.componentId !== '' && seen.has(component.componentId);
+    seen.add(component.componentId);
+    return repeat ? [[['components', index, 'componentId'], 'This product is already in the list.']] : [];
+  });
+}
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -516,8 +516,13 @@ const numberOrNull = (value: string) => (value.trim() === '' ? null : Number(val
 const textOrNull = (value: string) => (value.trim() === '' ? null : value.trim());
 const unitOrNull = (value: MeasureUnit | '') => (value === '' ? null : value);
 const formNumber = (value: number | null) => (value === null ? '' : String(value));
+const orEmpty = <T,>(value: T | null) => value ?? '';
 // Postgres `time` reads back as "HH:MM:SS"; the form works in minutes.
 const formTime = (value: string | null) => (value === null ? '' : value.slice(0, 5));
+
+// A column or child list the type does not use: null / empty, whatever the form still holds.
+const when = <T,>(used: boolean, value: T) => (used ? value : null);
+const rowsWhen = <T,>(used: boolean, rows: T[]) => (used ? rows : []);
 
 /**
  * The form, as the rows save_product writes. Columns a type does not use are sent as null, so changing
@@ -528,6 +533,8 @@ export function toSavePayload(values: ProductFormValues, target: { merchantId: s
   const availability = usesAvailability(values.type);
   const variants = values.hasVariants && usesVariants(values.type);
   const rateTiers = availability || values.type === 'rental';
+  const tracked = inventory && values.trackInventory;
+  const perishable = inventory && values.perishable;
 
   return {
     product: {
@@ -549,74 +556,79 @@ export function toSavePayload(values: ProductFormValues, target: { merchantId: s
       pricing_unit: unitOrNull(values.pricingUnit),
       tax_class_id: textOrNull(values.taxClassId),
       discountable: values.discountable,
-      deposit_amount: values.type === 'rental' ? numberOrNull(values.depositAmount) : null,
-      late_fee_per_hour: values.type === 'rental' ? numberOrNull(values.lateFeePerHour) : null,
-      cancellation_fee: values.type === 'bookable' ? numberOrNull(values.cancellationFee) : null,
-      extra_unit_fee: values.type === 'bookable' ? numberOrNull(values.extraUnitFee) : null,
+      deposit_amount: when(values.type === 'rental', numberOrNull(values.depositAmount)),
+      late_fee_per_hour: when(values.type === 'rental', numberOrNull(values.lateFeePerHour)),
+      cancellation_fee: when(values.type === 'bookable', numberOrNull(values.cancellationFee)),
+      extra_unit_fee: when(values.type === 'bookable', numberOrNull(values.extraUnitFee)),
 
-      uom: inventory ? unitOrNull(values.uom) : null,
-      track_inventory: inventory ? values.trackInventory : false,
-      qty_on_hand: inventory && values.trackInventory ? numberOrNull(values.qtyOnHand) : null,
-      reorder_threshold: inventory && values.trackInventory ? numberOrNull(values.reorderThreshold) : null,
-      reorder_qty: inventory && values.trackInventory ? numberOrNull(values.reorderQty) : null,
-      max_stock: inventory && values.trackInventory ? numberOrNull(values.maxStock) : null,
-      storage_location: inventory ? textOrNull(values.storageLocation) : null,
-      supplier_id: inventory ? textOrNull(values.supplierId) : null,
-      supplier_item_code: inventory ? textOrNull(values.supplierItemCode) : null,
-      lead_time_days: inventory ? numberOrNull(values.leadTimeDays) : null,
-      batch_tracking: inventory ? values.batchTracking : false,
-      perishable: inventory ? values.perishable : false,
-      shelf_life_days: inventory && values.perishable ? numberOrNull(values.shelfLifeDays) : null,
-      expiry_date: inventory && values.perishable ? textOrNull(values.expiryDate) : null,
-      expiry_alert_days: inventory && values.perishable ? numberOrNull(values.expiryAlertDays) : null,
-      purchase_unit: inventory ? unitOrNull(values.purchaseUnit) : null,
-      usage_unit: inventory ? unitOrNull(values.usageUnit) : null,
-      conversion_factor: inventory ? numberOrNull(values.conversionFactor) : null,
+      uom: when(inventory, unitOrNull(values.uom)),
+      track_inventory: tracked,
+      qty_on_hand: when(tracked, numberOrNull(values.qtyOnHand)),
+      reorder_threshold: when(tracked, numberOrNull(values.reorderThreshold)),
+      reorder_qty: when(tracked, numberOrNull(values.reorderQty)),
+      max_stock: when(tracked, numberOrNull(values.maxStock)),
+      storage_location: when(inventory, textOrNull(values.storageLocation)),
+      supplier_id: when(inventory, textOrNull(values.supplierId)),
+      supplier_item_code: when(inventory, textOrNull(values.supplierItemCode)),
+      lead_time_days: when(inventory, numberOrNull(values.leadTimeDays)),
+      batch_tracking: inventory && values.batchTracking,
+      perishable,
+      shelf_life_days: when(perishable, numberOrNull(values.shelfLifeDays)),
+      expiry_date: when(perishable, textOrNull(values.expiryDate)),
+      expiry_alert_days: when(perishable, numberOrNull(values.expiryAlertDays)),
+      purchase_unit: when(inventory, unitOrNull(values.purchaseUnit)),
+      usage_unit: when(inventory, unitOrNull(values.usageUnit)),
+      conversion_factor: when(inventory, numberOrNull(values.conversionFactor)),
 
-      total_units: availability ? numberOrNull(values.totalUnits) : null,
-      capacity_per_unit: availability ? numberOrNull(values.capacityPerUnit) : null,
-      duration_mode: availability && values.durationMode !== '' ? values.durationMode : null,
-      default_start_time: availability ? textOrNull(values.defaultStartTime) : null,
-      default_end_time: availability ? textOrNull(values.defaultEndTime) : null,
-      min_duration: availability ? numberOrNull(values.minDuration) : null,
-      min_duration_unit: availability ? unitOrNull(values.minDurationUnit) : null,
-      max_duration: availability ? numberOrNull(values.maxDuration) : null,
-      max_duration_unit: availability ? unitOrNull(values.maxDurationUnit) : null,
-      buffer_minutes: availability ? numberOrNull(values.bufferMinutes) : null,
-      advance_window_days: availability ? numberOrNull(values.advanceWindowDays) : null,
-      blackout_dates: availability ? values.blackoutDates : [],
-      overbooking_allowed: availability ? values.overbookingAllowed : false,
+      total_units: when(availability, numberOrNull(values.totalUnits)),
+      capacity_per_unit: when(availability, numberOrNull(values.capacityPerUnit)),
+      duration_mode: when(availability, values.durationMode || null),
+      default_start_time: when(availability, textOrNull(values.defaultStartTime)),
+      default_end_time: when(availability, textOrNull(values.defaultEndTime)),
+      min_duration: when(availability, numberOrNull(values.minDuration)),
+      min_duration_unit: when(availability, unitOrNull(values.minDurationUnit)),
+      max_duration: when(availability, numberOrNull(values.maxDuration)),
+      max_duration_unit: when(availability, unitOrNull(values.maxDurationUnit)),
+      buffer_minutes: when(availability, numberOrNull(values.bufferMinutes)),
+      advance_window_days: when(availability, numberOrNull(values.advanceWindowDays)),
+      blackout_dates: rowsWhen(availability, values.blackoutDates),
+      overbooking_allowed: availability && values.overbookingAllowed,
 
       has_variants: variants,
       is_composite: values.isComposite,
       internal_notes: textOrNull(values.internalNotes),
     },
-    rate_tiers: rateTiers
-      ? values.rateTiers.map((tier) => ({ period: tier.period, price: Number(tier.price), note: textOrNull(tier.note) }))
-      : [],
-    operating_hours: availability
-      ? values.operatingHours.map((hours) => ({ weekday: hours.weekday, opens: hours.opens, closes: hours.closes }))
-      : [],
-    variant_attributes: variants
-      ? values.variantAttributes.map((attribute) => ({ name: attribute.name.trim(), values: attribute.values }))
-      : [],
-    variants: variants
-      ? values.variants.map((variant) => ({
-          label: variant.label,
-          options: variant.options,
-          sku: textOrNull(variant.sku),
-          barcode: textOrNull(variant.barcode),
-          price_delta: numberOrNull(variant.priceDelta) ?? 0,
-          qty_on_hand: numberOrNull(variant.qtyOnHand),
-        }))
-      : [],
-    components: values.isComposite
-      ? values.components.map((component) => ({
-          component_id: component.componentId,
-          qty: Number(component.qty),
-          unit: unitOrNull(component.unit),
-        }))
-      : [],
+    rate_tiers: rowsWhen(
+      rateTiers,
+      values.rateTiers.map((tier) => ({ period: tier.period, price: Number(tier.price), note: textOrNull(tier.note) }))
+    ),
+    operating_hours: rowsWhen(
+      availability,
+      values.operatingHours.map((hours) => ({ weekday: hours.weekday, opens: hours.opens, closes: hours.closes }))
+    ),
+    variant_attributes: rowsWhen(
+      variants,
+      values.variantAttributes.map((attribute) => ({ name: attribute.name.trim(), values: attribute.values }))
+    ),
+    variants: rowsWhen(
+      variants,
+      values.variants.map((variant) => ({
+        label: variant.label,
+        options: variant.options,
+        sku: textOrNull(variant.sku),
+        barcode: textOrNull(variant.barcode),
+        price_delta: numberOrNull(variant.priceDelta) ?? 0,
+        qty_on_hand: numberOrNull(variant.qtyOnHand),
+      }))
+    ),
+    components: rowsWhen(
+      values.isComposite,
+      values.components.map((component) => ({
+        component_id: component.componentId,
+        qty: Number(component.qty),
+        unit: unitOrNull(component.unit),
+      }))
+    ),
     custom_fields: values.customFields.map((field) => ({
       label: field.label.trim(),
       kind: field.kind,
@@ -630,18 +642,18 @@ export function fromProductDetail(product: ProductDetail): ProductFormValues {
   return {
     type: product.type,
     name: product.name,
-    categoryId: product.category_id ?? '',
-    subcategoryId: product.subcategory_id ?? '',
-    sku: product.sku ?? '',
-    barcode: product.barcode ?? '',
-    description: product.description ?? '',
+    categoryId: orEmpty(product.category_id),
+    subcategoryId: orEmpty(product.subcategory_id),
+    sku: orEmpty(product.sku),
+    barcode: orEmpty(product.barcode),
+    description: orEmpty(product.description),
     tags: product.tags,
     status: product.status,
     soldDirectly: product.sold_directly,
     sellingPrice: formNumber(product.selling_price),
     costPrice: formNumber(product.cost_price),
-    pricingUnit: product.pricing_unit ?? '',
-    taxClassId: product.tax_class_id ?? '',
+    pricingUnit: orEmpty(product.pricing_unit),
+    taxClassId: orEmpty(product.tax_class_id),
     discountable: product.discountable,
     depositAmount: formNumber(product.deposit_amount),
     lateFeePerHour: formNumber(product.late_fee_per_hour),
@@ -650,35 +662,35 @@ export function fromProductDetail(product: ProductDetail): ProductFormValues {
     rateTiers: product.rate_tiers.map((tier) => ({
       period: tier.period,
       price: String(tier.price),
-      note: tier.note ?? '',
+      note: orEmpty(tier.note),
     })),
-    uom: product.uom ?? '',
+    uom: orEmpty(product.uom),
     trackInventory: product.track_inventory,
     qtyOnHand: formNumber(product.qty_on_hand),
     reorderThreshold: formNumber(product.reorder_threshold),
     reorderQty: formNumber(product.reorder_qty),
     maxStock: formNumber(product.max_stock),
-    storageLocation: product.storage_location ?? '',
-    supplierId: product.supplier_id ?? '',
-    supplierItemCode: product.supplier_item_code ?? '',
+    storageLocation: orEmpty(product.storage_location),
+    supplierId: orEmpty(product.supplier_id),
+    supplierItemCode: orEmpty(product.supplier_item_code),
     leadTimeDays: formNumber(product.lead_time_days),
     batchTracking: product.batch_tracking,
     perishable: product.perishable,
     shelfLifeDays: formNumber(product.shelf_life_days),
-    expiryDate: product.expiry_date ?? '',
+    expiryDate: orEmpty(product.expiry_date),
     expiryAlertDays: formNumber(product.expiry_alert_days),
-    purchaseUnit: product.purchase_unit ?? '',
-    usageUnit: product.usage_unit ?? '',
+    purchaseUnit: orEmpty(product.purchase_unit),
+    usageUnit: orEmpty(product.usage_unit),
     conversionFactor: formNumber(product.conversion_factor),
     totalUnits: formNumber(product.total_units),
     capacityPerUnit: formNumber(product.capacity_per_unit),
-    durationMode: product.duration_mode ?? '',
+    durationMode: orEmpty(product.duration_mode),
     defaultStartTime: formTime(product.default_start_time),
     defaultEndTime: formTime(product.default_end_time),
     minDuration: formNumber(product.min_duration),
-    minDurationUnit: product.min_duration_unit ?? '',
+    minDurationUnit: orEmpty(product.min_duration_unit),
     maxDuration: formNumber(product.max_duration),
-    maxDurationUnit: product.max_duration_unit ?? '',
+    maxDurationUnit: orEmpty(product.max_duration_unit),
     bufferMinutes: formNumber(product.buffer_minutes),
     advanceWindowDays: formNumber(product.advance_window_days),
     blackoutDates: product.blackout_dates,
@@ -696,8 +708,8 @@ export function fromProductDetail(product: ProductDetail): ProductFormValues {
     variants: product.variants.map((variant) => ({
       label: variant.label,
       options: variant.options,
-      sku: variant.sku ?? '',
-      barcode: variant.barcode ?? '',
+      sku: orEmpty(variant.sku),
+      barcode: orEmpty(variant.barcode),
       priceDelta: variant.price_delta === 0 ? '' : String(variant.price_delta),
       qtyOnHand: formNumber(variant.qty_on_hand),
     })),
@@ -705,14 +717,14 @@ export function fromProductDetail(product: ProductDetail): ProductFormValues {
     components: product.components.map((component) => ({
       componentId: component.component_id,
       qty: String(component.qty),
-      unit: component.unit ?? '',
+      unit: orEmpty(component.unit),
     })),
     customFields: product.custom_fields.map((field) => ({
       label: field.label,
       kind: field.kind,
-      value: field.value ?? '',
+      value: orEmpty(field.value),
     })),
-    internalNotes: product.internal_notes ?? '',
+    internalNotes: orEmpty(product.internal_notes),
   };
 }
 

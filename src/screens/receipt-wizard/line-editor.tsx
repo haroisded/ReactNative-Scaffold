@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../components/button';
@@ -13,6 +14,7 @@ import {
   FieldGrid,
   GroupHeading,
 } from '../../components/form-fields';
+import type { SelectOption } from '../../components/menu-select';
 import { Text } from '../../components/text';
 import { TextInput } from '../../components/text-input';
 import type { StockItemOption } from '../../features/products/queries';
@@ -83,29 +85,10 @@ export function LineEditor({ currency, items, initial, onSave, onCancel }: Props
   const packs = linePacks(line);
   const cost = item ? lineCost(line, item.unitsPerPack) : Number.NaN;
 
-  // The pallet calculator fills Cases; nothing else reads it, so it is not part of the line.
-  const [pallets, setPallets] = useState('');
-  const [casesPerPallet, setCasesPerPallet] = useState('');
-  const fillCases = (nextPallets: string, nextPerPallet: string) => {
-    setPallets(nextPallets);
-    setCasesPerPallet(nextPerPallet);
-    const total = Number(nextPallets) * Number(nextPerPallet);
-    if (total > 0) form.setValue('cases', String(total), { shouldDirty: true, shouldValidate: true });
-  };
-
   const submit = form.handleSubmit((values) => {
-    if (serial) {
-      const count = serialList(values.serials).length;
-      if (Number(values.looseUnits || 0) > 0) {
-        form.setError('looseUnits', { message: 'A serial-tracked item arrives in whole packs only.' });
-        return;
-      }
-      if (count !== linePacks(values)) {
-        form.setError('serials', { message: `Enter one serial per pack: ${linePacks(values)} needed, ${count} entered.` });
-        return;
-      }
-    }
-    onSave(values);
+    const issue = serial ? serialIssue(values) : null;
+    if (issue) form.setError(issue[0], { message: issue[1] });
+    else onSave(values);
   });
 
   const money = currencySymbol(currency);
@@ -114,52 +97,7 @@ export function LineEditor({ currency, items, initial, onSave, onCancel }: Props
   return (
     <View style={[styles.card, { borderColor: colors.outlineVariant, backgroundColor: colors.surface }]}>
       <FieldGrid>
-        {line.mode === 'existing' ? (
-          <ControlledSelect
-            control={form.control}
-            name="productId"
-            label="Item"
-            required
-            span="full"
-            options={options}
-            placeholder="Choose an item"
-            createLabel="New item"
-            onCreate={() => form.setValue('mode', 'new')}
-          />
-        ) : (
-          <>
-            <Field label="New item" span="full" action={{ label: 'Pick existing', onPress: () => form.setValue('mode', 'existing') }}>
-              <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
-                Created with this receipt as a stock item. Make it sellable later from Inventory.
-              </Text>
-            </Field>
-            <ControlledText control={form.control} name="newName" label="Name" required span="full" maxLength={120} />
-            <ControlledText control={form.control} name="newPackUnit" label="Pack unit" placeholder="box" maxLength={20} />
-            <ControlledText control={form.control} name="newBaseUnit" label="Base unit" placeholder="pcs" maxLength={20} />
-            <ControlledText
-              control={form.control}
-              name="newUnitsPerPack"
-              label="Units per pack"
-              required
-              keyboardType="decimal-pad"
-            />
-            <ControlledSwitch
-              control={form.control}
-              name="newSerialTracked"
-              label="Serial numbers"
-              on="Each pack has a serial"
-              off="No serials"
-            />
-          </>
-        )}
-
-        {line.mode === 'existing' && item ? (
-          <Field label="Counted in" span="full">
-            <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-              {`1 ${item.packUnit} = ${item.unitsPerPack} ${item.baseUnit}${item.serial ? ' · serial-tracked' : ''}`}
-            </Text>
-          </Field>
-        ) : null}
+        <ItemFields form={form} line={line} item={item} options={options} />
       </FieldGrid>
 
       <GroupHeading title="Quantity and cost" />
@@ -173,45 +111,7 @@ export function LineEditor({ currency, items, initial, onSave, onCancel }: Props
           off={`Received as ${item?.packUnit ?? 'pack'}`}
         />
         {line.useCases ? (
-          <>
-            <Field label="Pallets" hint="Optional">
-              <TextInput
-                mode="outlined"
-                dense
-                value={pallets}
-                onChangeText={(value) => fillCases(value, casesPerPallet)}
-                keyboardType="number-pad"
-                accessibilityLabel="Pallets"
-              />
-            </Field>
-            <Field label="Cases per pallet" hint="Fills Cases">
-              <TextInput
-                mode="outlined"
-                dense
-                value={casesPerPallet}
-                onChangeText={(value) => fillCases(pallets, value)}
-                keyboardType="number-pad"
-                accessibilityLabel="Cases per pallet"
-              />
-            </Field>
-            <ControlledText control={form.control} name="cases" label="Cases" required keyboardType="number-pad" />
-            <ControlledText
-              control={form.control}
-              name="packsPerCase"
-              label={`${item?.packUnit ?? 'Packs'} per case`}
-              required
-              keyboardType="number-pad"
-            />
-            <ControlledText
-              control={form.control}
-              name="costPerCase"
-              label="Cost per case"
-              required
-              keyboardType="decimal-pad"
-              prefix={money}
-            />
-            <ControlledText control={form.control} name="sscc" label="SSCC" maxLength={64} />
-          </>
+          <CaseFields form={form} item={item} money={money} />
         ) : (
           <>
             <ControlledText control={form.control} name="packs" label={item?.packUnit ?? 'Packs'} required keyboardType="number-pad" />
@@ -271,6 +171,127 @@ export function LineEditor({ currency, items, initial, onSave, onCancel }: Props
       </View>
     </View>
   );
+}
+
+type FormProps = { form: UseFormReturn<ReceiptLineValues>; item: LineItem | null };
+
+/** The item a line receives: one picked from Inventory, or a new one typed here. */
+function ItemFields({ form, line, item, options }: FormProps & { line: ReceiptLineValues; options: SelectOption[] }) {
+  const { colors } = useAppTheme();
+
+  return (
+    <>
+      {line.mode === 'existing' ? (
+        <ControlledSelect
+          control={form.control}
+          name="productId"
+          label="Item"
+          required
+          span="full"
+          options={options}
+          placeholder="Choose an item"
+          createLabel="New item"
+          onCreate={() => form.setValue('mode', 'new')}
+        />
+      ) : (
+        <>
+          <Field label="New item" span="full" action={{ label: 'Pick existing', onPress: () => form.setValue('mode', 'existing') }}>
+            <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
+              Created with this receipt as a stock item. Make it sellable later from Inventory.
+            </Text>
+          </Field>
+          <ControlledText control={form.control} name="newName" label="Name" required span="full" maxLength={120} />
+          <ControlledText control={form.control} name="newPackUnit" label="Pack unit" placeholder="box" maxLength={20} />
+          <ControlledText control={form.control} name="newBaseUnit" label="Base unit" placeholder="pcs" maxLength={20} />
+          <ControlledText
+            control={form.control}
+            name="newUnitsPerPack"
+            label="Units per pack"
+            required
+            keyboardType="decimal-pad"
+          />
+          <ControlledSwitch
+            control={form.control}
+            name="newSerialTracked"
+            label="Serial numbers"
+            on="Each pack has a serial"
+            off="No serials"
+          />
+        </>
+      )}
+
+      {line.mode === 'existing' && item ? (
+        <Field label="Counted in" span="full">
+          <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+            {`1 ${item.packUnit} = ${item.unitsPerPack} ${item.baseUnit}${item.serial ? ' · serial-tracked' : ''}`}
+          </Text>
+        </Field>
+      ) : null}
+    </>
+  );
+}
+
+/** Received in cases, with the pallet calculator that fills Cases. */
+function CaseFields({ form, item, money }: FormProps & { money: string }) {
+  // The calculator's inputs; nothing else reads them, so they are not part of the line.
+  const [pallets, setPallets] = useState('');
+  const [casesPerPallet, setCasesPerPallet] = useState('');
+  const fillCases = (nextPallets: string, nextPerPallet: string) => {
+    setPallets(nextPallets);
+    setCasesPerPallet(nextPerPallet);
+    const total = Number(nextPallets) * Number(nextPerPallet);
+    if (total > 0) form.setValue('cases', String(total), { shouldDirty: true, shouldValidate: true });
+  };
+
+  return (
+    <>
+      <Field label="Pallets" hint="Optional">
+        <TextInput
+          mode="outlined"
+          dense
+          value={pallets}
+          onChangeText={(value) => fillCases(value, casesPerPallet)}
+          keyboardType="number-pad"
+          accessibilityLabel="Pallets"
+        />
+      </Field>
+      <Field label="Cases per pallet" hint="Fills Cases">
+        <TextInput
+          mode="outlined"
+          dense
+          value={casesPerPallet}
+          onChangeText={(value) => fillCases(pallets, value)}
+          keyboardType="number-pad"
+          accessibilityLabel="Cases per pallet"
+        />
+      </Field>
+      <ControlledText control={form.control} name="cases" label="Cases" required keyboardType="number-pad" />
+      <ControlledText
+        control={form.control}
+        name="packsPerCase"
+        label={`${item?.packUnit ?? 'Packs'} per case`}
+        required
+        keyboardType="number-pad"
+      />
+      <ControlledText
+        control={form.control}
+        name="costPerCase"
+        label="Cost per case"
+        required
+        keyboardType="decimal-pad"
+        prefix={money}
+      />
+      <ControlledText control={form.control} name="sscc" label="SSCC" maxLength={64} />
+    </>
+  );
+}
+
+/** A serial-tracked item arrives in whole packs, one serial each. */
+function serialIssue(values: ReceiptLineValues): ['looseUnits' | 'serials', string] | null {
+  if (Number(values.looseUnits || 0) > 0) return ['looseUnits', 'A serial-tracked item arrives in whole packs only.'];
+  const count = serialList(values.serials).length;
+  const needed = linePacks(values);
+  return count === needed ? null : ['serials', `Enter one serial per pack: ${needed} needed, ${count} entered.`];
 }
 
 const styles = StyleSheet.create({

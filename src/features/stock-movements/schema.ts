@@ -10,7 +10,7 @@ export const movementKind = z.enum(['adjust', 'write_off', 'return_supplier']);
 export type ManualMovementKind = z.infer<typeof movementKind>;
 
 export const writeOffReason = z.enum(['expired', 'damaged', 'lost', 'other']);
-type WriteOffReason = z.infer<typeof writeOffReason>;
+export type WriteOffReason = z.infer<typeof writeOffReason>;
 
 export const WRITE_OFF_REASON_LABEL = {
   expired: 'Expired',

@@ -1,12 +1,6 @@
-import { StyleSheet } from 'react-native';
-
 import { deleteRefusal, useDeleteProductsMutation } from '../features/products/queries';
-import { useShellWide } from '../lib/columns';
-import { failureMessage } from '../lib/errors';
-import { useAppTheme } from '../lib/theme';
-import { AdaptiveDialog } from './adaptive-dialog';
-import { Button } from './button';
-import { HelperText } from './helper-text';
+import { failureMessage, mutationNotice } from '../lib/errors';
+import { ConfirmDialog } from './confirm-dialog';
 import { NoteCallout } from './note-callout';
 import { Text } from './text';
 
@@ -29,67 +23,33 @@ type Props = {
  * refusal is reported below rather than pre-checked.
  */
 export function DeleteProductDialog({ products, inSheet, onDismiss, onDone }: Props) {
-  const { colors } = useAppTheme();
-  const wide = useShellWide();
   const remove = useDeleteProductsMutation();
-
-  const inFlight = remove.isPending && !remove.isPaused;
   const single = products.length === 1 ? products[0] : undefined;
 
-  const notice = remove.isPaused
-    ? { type: 'info' as const, text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : remove.isError
-      ? {
-          type: 'error' as const,
-          text:
-            deleteRefusal(remove.error) === 'bundle'
-              ? `${single ? 'This product is' : 'One of these products is'} a component of a bundle. Remove it from the bundle first, or archive it instead.`
-              : deleteRefusal(remove.error) === 'stock'
-                ? `${single ? 'This item has' : 'One of these items has'} stock history, so it cannot be deleted. Archive it once its stock is gone.`
-                : failureMessage("Couldn't delete. Try again."),
-        }
-      : null;
-
   return (
-    <AdaptiveDialog
-      wide={wide}
+    <ConfirmDialog
       inSheet={inSheet}
       onDismiss={onDismiss}
-      dismissable={!inFlight}
       kicker="Delete permanently"
-      kickerTone="error"
       title={single ? `Delete ${single.name}?` : `Delete ${products.length} products?`}
-      actions={
-        <>
-          <Button mode="outlined" onPress={onDismiss} disabled={inFlight} contentStyle={styles.action}>
-            Cancel
-          </Button>
-          <Button
-            mode="contained"
-            buttonColor={colors.error}
-            textColor={colors.onError}
-            onPress={() => remove.mutate(products.map((product) => product.id), { onSuccess: onDone })}
-            loading={remove.isPending}
-            disabled={remove.isPending}
-            contentStyle={styles.action}
-          >
-            Delete
-          </Button>
-        </>
-      }
+      confirmLabel="Delete"
+      onConfirm={() => remove.mutate(products.map((product) => product.id), { onSuccess: onDone })}
+      mutation={remove}
+      notice={mutationNotice(remove, refusalText(deleteRefusal(remove.error), single !== undefined))}
     >
       <Text variant="bodyMedium">
         {single ? 'This removes it' : 'This removes them'} with every variant, rate and component.
         Archive instead to keep the details and hide {single ? 'it' : 'them'} from the register.
       </Text>
       <NoteCallout tone="error">This can&apos;t be undone.</NoteCallout>
-      <HelperText type={notice?.type ?? 'error'} visible={notice !== null} padding="none">
-        {notice?.text}
-      </HelperText>
-    </AdaptiveDialog>
+    </ConfirmDialog>
   );
 }
 
-const styles = StyleSheet.create({
-  action: { justifyContent: 'flex-start' },
-});
+function refusalText(refusal: ReturnType<typeof deleteRefusal>, single: boolean) {
+  if (refusal === 'bundle')
+    return `${single ? 'This product is' : 'One of these products is'} a component of a bundle. Remove it from the bundle first, or archive it instead.`;
+  if (refusal === 'stock')
+    return `${single ? 'This item has' : 'One of these items has'} stock history, so it cannot be deleted. Archive it once its stock is gone.`;
+  return failureMessage("Couldn't delete. Try again.");
+}

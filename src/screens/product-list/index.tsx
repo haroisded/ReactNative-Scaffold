@@ -1,9 +1,9 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ActivityIndicator } from '../../components/activity-indicator';
 import { useArchiveUndo } from '../../components/archive-undo';
 import { Button } from '../../components/button';
 import { Checkbox } from '../../components/checkbox';
@@ -13,7 +13,9 @@ import { HeaderTitle } from '../../components/header-title';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { Menu } from '../../components/menu';
+import { OptionItems } from '../../components/menu-select';
 import { PageHeader } from '../../components/page-header';
+import { QueryState } from '../../components/query-state';
 import { LowStockBadge, NeedsPriceBadge, StatusText, Thumbnail, TypeBadge, availabilityLabel } from '../../components/product-badges';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
@@ -29,7 +31,7 @@ import { STOCK_ROLE_LABEL, stockRole as stockRoles } from '../../features/produc
 import type { StockRole } from '../../features/products/stock-item';
 import { localToday } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
-import { failureMessage, postgrestError } from '../../lib/errors';
+import { failureMessage, mutationNotice, postgrestError } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { useSheetResult } from '../../Store/sheet-result';
@@ -62,52 +64,40 @@ const SORTS: { value: ProductSort; label: string }[] = [
   { value: 'created', label: 'Newest' },
 ];
 
+type Filters = {
+  categoryId: string;
+  type: ProductType | '';
+  status: ProductStatus | 'all';
+  lowStockOnly: boolean;
+  // Inventory only (design.md §6): the item's type, and where its stock came from.
+  role: StockRole | '';
+  source: InventorySource;
+  sort: ProductSort;
+};
+const NO_FILTERS: Filters = { categoryId: '', type: '', status: 'all', lowStockOnly: false, role: '', source: 'all', sort: 'name' };
+
+type Target = { id: string; name: string };
+
 export function ProductList({ merchantId, merchantName, currency, scope }: Props) {
-  const { colors } = useAppTheme();
   const wide = useShellWide();
   const meta = RESOURCE_META[scope];
   const route = RESOURCE_ROUTE[scope];
-  const categories = useCategoriesQuery({ merchantId, scope });
-  const setStatus = useSetProductStatusMutation();
-  // A screen with one type has nothing to filter by; Rentables has two.
-  const typeFilters: { value: ProductType | ''; label: string }[] =
-    meta.types.length > 1
-      ? [{ value: '', label: 'All' }, ...meta.types.map((type) => ({ value: type, label: TYPE_META[type].badge }))]
-      : [];
-  const counted = meta.types.some(usesInventory);
   const inventory = scope === 'inventory';
 
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [type, setType] = useState<ProductType | ''>('');
-  const [status, setStatusFilter] = useState<ProductStatus | 'all'>('all');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
-  // Inventory only (design.md §6): the item's type, where its stock came from, the groups folded shut,
-  // and the item open in the tablet's second pane.
-  const [role, setRole] = useState<StockRole | ''>('');
-  const [source, setSource] = useState<InventorySource>('all');
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [paneId, setPaneId] = useState<string | null>(null);
-  const [sort, setSort] = useState<ProductSort>('name');
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState(NO_FILTERS);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // The rows awaiting delete, held here and not in a row: FlashList recycles its cells.
-  const [deleting, setDeleting] = useState<{ id: string; name: string }[] | null>(null);
+  const [deleting, setDeleting] = useState<Target[] | null>(null);
   // Archive writes immediately and offers Undo; only Delete still asks (src/components/archive-undo.tsx).
   const { archive, snackbar } = useArchiveUndo();
   // Narrow, the delete dialog is a formSheet route; its outcome comes back here to clear the selection.
   useSheetResult('delete-product:list', () => setSelected(new Set()));
 
-  const remove = (targets: { id: string; name: string }[]) => {
-    if (wide) {
-      setDeleting(targets);
-      return;
-    }
-    router.push({
-      pathname: '/sheets/delete-product',
-      params: { products: JSON.stringify(targets), resultKey: 'delete-product:list' },
-    });
+  const remove = (targets: Target[]) => {
+    if (wide) setDeleting(targets);
+    else router.push({ pathname: '/sheets/delete-product', params: { products: JSON.stringify(targets), resultKey: 'delete-product:list' } });
   };
 
   // A request per pause in typing, not per keystroke.
@@ -116,146 +106,32 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
     return () => clearTimeout(timer);
   }, [searchDraft]);
 
-  const products = useProductsQuery({
-    merchantId,
-    scope,
-    search,
-    categoryId: categoryId || null,
-    type: type || null,
-    stockRole: inventory ? role || null : null,
-    status,
-    lowStockOnly,
-    sort,
-  });
-  // ponytail: Source is filtered here, not in the query — it reads the embedded lots. Move it to a
-  // generated column if the list gains pagination.
-  const rows = (products.data ?? []).filter((row) => !inventory || source === 'all' || itemSource(row) === source);
-  const today = localToday();
+  const { products, rows } = useProductRows(merchantId, scope, search, filters);
   const selectedRows = rows.filter((row) => selected.has(row.id));
-  const filtered =
-    search !== '' || categoryId !== '' || type !== '' || status !== 'all' || lowStockOnly || role !== '' || source !== 'all';
+  const filtered = isFiltered(filters, search);
 
-  const toggle = (id: string) =>
-    setSelected((previous) => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const patch = (next: Partial<Filters>) => setFilters((previous) => ({ ...previous, ...next }));
   const clearFilters = () => {
     setSearchDraft('');
-    setCategoryId('');
-    setType('');
-    setStatusFilter('all');
-    setLowStockOnly(false);
-    setRole('');
-    setSource('all');
+    setFilters({ ...NO_FILTERS, sort: filters.sort });
   };
-  const toggleGroup = (id: string) =>
-    setCollapsed((previous) => {
-      const next = new Set(previous);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  // Wide, an Inventory item opens in the second pane instead of on its own screen.
-  const openDetail = (id: string) =>
-    inventory && wide ? setPaneId(id) : router.push({ pathname: route.detail, params: { id: merchantId, productId: id } });
-  const openEdit = (id: string) => router.push({ pathname: route.edit, params: { id: merchantId, productId: id } });
-
-  const bulkStatus = (next: ProductStatus) =>
-    setStatus.mutate({ ids: selectedRows.map((row) => row.id), status: next }, { onSuccess: () => setSelected(new Set()) });
-
-  const bulkNotice = setStatus.isPaused
-    ? { type: 'info' as const, text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : setStatus.isError
-      ? {
-          type: 'error' as const,
-          // products_price_when_sold: a product sold on its own cannot leave draft without a price.
-          text:
-            postgrestError(setStatus.error)?.code === '23514'
-              ? 'A product sold on its own needs a selling price before it can be active.'
-              : failureMessage("Couldn't update these products. Try again."),
-        }
-      : null;
-
-  const filterControls = (
-    <>
-      <FilterMenu
-        label="Category"
-        value={categoryId}
-        options={[
-          { value: '', label: 'All' },
-          ...topLevel(categories.data ?? []).map((category) => ({ value: category.id, label: category.name })),
-        ]}
-        onChange={setCategoryId}
-      />
-      {typeFilters.length > 0 ? <FilterMenu label="Type" value={type} options={typeFilters} onChange={setType} /> : null}
-      {inventory ? (
-        <>
-          <FilterMenu label="Source" value={source} options={SOURCE_FILTERS} onChange={setSource} />
-          <FilterMenu label="Type" value={role} options={ROLE_FILTERS} onChange={setRole} />
-        </>
-      ) : null}
-      <FilterMenu label="Status" value={status} options={STATUS_FILTERS} onChange={setStatusFilter} />
-      <FilterMenu
-        label="Sort"
-        value={sort}
-        // Sorting by stock, and filtering to what is running low, only mean something where a count is
-        // kept: Inventory and Rentables. A flat service has no quantity.
-        // Inventory items carry no price of their own; their register drafts do.
-        options={SORTS.filter((option) => (counted || option.value !== 'stock') && (!inventory || option.value !== 'price'))}
-        onChange={setSort}
-      />
-      {counted ? (
-        <View style={styles.switchRow}>
-          <Switch value={lowStockOnly} onValueChange={setLowStockOnly} color={colors.accent} accessibilityLabel="Low stock only" />
-          <Text variant="bodyMedium">Low stock</Text>
-        </View>
-      ) : null}
-    </>
-  );
-
-  const empty = (
-    <View style={styles.state}>
-      {/* Paused before pending: a queued query is pending the whole time it waits (instruction_mds/data-layer.md §5). */}
-      {products.isPaused && !products.data ? (
-        <Text variant="bodyMedium">You&apos;re offline. Products will load when you reconnect.</Text>
-      ) : products.isPending ? (
-        <ActivityIndicator />
-      ) : products.isError ? (
-        <>
-          <Text variant="bodyMedium">{failureMessage("Couldn't load products. Try again.")}</Text>
-          <Button onPress={() => products.refetch()}>Try again</Button>
-        </>
-      ) : filtered ? (
-        <>
-          <Text variant="bodyMedium">No products match these filters.</Text>
-          <Button onPress={clearFilters}>Clear filters</Button>
-        </>
-      ) : (
-        <>
-          <Text variant="bodyMedium">{`No ${meta.title.toLowerCase()} yet.`}</Text>
-          <Button mode="contained" icon="add" onPress={() => router.push({ pathname: route.new, params: { id: merchantId } })}>
-            {`Add ${meta.item}`}
-          </Button>
-        </>
-      )}
-    </View>
-  );
-
-  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+  const toggle = (id: string) => setSelected((previous) => toggled(previous, id));
+  const clearSelection = () => setSelected(new Set());
+  const openDetail = (id: string) => router.push({ pathname: route.detail, params: { id: merchantId, productId: id } });
+  const list: ListProps = {
+    rows,
+    selected,
+    onToggle: toggle,
+    onOpen: openDetail,
+    empty: <EmptyList query={products} merchantId={merchantId} scope={scope} filtered={filtered} onClear={clearFilters} />,
+  };
 
   return (
     <View style={styles.fill}>
       <PageHeader
         kicker={merchantName}
         title={meta.title}
-        meta={
-          products.data
-            ? `${rows.length} ${rows.length === 1 ? meta.item : `${meta.item}s`}${filtered ? ' shown' : ''}`
-            : undefined
-        }
+        meta={products.data ? countLabel(rows.length, meta.item, filtered) : undefined}
         actions={
           <>
             <Button mode="outlined" icon="settings" onPress={() => router.push({ pathname: route.setup, params: { id: merchantId } })}>
@@ -268,159 +144,25 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         }
       />
 
-      <View style={styles.toolbar}>
-        <View style={styles.searchRow}>
-          <TextInput
-            mode="outlined"
-            dense
-            value={searchDraft}
-            onChangeText={setSearchDraft}
-            placeholder={inventory ? 'Search name, SKU, barcode, location' : 'Search name or SKU'}
-            accessibilityLabel="Search products"
-            left={<TextInput.Icon icon="search" />}
-            right={searchDraft !== '' ? <TextInput.Icon icon="close" onPress={() => setSearchDraft('')} accessibilityLabel="Clear search" /> : undefined}
-            style={styles.fill}
-          />
-          {wide ? null : (
-            <IconButton
-              icon="filter"
-              mode={filtersOpen ? 'contained' : 'outlined'}
-              onPress={() => setFiltersOpen((open) => !open)}
-              accessibilityLabel="Filters and sort"
-              accessibilityState={{ expanded: filtersOpen }}
-            />
-          )}
-        </View>
-        {wide || filtersOpen ? <View style={styles.filters}>{filterControls}</View> : null}
-      </View>
+      <Toolbar wide={wide} inventory={inventory} search={searchDraft} onSearch={setSearchDraft}>
+        <FilterControls merchantId={merchantId} scope={scope} filters={filters} onChange={patch} />
+      </Toolbar>
 
-      {selectedRows.length > 0 ? (
-        <View style={[styles.bulkBar, { backgroundColor: colors.surfaceVariant }]}>
-          <IconButton icon="close" size={18} onPress={() => setSelected(new Set())} accessibilityLabel="Clear selection" style={styles.bulkClear} />
-          <Text variant="labelLarge" style={styles.bulkCount}>{`${selectedRows.length} selected`}</Text>
-          <Button compact onPress={() => bulkStatus('active')} disabled={setStatus.isPending}>
-            Activate
-          </Button>
-          <Button compact onPress={() => bulkStatus('inactive')} disabled={setStatus.isPending}>
-            Deactivate
-          </Button>
-          <Button
-            compact
-            onPress={() =>
-              archive(
-                selectedRows.map((row) => ({ id: row.id, name: row.name, status: row.status })),
-                () => setSelected(new Set())
-              )
-            }
-          >
-            Archive
-          </Button>
-          <Button compact textColor={colors.error} onPress={() => remove(selectedRows.map((row) => ({ id: row.id, name: row.name })))}>
-            Delete
-          </Button>
-        </View>
-      ) : null}
-      {bulkNotice ? (
-        <HelperText type={bulkNotice.type} style={styles.bulkNotice}>
-          {bulkNotice.text}
-        </HelperText>
-      ) : null}
+      <BulkBar rows={selectedRows} onClear={clearSelection} archive={archive} remove={remove} />
 
       {inventory ? (
-        <View style={[styles.fill, wide && styles.panes]}>
-          <View style={wide ? [styles.listPane, { borderRightColor: colors.outlineVariant }] : styles.fill}>
-            <FlashList
-              data={groupInventory(rows, collapsed)}
-              keyExtractor={(entry) => (entry.kind === 'group' ? `group:${entry.id}` : entry.item.id)}
-              getItemType={(entry) => entry.kind}
-              ListEmptyComponent={empty}
-              renderItem={({ item: entry }) =>
-                entry.kind === 'group' ? (
-                  <GroupHeader name={entry.name} count={entry.count} open={entry.open} onToggle={() => toggleGroup(entry.id)} />
-                ) : (
-                  <InventoryRow
-                    item={entry.item}
-                    today={today}
-                    nested={entry.nested}
-                    selecting={selectedRows.length > 0}
-                    selected={selected.has(entry.item.id)}
-                    active={wide && paneId === entry.item.id}
-                    onToggle={() => toggle(entry.item.id)}
-                    onOpen={() => openDetail(entry.item.id)}
-                  />
-                )
-              }
-            />
-          </View>
-          {wide ? (
-            <View style={styles.detailPane}>
-              {paneId ? (
-                <ProductGate key={paneId} id={paneId} scope="inventory">
-                  {(product) => <InventoryDetail merchantId={merchantId} product={product} embedded />}
-                </ProductGate>
-              ) : (
-                <View style={styles.state}>
-                  <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-                    Choose an item to see its lots, cases and history.
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : null}
-        </View>
+        <InventoryPanes {...list} merchantId={merchantId} wide={wide} />
       ) : wide ? (
-        <DataTable style={styles.fill}>
-          <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
-            <View style={styles.checkCell}>
-              <Checkbox.Android
-                status={allSelected ? 'checked' : selectedRows.length > 0 ? 'indeterminate' : 'unchecked'}
-                onPress={() => setSelected(allSelected ? new Set() : new Set(rows.map((row) => row.id)))}
-                accessibilityLabel="Select all"
-              />
-            </View>
-            <View style={styles.thumbCell} />
-            <HeaderTitle label="Product" style={styles.nameCell} />
-            <HeaderTitle label="Category" style={styles.categoryCell} />
-            <HeaderTitle label="Type" style={styles.typeCell} />
-            <HeaderTitle label="Availability" style={styles.stockCell} />
-            <HeaderTitle label="Price" style={styles.priceCell} />
-            <HeaderTitle label="Status" style={styles.statusCell} />
-            <View style={styles.actionsCell} />
-          </DataTable.Header>
-          <FlashList
-            data={rows}
-            keyExtractor={(item) => item.id}
-            ListEmptyComponent={empty}
-            renderItem={({ item }) => (
-              <TableRow
-                item={item}
-                currency={currency}
-                selected={selected.has(item.id)}
-                onToggle={() => toggle(item.id)}
-                onOpen={() => openDetail(item.id)}
-                onEdit={() => openEdit(item.id)}
-                onArchive={() => archive([{ id: item.id, name: item.name, status: item.status }])}
-                onDelete={() => remove([{ id: item.id, name: item.name }])}
-              />
-            )}
-          />
-        </DataTable>
-      ) : (
-        <FlashList
-          data={rows}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={empty}
-          renderItem={({ item }) => (
-            <CardRow
-              item={item}
-              currency={currency}
-              selecting={selectedRows.length > 0}
-              selected={selected.has(item.id)}
-              onToggle={() => toggle(item.id)}
-              onOpen={() => openDetail(item.id)}
-            />
-          )}
+        <ProductTable
+          {...list}
+          currency={currency}
+          onSelect={setSelected}
+          onEdit={(id) => router.push({ pathname: route.edit, params: { id: merchantId, productId: id } })}
+          onArchive={(item) => archive([{ id: item.id, name: item.name, status: item.status }])}
+          onDelete={(item) => remove([{ id: item.id, name: item.name }])}
         />
+      ) : (
+        <CardList {...list} currency={currency} />
       )}
 
       {deleting ? (
@@ -429,12 +171,373 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
           onDismiss={() => setDeleting(null)}
           onDone={() => {
             setDeleting(null);
-            setSelected(new Set());
+            clearSelection();
           }}
         />
       ) : null}
       {snackbar}
     </View>
+  );
+}
+
+/** The query the filters make, and the rows it returns after Source, which the query cannot apply. */
+function useProductRows(merchantId: string, scope: ResourceScope, search: string, filters: Filters) {
+  const inventory = scope === 'inventory';
+  const products = useProductsQuery({
+    merchantId,
+    scope,
+    search,
+    categoryId: filters.categoryId || null,
+    type: filters.type || null,
+    stockRole: inventory ? filters.role || null : null,
+    status: filters.status,
+    lowStockOnly: filters.lowStockOnly,
+    sort: filters.sort,
+  });
+  // ponytail: Source is filtered here, not in the query — it reads the embedded lots. Move it to a
+  // generated column if the list gains pagination.
+  const rows = (products.data ?? []).filter((row) => !inventory || filters.source === 'all' || itemSource(row) === filters.source);
+  return { products, rows };
+}
+
+/** Search, and the filter menus: always shown wide, behind the filter button narrow. */
+function Toolbar({
+  wide,
+  inventory,
+  search,
+  onSearch,
+  children,
+}: {
+  wide: boolean;
+  inventory: boolean;
+  search: string;
+  onSearch: (search: string) => void;
+  children: ReactNode;
+}) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  return (
+    <View style={styles.toolbar}>
+      <View style={styles.searchRow}>
+        <TextInput
+          mode="outlined"
+          dense
+          value={search}
+          onChangeText={onSearch}
+          placeholder={inventory ? 'Search name, SKU, barcode, location' : 'Search name or SKU'}
+          accessibilityLabel="Search products"
+          left={<TextInput.Icon icon="search" />}
+          right={search !== '' ? <TextInput.Icon icon="close" onPress={() => onSearch('')} accessibilityLabel="Clear search" /> : undefined}
+          style={styles.fill}
+        />
+        {wide ? null : (
+          <IconButton
+            icon="filter"
+            mode={filtersOpen ? 'contained' : 'outlined'}
+            onPress={() => setFiltersOpen((open) => !open)}
+            accessibilityLabel="Filters and sort"
+            accessibilityState={{ expanded: filtersOpen }}
+          />
+        )}
+      </View>
+      {wide || filtersOpen ? <View style={styles.filters}>{children}</View> : null}
+    </View>
+  );
+}
+
+function FilterControls({
+  merchantId,
+  scope,
+  filters,
+  onChange,
+}: {
+  merchantId: string;
+  scope: ResourceScope;
+  filters: Filters;
+  onChange: (next: Partial<Filters>) => void;
+}) {
+  const { colors } = useAppTheme();
+  const categories = useCategoriesQuery({ merchantId, scope });
+  const { types } = RESOURCE_META[scope];
+  const inventory = scope === 'inventory';
+  // Sorting by stock, and filtering to what is running low, only mean something where a count is kept:
+  // Inventory and Rentables. A flat service has no quantity.
+  const counted = types.some(usesInventory);
+  // Inventory items carry no price of their own; their register drafts do.
+  const sorts = SORTS.filter((option) => (counted || option.value !== 'stock') && (!inventory || option.value !== 'price'));
+
+  return (
+    <>
+      <FilterMenu
+        label="Category"
+        value={filters.categoryId}
+        options={[{ value: '', label: 'All' }, ...topLevel(categories.data ?? []).map((category) => ({ value: category.id, label: category.name }))]}
+        onChange={(categoryId) => onChange({ categoryId })}
+      />
+      {/* A screen with one type has nothing to filter by; Rentables has two. */}
+      {types.length > 1 ? (
+        <FilterMenu
+          label="Type"
+          value={filters.type}
+          options={[{ value: '', label: 'All' }, ...types.map((type) => ({ value: type, label: TYPE_META[type].badge }))]}
+          onChange={(type) => onChange({ type })}
+        />
+      ) : null}
+      {inventory ? (
+        <>
+          <FilterMenu label="Source" value={filters.source} options={SOURCE_FILTERS} onChange={(source) => onChange({ source })} />
+          <FilterMenu label="Type" value={filters.role} options={ROLE_FILTERS} onChange={(role) => onChange({ role })} />
+        </>
+      ) : null}
+      <FilterMenu label="Status" value={filters.status} options={STATUS_FILTERS} onChange={(status) => onChange({ status })} />
+      <FilterMenu label="Sort" value={filters.sort} options={sorts} onChange={(sort) => onChange({ sort })} />
+      {counted ? (
+        <View style={styles.switchRow}>
+          <Switch
+            value={filters.lowStockOnly}
+            onValueChange={(lowStockOnly) => onChange({ lowStockOnly })}
+            color={colors.accent}
+            accessibilityLabel="Low stock only"
+          />
+          <Text variant="bodyMedium">Low stock</Text>
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+function EmptyList({
+  query,
+  merchantId,
+  scope,
+  filtered,
+  onClear,
+}: {
+  query: ReturnType<typeof useProductsQuery>;
+  merchantId: string;
+  scope: ResourceScope;
+  filtered: boolean;
+  onClear: () => void;
+}) {
+  const meta = RESOURCE_META[scope];
+
+  return (
+    <View style={styles.state}>
+      <QueryState query={query} offline="You're offline. Products will load when you reconnect." failure="Couldn't load products. Try again.">
+        {filtered ? (
+          <>
+            <Text variant="bodyMedium">No products match these filters.</Text>
+            <Button onPress={onClear}>Clear filters</Button>
+          </>
+        ) : (
+          <>
+            <Text variant="bodyMedium">{`No ${meta.title.toLowerCase()} yet.`}</Text>
+            <Button mode="contained" icon="add" onPress={() => router.push({ pathname: RESOURCE_ROUTE[scope].new, params: { id: merchantId } })}>
+              {`Add ${meta.item}`}
+            </Button>
+          </>
+        )}
+      </QueryState>
+    </View>
+  );
+}
+
+/** What a selection can do at once: status, archive, delete. The notice stays after the bar clears. */
+function BulkBar({
+  rows,
+  onClear,
+  archive,
+  remove,
+}: {
+  rows: ProductListRow[];
+  onClear: () => void;
+  archive: ReturnType<typeof useArchiveUndo>['archive'];
+  remove: (targets: Target[]) => void;
+}) {
+  const { colors } = useAppTheme();
+  const setStatus = useSetProductStatusMutation();
+  const bulkStatus = (next: ProductStatus) => setStatus.mutate({ ids: rows.map((row) => row.id), status: next }, { onSuccess: onClear });
+  const notice = mutationNotice(setStatus, bulkFailure(setStatus.error));
+
+  return (
+    <>
+      {rows.length > 0 ? (
+        <View style={[styles.bulkBar, { backgroundColor: colors.surfaceVariant }]}>
+          <IconButton icon="close" size={18} onPress={onClear} accessibilityLabel="Clear selection" style={styles.bulkClear} />
+          <Text variant="labelLarge" style={styles.bulkCount}>{`${rows.length} selected`}</Text>
+          <Button compact onPress={() => bulkStatus('active')} disabled={setStatus.isPending}>
+            Activate
+          </Button>
+          <Button compact onPress={() => bulkStatus('inactive')} disabled={setStatus.isPending}>
+            Deactivate
+          </Button>
+          <Button compact onPress={() => archive(rows.map((row) => ({ id: row.id, name: row.name, status: row.status })), onClear)}>
+            Archive
+          </Button>
+          <Button compact textColor={colors.error} onPress={() => remove(rows.map((row) => ({ id: row.id, name: row.name })))}>
+            Delete
+          </Button>
+        </View>
+      ) : null}
+      {notice ? (
+        <HelperText type={notice.type} style={styles.bulkNotice}>
+          {notice.text}
+        </HelperText>
+      ) : null}
+    </>
+  );
+}
+
+type ListProps = {
+  rows: ProductListRow[];
+  selected: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+  onOpen: (id: string) => void;
+  empty: ReactElement;
+};
+
+/** Inventory's grouped list, and wide, the open item beside it (design.md §6). */
+function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, wide }: ListProps & { merchantId: string; wide: boolean }) {
+  const { colors } = useAppTheme();
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [paneId, setPaneId] = useState<string | null>(null);
+  const today = localToday();
+  const selecting = rows.some((row) => selected.has(row.id));
+  // Wide, an item opens in the second pane instead of on its own screen.
+  const open = (id: string) => (wide ? setPaneId(id) : onOpen(id));
+
+  return (
+    <View style={[styles.fill, wide && styles.panes]}>
+      <View style={wide ? [styles.listPane, { borderRightColor: colors.outlineVariant }] : styles.fill}>
+        <FlashList
+          data={groupInventory(rows, collapsed)}
+          keyExtractor={(entry) => (entry.kind === 'group' ? `group:${entry.id}` : entry.item.id)}
+          getItemType={(entry) => entry.kind}
+          ListEmptyComponent={empty}
+          renderItem={({ item: entry }) =>
+            entry.kind === 'group' ? (
+              <GroupHeader
+                name={entry.name}
+                count={entry.count}
+                open={entry.open}
+                onToggle={() => setCollapsed((previous) => toggled(previous, entry.id))}
+              />
+            ) : (
+              <InventoryRow
+                item={entry.item}
+                today={today}
+                nested={entry.nested}
+                selecting={selecting}
+                selected={selected.has(entry.item.id)}
+                active={wide && paneId === entry.item.id}
+                onToggle={() => onToggle(entry.item.id)}
+                onOpen={() => open(entry.item.id)}
+              />
+            )
+          }
+        />
+      </View>
+      {wide ? (
+        <View style={styles.detailPane}>
+          {paneId ? (
+            <ProductGate key={paneId} id={paneId} scope="inventory">
+              {(product) => <InventoryDetail merchantId={merchantId} product={product} embedded />}
+            </ProductGate>
+          ) : (
+            <View style={styles.state}>
+              <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+                Choose an item to see its lots, cases and history.
+              </Text>
+            </View>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** Narrow, the list is cards. */
+function CardList({ rows, selected, onToggle, onOpen, empty, currency }: ListProps & { currency: string }) {
+  const selecting = rows.some((row) => selected.has(row.id));
+
+  return (
+    <FlashList
+      data={rows}
+      keyExtractor={(item) => item.id}
+      ListEmptyComponent={empty}
+      renderItem={({ item }) => (
+        <CardRow
+          item={item}
+          currency={currency}
+          selecting={selecting}
+          selected={selected.has(item.id)}
+          onToggle={() => onToggle(item.id)}
+          onOpen={() => onOpen(item.id)}
+        />
+      )}
+    />
+  );
+}
+
+function ProductTable({
+  rows,
+  selected,
+  onToggle,
+  onOpen,
+  empty,
+  currency,
+  onSelect,
+  onEdit,
+  onArchive,
+  onDelete,
+}: ListProps & {
+  currency: string;
+  onSelect: (ids: ReadonlySet<string>) => void;
+  onEdit: (id: string) => void;
+  onArchive: (item: ProductListRow) => void;
+  onDelete: (item: ProductListRow) => void;
+}) {
+  const { colors } = useAppTheme();
+  const count = rows.filter((row) => selected.has(row.id)).length;
+  const allSelected = rows.length > 0 && count === rows.length;
+
+  return (
+    <DataTable style={styles.fill}>
+      <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
+        <View style={styles.checkCell}>
+          <Checkbox.Android
+            status={checkStatus(allSelected, count > 0)}
+            onPress={() => onSelect(allSelected ? new Set() : new Set(rows.map((row) => row.id)))}
+            accessibilityLabel="Select all"
+          />
+        </View>
+        <View style={styles.thumbCell} />
+        <HeaderTitle label="Product" style={styles.nameCell} />
+        <HeaderTitle label="Category" style={styles.categoryCell} />
+        <HeaderTitle label="Type" style={styles.typeCell} />
+        <HeaderTitle label="Availability" style={styles.stockCell} />
+        <HeaderTitle label="Price" style={styles.priceCell} />
+        <HeaderTitle label="Status" style={styles.statusCell} />
+        <View style={styles.actionsCell} />
+      </DataTable.Header>
+      <FlashList
+        data={rows}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={empty}
+        renderItem={({ item }) => (
+          <TableRow
+            item={item}
+            currency={currency}
+            selected={selected.has(item.id)}
+            onToggle={() => onToggle(item.id)}
+            onOpen={() => onOpen(item.id)}
+            onEdit={() => onEdit(item.id)}
+            onArchive={() => onArchive(item)}
+            onDelete={() => onDelete(item)}
+          />
+        )}
+      />
+    </DataTable>
   );
 }
 
@@ -462,17 +565,14 @@ function FilterMenu<Value extends string>({
         </Button>
       }
     >
-      {options.map((option) => (
-        <Menu.Item
-          key={option.value}
-          title={option.label}
-          leadingIcon={option.value === value ? 'check' : undefined}
-          onPress={() => {
-            setOpen(false);
-            onChange(option.value);
-          }}
-        />
-      ))}
+      <OptionItems
+        options={options}
+        value={value}
+        onPick={(next) => {
+          setOpen(false);
+          onChange(next);
+        }}
+      />
     </Menu>
   );
 }
@@ -593,6 +693,44 @@ function CardRow({ item, currency, selecting, selected, onToggle, onOpen }: RowP
       </View>
     </Pressable>
   );
+}
+
+/** Whether anything narrows the list. Sort only orders it. */
+function isFiltered(filters: Filters, search: string) {
+  return (
+    search !== '' ||
+    filters.categoryId !== '' ||
+    filters.type !== '' ||
+    filters.status !== 'all' ||
+    filters.lowStockOnly ||
+    filters.role !== '' ||
+    filters.source !== 'all'
+  );
+}
+
+/** "12 products shown" */
+function countLabel(count: number, item: string, filtered: boolean) {
+  return `${count} ${count === 1 ? item : `${item}s`}${filtered ? ' shown' : ''}`;
+}
+
+/** products_price_when_sold: a product sold on its own cannot leave draft without a price. */
+function bulkFailure(error: Error | null) {
+  return postgrestError(error)?.code === '23514'
+    ? 'A product sold on its own needs a selling price before it can be active.'
+    : failureMessage("Couldn't update these products. Try again.");
+}
+
+function checkStatus(all: boolean, some: boolean) {
+  if (all) return 'checked';
+  return some ? 'indeterminate' : 'unchecked';
+}
+
+/** A copy of the set with the id flipped in or out. */
+function toggled(set: ReadonlySet<string>, id: string) {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
 }
 
 const styles = StyleSheet.create({

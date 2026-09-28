@@ -83,19 +83,17 @@ const DETAIL_SELECT = `
 `;
 
 async function loadReceipt(id: string) {
-  const { data } = await supabase.from('stock_receipts').select(DETAIL_SELECT).eq('id', id).maybeSingle().throwOnError();
-  if (!data) return null;
-
-  return {
-    ...data,
-    lots: [...data.lots]
-      .sort((a, b) => a.position - b.position)
-      .map((lot) => ({
-        ...lot,
-        cases: [...lot.cases].sort((a, b) => a.code.localeCompare(b.code)),
-        packs: [...lot.packs].sort((a, b) => a.code.localeCompare(b.code)),
-      })),
-  };
+  const { data } = await supabase
+    .from('stock_receipts')
+    .select(DETAIL_SELECT)
+    .eq('id', id)
+    // Embeds come back unordered; PostgREST orders them by alias path.
+    .order('position', { referencedTable: 'lots' })
+    .order('code', { referencedTable: 'lots.cases' })
+    .order('code', { referencedTable: 'lots.packs' })
+    .maybeSingle()
+    .throwOnError();
+  return data;
 }
 
 export type ReceiptDetail = NonNullable<Awaited<ReturnType<typeof loadReceipt>>>;

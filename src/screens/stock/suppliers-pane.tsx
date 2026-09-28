@@ -3,20 +3,20 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ActivityIndicator } from '../../components/activity-indicator';
 import { Button } from '../../components/button';
 import { DataTable } from '../../components/data-table';
 import { DeleteSupplierDialog } from '../../components/delete-supplier-dialog';
 import { HeaderTitle } from '../../components/header-title';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
+import { QueryState } from '../../components/query-state';
 import { SupplierDialog } from '../../components/supplier-dialog';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
 import { useSetSupplierActiveMutation, useSuppliersQuery } from '../../features/suppliers/queries';
 import type { Supplier } from '../../features/suppliers/queries';
 import { useShellWide } from '../../lib/columns';
-import { failureMessage } from '../../lib/errors';
+import { failureMessage, mutationNotice } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
 
@@ -47,31 +47,20 @@ export function SuppliersPane({ merchantId, creating, onCreate, onCreateDone }: 
       : router.push({ pathname: '/sheets/delete-supplier', params: { merchantId, supplierId: supplier.id } });
   const toggle = (supplier: Supplier) => setActive.mutate({ id: supplier.id, active: !supplier.active });
 
-  const notice = setActive.isPaused
-    ? { type: 'info' as const, text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : setActive.isError
-      ? { type: 'error' as const, text: failureMessage("Couldn't update this supplier. Try again.") }
-      : null;
+  const notice = mutationNotice(setActive, failureMessage("Couldn't update this supplier. Try again."));
 
   const empty = (
     <View style={styles.state}>
-      {suppliers.isPaused && !suppliers.data ? (
-        <Text variant="bodyMedium">You&apos;re offline. Suppliers will load when you reconnect.</Text>
-      ) : suppliers.isPending ? (
-        <ActivityIndicator />
-      ) : suppliers.isError ? (
-        <>
-          <Text variant="bodyMedium">{failureMessage("Couldn't load suppliers. Try again.")}</Text>
-          <Button onPress={() => suppliers.refetch()}>Try again</Button>
-        </>
-      ) : (
-        <>
-          <Text variant="bodyMedium">No suppliers yet. Add who you buy from to name them on a receipt.</Text>
-          <Button mode="contained" icon="add" onPress={onCreate}>
-            Add supplier
-          </Button>
-        </>
-      )}
+      <QueryState
+        query={suppliers}
+        offline="You're offline. Suppliers will load when you reconnect."
+        failure="Couldn't load suppliers. Try again."
+      >
+        <Text variant="bodyMedium">No suppliers yet. Add who you buy from to name them on a receipt.</Text>
+        <Button mode="contained" icon="add" onPress={onCreate}>
+          Add supplier
+        </Button>
+      </QueryState>
     </View>
   );
 

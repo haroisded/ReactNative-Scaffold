@@ -107,7 +107,7 @@ type RowProps = {
 
 export function InventoryRow({ item, today, nested, selecting, selected, active, onToggle, onOpen }: RowProps) {
   const { colors } = useAppTheme();
-  const name = nested && item.attributes.length > 0 ? item.attributes.join(' / ') : item.name;
+  const highlighted = selected || active;
 
   return (
     <Pressable
@@ -118,36 +118,55 @@ export function InventoryRow({ item, today, nested, selecting, selected, active,
       accessibilityRole="button"
       accessibilityLabel={item.name}
       accessibilityHint={selecting ? 'Toggles selection' : 'Opens the item. Long press to select.'}
-      accessibilityState={{ selected: selected || active }}
+      accessibilityState={{ selected: highlighted }}
       style={[
         styles.row,
         { borderBottomColor: colors.surfaceVariant },
-        (selected || active) && { backgroundColor: colors.surfaceMuted },
+        highlighted && { backgroundColor: colors.surfaceMuted },
       ]}
     >
       <View style={[styles.inner, nested && styles.nested]}>
         {selecting ? <Checkbox.Android status={selected ? 'checked' : 'unchecked'} onPress={onToggle} /> : <Thumbnail size={44} />}
         <View style={styles.text}>
           <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
-            {name}
+            {rowName(item, nested)}
           </Text>
           <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-            {[item.sku ?? 'No SKU', item.storage_location].filter(Boolean).join(' · ')}
+            {rowDetail(item)}
           </Text>
-          <View style={styles.badges}>
-            {item.stock_role ? <StockRoleBadge role={item.stock_role} /> : null}
-            {item.status === 'active' ? null : <StatusText status={item.status} />}
-            {item.is_low_stock ? <LowStockBadge /> : null}
-            <ExpiryBadge state={itemExpiry(item, today)} />
-            <NeedsPriceBadge product={item} />
-          </View>
+          <ItemBadges item={item} today={today} />
         </View>
         <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={styles.amount}>
-          {packsAndLoose(item.qty_on_hand ?? 0, item.conversion_factor ?? 1, item.pack_unit_name, item.base_unit_name)}
+          {onHand(item)}
         </Text>
       </View>
     </Pressable>
   );
+}
+
+function ItemBadges({ item, today }: { item: ProductListRow; today: string }) {
+  return (
+    <View style={styles.badges}>
+      {item.stock_role ? <StockRoleBadge role={item.stock_role} /> : null}
+      {item.status === 'active' ? null : <StatusText status={item.status} />}
+      {item.is_low_stock ? <LowStockBadge /> : null}
+      <ExpiryBadge state={itemExpiry(item, today)} />
+      <NeedsPriceBadge product={item} />
+    </View>
+  );
+}
+
+/** A variant under its group reads as its attributes: "Red / Large". */
+function rowName(item: ProductListRow, nested: boolean) {
+  return nested && item.attributes.length > 0 ? item.attributes.join(' / ') : item.name;
+}
+
+function rowDetail(item: ProductListRow) {
+  return [item.sku ?? 'No SKU', item.storage_location].filter(Boolean).join(' · ');
+}
+
+function onHand(item: ProductListRow) {
+  return packsAndLoose(item.qty_on_hand ?? 0, item.conversion_factor ?? 1, item.pack_unit_name, item.base_unit_name);
 }
 
 const styles = StyleSheet.create({

@@ -94,45 +94,7 @@ export default function SystemLayout() {
   // switching destination. See src/lib/unsaved-guard.ts.
   const leaveGuard = useRef<LeaveGuard | null>(null);
 
-  if (!merchant) {
-    // The exit from every state below. dismissTo pops back to the systems list the anchor in
-    // (app)/_layout.tsx keeps under this screen, rather than pushing a second copy of it.
-    const exit = (
-      <Button mode="outlined" onPress={() => router.dismissTo('/')}>
-        Back to your systems
-      </Button>
-    );
-
-    return (
-      <ShellState>
-        {/* Paused first: a query with no connection is queued, not failed, and isPending stays true
-            the whole time, so checking isPending first would spin forever (instruction_mds/data-layer.md §5).
-            No retry control on this branch — the query resumes on its own when the device
-            reconnects. */}
-        {merchants.isPaused ? (
-          <>
-            <Text variant="bodyMedium">You&apos;re offline. This system will load when you reconnect.</Text>
-            {exit}
-          </>
-        ) : merchants.isPending ? (
-          <ActivityIndicator />
-        ) : merchants.isError ? (
-          <>
-            <Text variant="bodyMedium">{failureMessage("Couldn't load this system. Try again.")}</Text>
-            <Button onPress={() => merchants.refetch()}>Try again</Button>
-            {exit}
-          </>
-        ) : (
-          // The list loaded and this id is not in it: deleted, owned by someone else (RLS returns no
-          // row for another user's system), or never existed. All three read the same to a user.
-          <>
-            <Text variant="bodyMedium">This system is no longer available.</Text>
-            {exit}
-          </>
-        )}
-      </ShellState>
-    );
-  }
+  if (!merchant) return <MissingMerchant merchants={merchants} />;
 
   const drawerWidth = wide ? (expanded ? RAIL_EXPANDED : RAIL_COLLAPSED) : DRAWER_WIDTH;
 
@@ -186,6 +148,47 @@ export default function SystemLayout() {
       </UnsavedGuardContext>
       </ShellMerchantContext>
     </View>
+  );
+}
+
+/** The shell before its merchant: loading, offline, failed, or gone. */
+function MissingMerchant({ merchants }: { merchants: ReturnType<typeof useMerchantsQuery> }) {
+  // The exit from every state below. dismissTo pops back to the systems list the anchor in
+  // (app)/_layout.tsx keeps under this screen, rather than pushing a second copy of it.
+  const exit = (
+    <Button mode="outlined" onPress={() => router.dismissTo('/')}>
+      Back to your systems
+    </Button>
+  );
+
+  return (
+    <ShellState>
+      {/* Paused first: a query with no connection is queued, not failed, and isPending stays true
+          the whole time, so checking isPending first would spin forever (instruction_mds/data-layer.md §5).
+          No retry control on this branch — the query resumes on its own when the device
+          reconnects. */}
+      {merchants.isPaused ? (
+        <>
+          <Text variant="bodyMedium">You&apos;re offline. This system will load when you reconnect.</Text>
+          {exit}
+        </>
+      ) : merchants.isPending ? (
+        <ActivityIndicator />
+      ) : merchants.isError ? (
+        <>
+          <Text variant="bodyMedium">{failureMessage("Couldn't load this system. Try again.")}</Text>
+          <Button onPress={() => merchants.refetch()}>Try again</Button>
+          {exit}
+        </>
+      ) : (
+        // The list loaded and this id is not in it: deleted, owned by someone else (RLS returns no
+        // row for another user's system), or never existed. All three read the same to a user.
+        <>
+          <Text variant="bodyMedium">This system is no longer available.</Text>
+          {exit}
+        </>
+      )}
+    </ShellState>
   );
 }
 

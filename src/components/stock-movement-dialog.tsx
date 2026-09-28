@@ -6,10 +6,10 @@ import { useProductQuery } from '../features/products/queries';
 import { useItemStockQuery, useRecordMovementMutation } from '../features/stock-movements/queries';
 import type { MovementTarget } from '../features/stock-movements/queries';
 import { WRITE_OFF_REASON_LABEL, movementKind, movementSchema, writeOffReason } from '../features/stock-movements/schema';
-import type { ManualMovementKind, MovementValues } from '../features/stock-movements/schema';
+import type { ManualMovementKind, MovementValues, WriteOffReason } from '../features/stock-movements/schema';
 import { stockFailure } from '../features/stock-receipts/queries';
 import { useShellWide } from '../lib/columns';
-import { failureMessage } from '../lib/errors';
+import { failureMessage, mutationNotice } from '../lib/errors';
 import { spacing } from '../themes';
 import { AdaptiveDialog } from './adaptive-dialog';
 import { Button } from './button';
@@ -29,7 +29,7 @@ type Props = {
   onDismiss: () => void;
 };
 
-type Notice = { type: 'error' | 'info'; text: string };
+type Lot = NonNullable<ReturnType<typeof useItemStockQuery>['data']>[number];
 type FieldErrors = Partial<Record<keyof MovementValues, string[]>>;
 
 const KIND_TITLE = {
@@ -61,31 +61,14 @@ export function StockMovementDialog({ productId, target, kind: initialKind, inSh
   const lots = useItemStockQuery({ productId }).data ?? [];
   const unit = useProductQuery({ id: productId }).data?.base_unit_name ?? 'units';
 
-  const lot = lots.find((row) =>
-    'lotId' in target
-      ? row.id === target.lotId
-      : 'caseId' in target
-        ? row.cases.some((entry) => entry.id === target.caseId)
-        : row.packs.some((entry) => entry.id === target.packId)
-  );
-  const where =
-    'caseId' in target
-      ? lot?.cases.find((entry) => entry.id === target.caseId)
-      : 'packId' in target
-        ? lot?.packs.find((entry) => entry.id === target.packId)
-        : lot;
+  const { lot, where } = findTarget(lots, target);
   const canReturn = lot?.receipt.supplier_id != null;
 
   const [values, setValues] = useState<MovementValues>({ kind: initialKind, qty: '', reason: '', note: '' });
   const [errors, setErrors] = useState<FieldErrors>({});
   const set = (patch: Partial<MovementValues>) => setValues((current) => ({ ...current, ...patch }));
 
-  const failure = stockFailure(record.error);
-  const notice: Notice | null = record.isPaused
-    ? { type: 'info', text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : record.isError
-      ? { type: 'error', text: (failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't record this. Try again.") }
-      : null;
+  const notice = mutationNotice(record, movementFailure(record.error));
 
   const submit = () => {
     const parsed = movementSchema.safeParse(values);
@@ -134,6 +117,29 @@ export function StockMovementDialog({ productId, target, kind: initialKind, inSh
         ]}
       />
 
+      <MovementFields unit={unit} values={values} errors={errors} onChange={set} />
+
+      <HelperText type={notice?.type ?? 'error'} visible={notice !== null} padding="none">
+        {notice?.text}
+      </HelperText>
+    </AdaptiveDialog>
+  );
+}
+
+/** Quantity, the write-off reason, and the note — each with the error submit found in it. */
+function MovementFields({
+  unit,
+  values,
+  errors,
+  onChange: set,
+}: {
+  unit: string;
+  values: MovementValues;
+  errors: FieldErrors;
+  onChange: (patch: Partial<MovementValues>) => void;
+}) {
+  return (
+    <>
       <Text variant="labelMedium">
         {values.kind === 'adjust' ? `Change, in ${unit} (use − to remove)` : `How many ${unit} leave`}
       </Text>
@@ -151,21 +157,7 @@ export function StockMovementDialog({ productId, target, kind: initialKind, inSh
         {errors.qty?.[0]}
       </HelperText>
 
-      {values.kind === 'write_off' ? (
-        <>
-          <Text variant="labelMedium">Reason</Text>
-          <View style={styles.chips}>
-            {writeOffReason.options.map((reason) => (
-              <Chip key={reason} compact selected={values.reason === reason} onPress={() => set({ reason })}>
-                {WRITE_OFF_REASON_LABEL[reason]}
-              </Chip>
-            ))}
-          </View>
-          <HelperText type="error" visible={errors.reason !== undefined} padding="none">
-            {errors.reason?.[0]}
-          </HelperText>
-        </>
-      ) : null}
+      {values.kind === 'write_off' ? <ReasonChips value={values.reason} error={errors.reason?.[0]} onChange={(reason) => set({ reason })} /> : null}
 
       <Text variant="labelMedium">{values.kind === 'return_supplier' ? 'Note (optional)' : 'Note'}</Text>
       <TextInput
@@ -181,12 +173,45 @@ export function StockMovementDialog({ productId, target, kind: initialKind, inSh
       <HelperText type="error" visible={errors.note !== undefined} padding="none">
         {errors.note?.[0]}
       </HelperText>
-
-      <HelperText type={notice?.type ?? 'error'} visible={notice !== null} padding="none">
-        {notice?.text}
-      </HelperText>
-    </AdaptiveDialog>
+    </>
   );
+}
+
+function ReasonChips({ value, error, onChange }: { value: string; error?: string; onChange: (reason: WriteOffReason) => void }) {
+  return (
+    <>
+      <Text variant="labelMedium">Reason</Text>
+      <View style={styles.chips}>
+        {writeOffReason.options.map((reason) => (
+          <Chip key={reason} compact selected={value === reason} onPress={() => onChange(reason)}>
+            {WRITE_OFF_REASON_LABEL[reason]}
+          </Chip>
+        ))}
+      </View>
+      <HelperText type="error" visible={error !== undefined} padding="none">
+        {error}
+      </HelperText>
+    </>
+  );
+}
+
+function movementFailure(error: Error | null) {
+  const failure = stockFailure(error);
+  return (failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't record this. Try again.");
+}
+
+/** The lot the target sits in, and the lot, case or pack it names. */
+function findTarget(lots: Lot[], target: MovementTarget) {
+  if ('caseId' in target) {
+    const lot = lots.find((row) => row.cases.some((entry) => entry.id === target.caseId));
+    return { lot, where: lot?.cases.find((entry) => entry.id === target.caseId) };
+  }
+  if ('packId' in target) {
+    const lot = lots.find((row) => row.packs.some((entry) => entry.id === target.packId));
+    return { lot, where: lot?.packs.find((entry) => entry.id === target.packId) };
+  }
+  const lot = lots.find((row) => row.id === target.lotId);
+  return { lot, where: lot };
 }
 
 const styles = StyleSheet.create({

@@ -1,14 +1,17 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { ActivityIndicator } from '../../components/activity-indicator';
-import { useArchiveUndo } from '../../components/archive-undo';
+import { ArchiveButton, useArchiveUndo } from '../../components/archive-undo';
 import { Button } from '../../components/button';
+import { FactGrid } from '../../components/fact-grid';
+import type { Fact } from '../../components/fact-grid';
 import { displayDate } from '../../components/form-fields';
 import { IconButton } from '../../components/icon-button';
 import { Menu } from '../../components/menu';
 import { PageHeader } from '../../components/page-header';
+import { QueryState } from '../../components/query-state';
 import { ExpiryBadge, LowStockBadge, NeedsPriceBadge, StatusText, StockRoleBadge } from '../../components/product-badges';
 import { StockMovementDialog } from '../../components/stock-movement-dialog';
 import { Switch } from '../../components/switch';
@@ -21,7 +24,6 @@ import type { MovementRow, MovementTarget } from '../../features/stock-movements
 import type { ManualMovementKind } from '../../features/stock-movements/schema';
 import { localToday } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
-import { failureMessage } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { radius, spacing } from '../../themes';
 
@@ -34,6 +36,8 @@ type Props = {
 
 type Moving = { target: MovementTarget; kind: ManualMovementKind };
 
+type Lot = NonNullable<ReturnType<typeof useItemStockQuery>['data']>[number];
+
 /**
  * One Inventory item and where its stock sits (design.md §6): the lots it arrived in, their cases, the
  * packs already opened, and every movement. Each row adjusts, writes off or returns through
@@ -42,55 +46,17 @@ type Moving = { target: MovementTarget; kind: ManualMovementKind };
 export function InventoryDetail({ merchantId, product, embedded }: Props) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
-  const stock = useItemStockQuery({ productId: product.id });
-  const history = useMovementHistoryQuery({ productId: product.id });
-  const { archive, restore, snackbar } = useArchiveUndo();
+  const { toggle, snackbar } = useArchiveUndo();
   const [moving, setMoving] = useState<Moving | null>(null);
-  const [showEmpty, setShowEmpty] = useState(false);
 
-  const route = RESOURCE_ROUTE.inventory;
   const base = product.base_unit_name ?? 'units';
   const perPack = product.conversion_factor ?? 1;
-  const today = localToday();
-  const muted = { color: colors.onSurfaceMuted };
-  const archived = product.status === 'archived';
-  const target = [{ id: product.id, name: product.name, status: product.status }];
-  const toggleArchive = () => (archived ? restore(target) : archive(target));
-  const edit = () => router.push({ pathname: route.edit, params: { id: merchantId, productId: product.id } });
-
+  const toggleArchive = () => toggle(product);
+  const edit = () => router.push({ pathname: RESOURCE_ROUTE.inventory.edit, params: { id: merchantId, productId: product.id } });
   const move = (next: Moving) => {
-    if (wide) {
-      setMoving(next);
-      return;
-    }
-    router.push({ pathname: '/sheets/stock-movement', params: { productId: product.id, kind: next.kind, ...next.target } });
+    if (wide) setMoving(next);
+    else router.push({ pathname: '/sheets/stock-movement', params: { productId: product.id, kind: next.kind, ...next.target } });
   };
-
-  const lots = stock.data ?? [];
-  const shownLots = showEmpty ? lots : lots.filter((lot) => lot.qty_remaining > 0);
-  const cases = shownLots.flatMap((lot) =>
-    lot.cases.filter((row) => showEmpty || row.qty_remaining > 0).map((row) => ({ row, lot }))
-  );
-  // A serial item moves one pack at a time (stock_target_pack_required), so every pack is listed;
-  // otherwise only the opened ones — a sealed pack is counted in its case or lot.
-  const packs = shownLots.flatMap((lot) =>
-    lot.packs
-      .filter((row) => (product.serial_tracked || row.opened_at !== null) && (showEmpty || row.qty_remaining > 0))
-      .map((row) => ({ row, lot }))
-  );
-  const hidden = lots.length - shownLots.length;
-
-  const facts = [
-    ['SKU', product.sku],
-    ['Barcode', product.barcode],
-    ['Variant', product.attributes.length > 0 ? product.attributes.join(' · ') : null],
-    ['Per pack', perPack > 1 ? `1 ${product.pack_unit_name ?? 'pack'} = ${perPack} ${base}` : null],
-    ['Reorder at', product.reorder_threshold === null ? null : `${product.reorder_threshold} ${base}`],
-    ['Location', product.storage_location],
-    ['Expiry alert', product.expiry_alert_days === null ? null : `${product.expiry_alert_days} days before`],
-    ['Serial numbers', product.serial_tracked ? 'Tracked per pack' : null],
-    ['Category', [product.category?.name, product.subcategory?.name].filter(Boolean).join(' › ') || null],
-  ].filter((fact): fact is [string, string] => Boolean(fact[1]));
 
   return (
     <View style={styles.fill}>
@@ -101,21 +67,14 @@ export function InventoryDetail({ merchantId, product, embedded }: Props) {
         actions={
           wide ? (
             <>
-              <Button mode="outlined" icon={archived ? 'restore' : 'archive'} onPress={toggleArchive}>
-                {archived ? 'Restore' : 'Archive'}
-              </Button>
+              <ArchiveButton status={product.status} onPress={toggleArchive} />
               <Button mode="contained" icon="edit" onPress={edit}>
                 Edit
               </Button>
             </>
           ) : (
             <>
-              <IconButton
-                icon={archived ? 'restore' : 'archive'}
-                onPress={toggleArchive}
-                accessibilityLabel={archived ? 'Restore' : 'Archive'}
-                style={styles.headerIcon}
-              />
+              <ArchiveButton status={product.status} onPress={toggleArchive} compact style={styles.headerIcon} />
               <IconButton icon="edit" onPress={edit} accessibilityLabel="Edit" style={styles.headerIcon} />
             </>
           )
@@ -132,132 +91,14 @@ export function InventoryDetail({ merchantId, product, embedded }: Props) {
         <View>
           <Text variant="headlineSmall">{packsAndLoose(product.qty_on_hand ?? 0, perPack, product.pack_unit_name, base)}</Text>
           {perPack > 1 ? (
-            <Text variant="bodyMedium" style={muted}>
+            <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
               {`${product.qty_on_hand ?? 0} ${base} on hand`}
             </Text>
           ) : null}
         </View>
-        <View style={styles.facts}>
-          {facts.map(([label, value]) => (
-            <View key={label} style={wide ? styles.factWide : styles.factNarrow}>
-              <Text variant="labelMedium" style={muted}>
-                {label}
-              </Text>
-              <Text variant="bodyMedium">{value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {!stock.data ? (
-          <View style={styles.state}>
-            {/* Paused before pending (instruction_mds/data-layer.md §5). */}
-            {stock.isPaused ? (
-              <Text variant="bodyMedium">You&apos;re offline. Stock will load when you reconnect.</Text>
-            ) : stock.isPending ? (
-              <ActivityIndicator />
-            ) : (
-              <>
-                <Text variant="bodyMedium">{failureMessage("Couldn't load this item's stock. Try again.")}</Text>
-                <Button onPress={() => stock.refetch()}>Try again</Button>
-              </>
-            )}
-          </View>
-        ) : (
-          <>
-            <View style={styles.sectionHead}>
-              <Text variant="titleMedium" style={styles.fill}>{`Lots (${shownLots.length})`}</Text>
-              <Switch value={showEmpty} onValueChange={setShowEmpty} color={colors.accent} accessibilityLabel="Show empty" />
-              <Text variant="bodyMedium">Show empty</Text>
-            </View>
-            {shownLots.length === 0 ? (
-              <Text variant="bodyMedium" style={muted}>
-                {hidden > 0 ? 'Every lot is used up.' : 'No stock yet. It arrives through a receipt on the Stock screen.'}
-              </Text>
-            ) : (
-              <View style={[styles.card, { borderColor: colors.outlineVariant }]}>
-                {shownLots.map((lot) => (
-                  <StockRow
-                    key={lot.id}
-                    title={lot.code}
-                    detail={[
-                      lot.receipt.supplier_id ? lot.receipt.code : `${lot.receipt.code} · opening stock`,
-                      `received ${displayDate(lot.receipt.received_on)}`,
-                      lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
-                    ]}
-                    amount={`${lot.qty_remaining} ${base}`}
-                    expiry={expiryState(lot.expires_on, product.expiry_alert_days, today)}
-                    // A serial item's lot cannot be moved as a whole; its packs can. Nor can the units already
-                    // in a case or pack (stock_target_too_high): the lot offers only what sits outside them.
-                    actions={product.serial_tracked || unassigned(lot) <= 0 ? null : { lotId: lot.id }}
-                    returnable={lot.receipt.supplier_id !== null}
-                    onMove={move}
-                  />
-                ))}
-              </View>
-            )}
-
-            {cases.length > 0 ? (
-              <>
-                <Text variant="titleMedium">{`Cases (${cases.length})`}</Text>
-                <View style={[styles.card, { borderColor: colors.outlineVariant }]}>
-                  {cases.map(({ row, lot }) => (
-                    <StockRow
-                      key={row.id}
-                      title={row.code}
-                      detail={[`lot ${lot.code}`]}
-                      amount={`${row.qty_remaining} ${base}`}
-                      expiry={expiryState(lot.expires_on, product.expiry_alert_days, today)}
-                      actions={product.serial_tracked || row.qty_remaining === 0 ? null : { caseId: row.id }}
-                      returnable={lot.receipt.supplier_id !== null}
-                      onMove={move}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {packs.length > 0 ? (
-              <>
-                <Text variant="titleMedium">{`${product.serial_tracked ? 'Packs' : 'Open packs'} (${packs.length})`}</Text>
-                <View style={[styles.card, { borderColor: colors.outlineVariant }]}>
-                  {packs.map(({ row, lot }) => (
-                    <StockRow
-                      key={row.id}
-                      title={row.serial ? `${row.code} · ${row.serial}` : row.code}
-                      detail={[`lot ${lot.code}`, row.opened_at ? `opened ${displayDate(row.opened_at.slice(0, 10))}` : 'sealed']}
-                      amount={`${row.qty_remaining} of ${row.units} ${base}`}
-                      expiry={expiryState(lot.expires_on, product.expiry_alert_days, today)}
-                      actions={row.qty_remaining === 0 ? null : { packId: row.id }}
-                      returnable={lot.receipt.supplier_id !== null}
-                      onMove={move}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : null}
-          </>
-        )}
-
-        <Text variant="titleMedium">History</Text>
-        {history.data ? (
-          history.data.length === 0 ? (
-            <Text variant="bodyMedium" style={muted}>
-              Nothing has moved yet.
-            </Text>
-          ) : (
-            <View style={[styles.card, { borderColor: colors.outlineVariant }]}>
-              {history.data.map((row) => (
-                <HistoryRow key={row.id} row={row} base={base} />
-              ))}
-            </View>
-          )
-        ) : history.isPaused ? (
-          <Text variant="bodyMedium">You&apos;re offline. History will load when you reconnect.</Text>
-        ) : history.isPending ? (
-          <ActivityIndicator />
-        ) : (
-          <Text variant="bodyMedium">{failureMessage("Couldn't load the history. Try again.")}</Text>
-        )}
+        <FactGrid facts={itemFacts(product, base, perPack)} />
+        <StockSection product={product} base={base} onMove={move} />
+        <HistorySection productId={product.id} base={base} />
       </ScrollView>
 
       {moving ? (
@@ -268,8 +109,172 @@ export function InventoryDetail({ merchantId, product, embedded }: Props) {
   );
 }
 
+function itemFacts(product: ProductDetail, base: string, perPack: number): Fact[] {
+  return [
+    ['SKU', product.sku],
+    ['Barcode', product.barcode],
+    ['Variant', product.attributes.join(' · ')],
+    ['Per pack', perPack > 1 ? `1 ${product.pack_unit_name ?? 'pack'} = ${perPack} ${base}` : null],
+    ['Reorder at', product.reorder_threshold === null ? null : `${product.reorder_threshold} ${base}`],
+    ['Location', product.storage_location],
+    ['Expiry alert', product.expiry_alert_days === null ? null : `${product.expiry_alert_days} days before`],
+    ['Serial numbers', product.serial_tracked ? 'Tracked per pack' : null],
+    ['Category', [product.category?.name, product.subcategory?.name].filter(Boolean).join(' › ')],
+  ];
+}
+
+type SectionProps = { product: ProductDetail; base: string; onMove: (moving: Moving) => void };
+
+/** The item's lots, then the cases and packs inside them — each row a place a movement can start. */
+function StockSection({ product, base, onMove }: SectionProps) {
+  const stock = useItemStockQuery({ productId: product.id });
+
+  if (!stock.data) {
+    return (
+      <View style={styles.state}>
+        <QueryState
+          query={stock}
+          offline="You're offline. Stock will load when you reconnect."
+          failure="Couldn't load this item's stock. Try again."
+        />
+      </View>
+    );
+  }
+  return <StockLists product={product} base={base} onMove={onMove} lots={stock.data} />;
+}
+
+function StockLists({ product, base, onMove, lots }: SectionProps & { lots: Lot[] }) {
+  const { colors } = useAppTheme();
+  const [showEmpty, setShowEmpty] = useState(false);
+  const today = localToday();
+  const expiry = (lot: Lot) => expiryState(lot.expires_on, product.expiry_alert_days, today);
+  const kept = (row: { qty_remaining: number }) => showEmpty || row.qty_remaining > 0;
+
+  const shownLots = lots.filter(kept);
+  const cases = shownLots.flatMap((lot) => lot.cases.filter(kept).map((row) => ({ row, lot })));
+  // A serial item moves one pack at a time (stock_target_pack_required), so every pack is listed;
+  // otherwise only the opened ones — a sealed pack is counted in its case or lot.
+  const packs = shownLots.flatMap((lot) =>
+    lot.packs.filter((row) => (product.serial_tracked || row.opened_at !== null) && kept(row)).map((row) => ({ row, lot }))
+  );
+
+  return (
+    <>
+      <View style={styles.sectionHead}>
+        <Text variant="titleMedium" style={styles.fill}>{`Lots (${shownLots.length})`}</Text>
+        <Switch value={showEmpty} onValueChange={setShowEmpty} color={colors.accent} accessibilityLabel="Show empty" />
+        <Text variant="bodyMedium">Show empty</Text>
+      </View>
+      {shownLots.length === 0 ? (
+        <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+          {lots.length > 0 ? 'Every lot is used up.' : 'No stock yet. It arrives through a receipt on the Stock screen.'}
+        </Text>
+      ) : (
+        <StockCard>
+          {shownLots.map((lot) => (
+            <StockRow
+              key={lot.id}
+              title={lot.code}
+              detail={lotDetail(lot)}
+              amount={`${lot.qty_remaining} ${base}`}
+              expiry={expiry(lot)}
+              // A serial item's lot cannot be moved as a whole; its packs can. Nor can the units already
+              // in a case or pack (stock_target_too_high): the lot offers only what sits outside them.
+              actions={product.serial_tracked || unassigned(lot) <= 0 ? null : { lotId: lot.id }}
+              returnable={lot.receipt.supplier_id !== null}
+              onMove={onMove}
+            />
+          ))}
+        </StockCard>
+      )}
+
+      <StockCard title={`Cases (${cases.length})`} hidden={cases.length === 0}>
+        {cases.map(({ row, lot }) => (
+          <StockRow
+            key={row.id}
+            title={row.code}
+            detail={[`lot ${lot.code}`]}
+            amount={`${row.qty_remaining} ${base}`}
+            expiry={expiry(lot)}
+            actions={product.serial_tracked || row.qty_remaining === 0 ? null : { caseId: row.id }}
+            returnable={lot.receipt.supplier_id !== null}
+            onMove={onMove}
+          />
+        ))}
+      </StockCard>
+
+      <StockCard title={`${product.serial_tracked ? 'Packs' : 'Open packs'} (${packs.length})`} hidden={packs.length === 0}>
+        {packs.map(({ row, lot }) => (
+          <StockRow
+            key={row.id}
+            title={row.serial ? `${row.code} · ${row.serial}` : row.code}
+            detail={[`lot ${lot.code}`, row.opened_at ? `opened ${displayDate(row.opened_at.slice(0, 10))}` : 'sealed']}
+            amount={`${row.qty_remaining} of ${row.units} ${base}`}
+            expiry={expiry(lot)}
+            actions={row.qty_remaining === 0 ? null : { packId: row.id }}
+            returnable={lot.receipt.supplier_id !== null}
+            onMove={onMove}
+          />
+        ))}
+      </StockCard>
+    </>
+  );
+}
+
+/** An outlined list of rows, under its heading when it has one. */
+function StockCard({ title, hidden, children }: { title?: string; hidden?: boolean; children: ReactNode }) {
+  const { colors } = useAppTheme();
+  if (hidden) return null;
+
+  return (
+    <>
+      {title ? <Text variant="titleMedium">{title}</Text> : null}
+      <View style={[styles.card, { borderColor: colors.outlineVariant }]}>{children}</View>
+    </>
+  );
+}
+
+function HistorySection({ productId, base }: { productId: string; base: string }) {
+  const { colors } = useAppTheme();
+  const history = useMovementHistoryQuery({ productId });
+
+  return (
+    <>
+      <Text variant="titleMedium">History</Text>
+      {history.data ? null : (
+        <View style={styles.state}>
+          <QueryState
+            query={history}
+            offline="You're offline. History will load when you reconnect."
+            failure="Couldn't load the history. Try again."
+          />
+        </View>
+      )}
+      {history.data?.length === 0 ? (
+        <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+          Nothing has moved yet.
+        </Text>
+      ) : null}
+      <StockCard hidden={!history.data?.length}>
+        {history.data?.map((row) => (
+          <HistoryRow key={row.id} row={row} base={base} />
+        ))}
+      </StockCard>
+    </>
+  );
+}
+
+/** "R-0012 · received 3 Sep 2026 · expires 1 Oct 2026" */
+function lotDetail(lot: Lot) {
+  return [
+    lot.receipt.supplier_id ? lot.receipt.code : `${lot.receipt.code} · opening stock`,
+    `received ${displayDate(lot.receipt.received_on)}`,
+    lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
+  ];
+}
+
 /** What a lot holds outside its cases and loose packs — the part a movement on the lot itself can take. */
-const unassigned = (lot: NonNullable<ReturnType<typeof useItemStockQuery>['data']>[number]) =>
+const unassigned = (lot: Lot) =>
   lot.qty_remaining -
   lot.cases.reduce((sum, row) => sum + row.qty_remaining, 0) -
   lot.packs.filter((row) => row.case_id === null).reduce((sum, row) => sum + row.qty_remaining, 0);
@@ -360,9 +365,6 @@ const styles = StyleSheet.create({
   headerIcon: { margin: 0 },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
   badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
-  facts: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.ms },
-  factWide: { width: '33%', gap: spacing.xs, paddingRight: spacing.md },
-  factNarrow: { width: '50%', gap: spacing.xs, paddingRight: spacing.md },
   state: { gap: spacing.ms, alignItems: 'flex-start' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   card: { borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous', overflow: 'hidden' },

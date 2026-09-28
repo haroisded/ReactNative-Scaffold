@@ -15,7 +15,7 @@ import type { Supplier } from '../features/suppliers/queries';
 import { supplierSchema } from '../features/suppliers/schema';
 import type { SupplierFormValues } from '../features/suppliers/schema';
 import { useShellWide } from '../lib/columns';
-import { failureMessage } from '../lib/errors';
+import { failureMessage, mutationNotice } from '../lib/errors';
 import { useAppTheme } from '../lib/theme';
 import { spacing } from '../themes';
 import { AdaptiveDialog } from './adaptive-dialog';
@@ -51,50 +51,19 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
   const wide = useShellWide();
   const { colors } = useAppTheme();
   const save = useSaveSupplierMutation({ merchantId });
-  const types = useSupplierTypesQuery({ merchantId });
-  const createType = useCreateSupplierTypeMutation({ merchantId });
-  const deleteType = useDeleteSupplierTypeMutation();
-  // Null while the Type field shows its select; a string while a new type is being typed in its place.
-  const [newType, setNewType] = useState<string | null>(null);
-
   const { control, handleSubmit, setValue, watch } = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
-    defaultValues: {
-      name: supplier?.name ?? '',
-      code: supplier?.code ?? '',
-      contactPerson: supplier?.contact_person ?? '',
-      phone: supplier?.phone ?? '',
-      email: supplier?.email ?? '',
-      address: supplier?.address ?? '',
-      supplierTypeId: supplier?.supplier_type_id ?? '',
-      paymentTerms: supplier?.payment_terms ?? '',
-      leadTimeDays: supplier?.lead_time_days?.toString() ?? '',
-      tin: supplier?.tin ?? '',
-      notes: supplier?.notes ?? '',
-      active: supplier?.active ?? true,
-    },
+    defaultValues: supplierDefaults(supplier),
     mode: 'onTouched',
   });
-  const typeId = watch('supplierTypeId');
 
   const inFlight = save.isPending && !save.isPaused;
-  const notice = save.isPaused
-    ? { type: 'info' as const, text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : save.isError
-      ? {
-          type: 'error' as const,
-          text: isDuplicateCode(save.error)
-            ? 'Another supplier already has this code. Clear it to have one issued.'
-            : failureMessage("Couldn't save this supplier. Try again."),
-        }
-      : null;
-  const typeNotice = createType.isError
-    ? isDuplicateType(createType.error)
-      ? 'There is already a type with this name.'
-      : failureMessage("Couldn't add this type. Try again.")
-    : deleteType.isError
-      ? failureMessage("Couldn't delete this type. Try again.")
-      : null;
+  const notice = mutationNotice(
+    save,
+    isDuplicateCode(save.error)
+      ? 'Another supplier already has this code. Clear it to have one issued.'
+      : failureMessage("Couldn't save this supplier. Try again.")
+  );
 
   const submit = handleSubmit((values) => {
     save.mutate(
@@ -107,17 +76,6 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
       }
     );
   });
-
-  const addType = () => {
-    const name = (newType ?? '').trim();
-    if (name === '' || name.length > 40) return;
-    createType.mutate(name, {
-      onSuccess: (row) => {
-        setValue('supplierTypeId', row.id);
-        setNewType(null);
-      },
-    });
-  };
 
   return (
     <AdaptiveDialog
@@ -147,58 +105,7 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
       <Field control={control} name="phone" label="Phone" keyboardType="phone-pad" />
       <Field control={control} name="email" label="Email" keyboardType="email-address" autoCapitalize="none" />
       <Field control={control} name="address" label="Address" />
-      {newType === null ? (
-        <View style={styles.typeRow}>
-          <View style={styles.fill}>
-            <MenuSelect
-              value={typeId}
-              options={[{ value: '', label: 'None' }, ...(types.data ?? []).map((type) => ({ value: type.id, label: type.name }))]}
-              onChange={(value) => setValue('supplierTypeId', value)}
-              placeholder={types.isError ? "Couldn't load types" : 'Type'}
-              accessibilityLabel="Supplier type"
-              createLabel="New type"
-              onCreate={() => setNewType('')}
-            />
-          </View>
-          {typeId !== '' ? (
-            <Button
-              compact
-              textColor={colors.error}
-              loading={deleteType.isPending}
-              disabled={deleteType.isPending}
-              onPress={() => deleteType.mutate(typeId, { onSuccess: () => setValue('supplierTypeId', '') })}
-            >
-              Delete type
-            </Button>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.typeRow}>
-          <TextInput
-            mode="outlined"
-            dense
-            autoFocus
-            value={newType}
-            onChangeText={setNewType}
-            onSubmitEditing={addType}
-            placeholder="e.g. Distributor"
-            accessibilityLabel="New supplier type"
-            maxLength={40}
-            style={styles.fill}
-          />
-          <Button compact onPress={() => setNewType(null)}>
-            Cancel
-          </Button>
-          <Button compact mode="contained" onPress={addType} loading={createType.isPending} disabled={createType.isPending}>
-            Add
-          </Button>
-        </View>
-      )}
-      {typeNotice ? (
-        <HelperText type="error" padding="none">
-          {typeNotice}
-        </HelperText>
-      ) : null}
+      <TypeField merchantId={merchantId} value={watch('supplierTypeId')} onChange={(value) => setValue('supplierTypeId', value)} />
 
       <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
         Terms
@@ -232,6 +139,113 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
       </HelperText>
     </AdaptiveDialog>
   );
+}
+
+/**
+ * The Type field, and the types themselves: a new one is typed in its place, and the selected one can be
+ * deleted from beside it.
+ */
+function TypeField({ merchantId, value, onChange }: { merchantId: string; value: string; onChange: (value: string) => void }) {
+  const { colors } = useAppTheme();
+  const types = useSupplierTypesQuery({ merchantId });
+  const createType = useCreateSupplierTypeMutation({ merchantId });
+  const deleteType = useDeleteSupplierTypeMutation();
+  // Null while the field shows its select; a string while a new type is being typed in its place.
+  const [newType, setNewType] = useState<string | null>(null);
+  const notice = typeFailure(createType, deleteType.isError);
+
+  const addType = () => {
+    const name = (newType ?? '').trim();
+    if (name === '' || name.length > 40) return;
+    createType.mutate(name, {
+      onSuccess: (row) => {
+        onChange(row.id);
+        setNewType(null);
+      },
+    });
+  };
+
+  return (
+    <>
+      {newType === null ? (
+        <View style={styles.typeRow}>
+          <View style={styles.fill}>
+            <MenuSelect
+              value={value}
+              options={[{ value: '', label: 'None' }, ...(types.data ?? []).map((type) => ({ value: type.id, label: type.name }))]}
+              onChange={onChange}
+              placeholder={types.isError ? "Couldn't load types" : 'Type'}
+              accessibilityLabel="Supplier type"
+              createLabel="New type"
+              onCreate={() => setNewType('')}
+            />
+          </View>
+          {value !== '' ? (
+            <Button
+              compact
+              textColor={colors.error}
+              loading={deleteType.isPending}
+              disabled={deleteType.isPending}
+              onPress={() => deleteType.mutate(value, { onSuccess: () => onChange('') })}
+            >
+              Delete type
+            </Button>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.typeRow}>
+          <TextInput
+            mode="outlined"
+            dense
+            autoFocus
+            value={newType}
+            onChangeText={setNewType}
+            onSubmitEditing={addType}
+            placeholder="e.g. Distributor"
+            accessibilityLabel="New supplier type"
+            maxLength={40}
+            style={styles.fill}
+          />
+          <Button compact onPress={() => setNewType(null)}>
+            Cancel
+          </Button>
+          <Button compact mode="contained" onPress={addType} loading={createType.isPending} disabled={createType.isPending}>
+            Add
+          </Button>
+        </View>
+      )}
+      {notice ? (
+        <HelperText type="error" padding="none">
+          {notice}
+        </HelperText>
+      ) : null}
+    </>
+  );
+}
+
+function typeFailure(create: { isError: boolean; error: Error | null }, deleteFailed: boolean) {
+  if (create.isError) {
+    return isDuplicateType(create.error) ? 'There is already a type with this name.' : failureMessage("Couldn't add this type. Try again.");
+  }
+  return deleteFailed ? failureMessage("Couldn't delete this type. Try again.") : null;
+}
+
+function supplierDefaults(supplier: Supplier | undefined): SupplierFormValues {
+  const text = (value: string | null | undefined) => value ?? '';
+  return {
+    name: text(supplier?.name),
+    code: text(supplier?.code),
+    contactPerson: text(supplier?.contact_person),
+    phone: text(supplier?.phone),
+    email: text(supplier?.email),
+    address: text(supplier?.address),
+    supplierTypeId: text(supplier?.supplier_type_id),
+    paymentTerms: text(supplier?.payment_terms),
+    leadTimeDays: text(supplier?.lead_time_days?.toString()),
+    tin: text(supplier?.tin),
+    notes: text(supplier?.notes),
+    active: supplier?.active ?? true,
+  };
 }
 
 type FieldProps = {

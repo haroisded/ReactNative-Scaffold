@@ -76,17 +76,14 @@ export function MenuSelect({
     >
       {/* Menu renders every item; a list of categories can outgrow the screen, so it scrolls. */}
       <ScrollView style={styles.list}>
-        {options.map((option) => (
-          <Menu.Item
-            key={option.value}
-            title={option.label}
-            leadingIcon={option.value === value ? 'check' : undefined}
-            onPress={() => {
-              setOpen(false);
-              onChange(option.value);
-            }}
-          />
-        ))}
+        <OptionItems
+          options={options}
+          value={value}
+          onPick={(next) => {
+            setOpen(false);
+            onChange(next);
+          }}
+        />
       </ScrollView>
       {onCreate && createLabel ? (
         <>
@@ -106,6 +103,26 @@ export function MenuSelect({
       ) : null}
     </Menu>
   );
+}
+
+/** A menu's options, the current one checked. Shared with the product list's filter chips. */
+export function OptionItems<Value extends string>({
+  options,
+  value,
+  onPick,
+}: {
+  options: { value: Value; label: string }[];
+  value: Value;
+  onPick: (value: Value) => void;
+}) {
+  return options.map((option) => (
+    <Menu.Item
+      key={option.value}
+      title={option.label}
+      leadingIcon={option.value === value ? 'check' : undefined}
+      onPress={() => onPick(option.value)}
+    />
+  ));
 }
 
 const styles = StyleSheet.create({

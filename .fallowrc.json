@@ -1,0 +1,6 @@
+{
+  "ignorePatterns": ["src/lib/database.types.ts"],
+  "rules": {
+    "complexity-crap": "off"
+  }
+}

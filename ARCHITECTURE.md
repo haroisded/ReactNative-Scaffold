@@ -46,8 +46,10 @@ src/screens/<screen>/      UI by screen — home, profile, sign-in, product-list
 src/components/            one re-export per Paper primitive, plus what more than one screen or a
                            sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
                            category-picker, the confirm/create dialogs (void-receipt and
-                           stock-movement among them), archive-undo, product-badges, note-callout,
-                           placeholder-screen
+                           stock-movement among them, all on confirm-dialog), discard-dialog (the
+                           unsaved-changes prompt the three forms share), form-footer, query-state
+                           (loading / error / retry), fact-grid, archive-undo, product-badges,
+                           note-callout, placeholder-screen
 src/app/_layout.tsx        PaperProvider + QueryProvider + the two-state route guard
 src/app/sign-in.tsx        renders the sign-in screen
 src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-system and the sheets/
