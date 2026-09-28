@@ -316,7 +316,10 @@ its `currency`) — with their policies, the signup trigger, `public.delete_curr
 `private.current_merchant_ids()`, and `private.rls_auto_enable()`, the function behind an event
 trigger that hosted Supabase will not let this project install (§6.1) — and the product catalogue,
 the first business tables: `product_categories`, `tax_classes`, `suppliers`, `products` and six
-child tables, `public.save_product()`, and `private.assert_no_bundle_cycle()`. The catalogue's
+child tables, `public.save_product()`, and `private.assert_no_bundle_cycle()` — and inventory: `supplier_types`,
+`product_groups`, the stock ledger (`stock_receipts`, `stock_lots`, `stock_cases`, `stock_packs`,
+`stock_movements`, select-only for clients), and its writers `save_stock_item`, `save_receipt`,
+`void_receipt` and `record_stock_movement`. The catalogue's
 policies are the first callers of `current_merchant_ids()`, which is why `authenticated` holds
 `usage` on `private` and `execute` on that function (`instruction_mds/tenancy.md` §3). Each migration has a
 revert in `supabase/reverts/` (§6.6).

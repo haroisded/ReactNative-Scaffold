@@ -7,7 +7,7 @@
 -- name all three columns — so regenerate the types after running this.
 --
 -- Newest revert, so nothing has to run before it. supabase/all-in-one/revert.sql orders every revert
--- newest first (docs/migrations.md).
+-- newest first (instruction_mds/migrations.md).
 
 -- Dropping a column takes its check constraint with it. Named anyway, so this file reads as the exact
 -- inverse of the one it undoes.

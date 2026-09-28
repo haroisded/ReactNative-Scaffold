@@ -1,0 +1,27 @@
+-- Reverts 20260928100200_stock_receipts.sql.
+--
+-- DESTROYS DATA: every receipt, lot, case, pack and serial, and the whole stock ledger. Each item's
+-- qty_on_hand and cost_price stay at their last computed values and become plain editable columns again,
+-- so what is on hand survives as a number with no lot, expiry or history behind it. The opening-stock
+-- receipt goes with the rest; re-applying makes a new one from those numbers.
+--
+-- Run this before 20260928100100_stock_items.sql's revert (instruction_mds/migrations.md rule 6). The app expects the
+-- new shape — src/features and src/lib/database.types.ts — so regenerate the types after running this.
+
+drop function if exists public.record_stock_movement(jsonb);
+drop function if exists public.void_receipt(uuid, text);
+drop function if exists public.save_receipt(jsonb);
+
+drop trigger if exists products_guard_stock on public.products;
+drop function if exists private.guard_stock_item();
+
+drop table if exists public.stock_movements;
+drop table if exists public.stock_packs;
+drop table if exists public.stock_cases;
+drop table if exists public.stock_lots;
+drop table if exists public.stock_receipts;
+
+drop function if exists private.recompute_stock(uuid);
+
+drop type if exists public.write_off_reason;
+drop type if exists public.stock_movement_kind;
