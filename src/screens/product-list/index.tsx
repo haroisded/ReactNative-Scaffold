@@ -323,10 +323,14 @@ function EmptyList({
 
   return (
     <View style={styles.state}>
-      <QueryState query={query} offline="You're offline. Products will load when you reconnect." failure="Couldn't load products. Try again.">
+      <QueryState
+        query={query}
+        offline={`You're offline. ${meta.title} will load when you reconnect.`}
+        failure={`Couldn't load ${meta.title.toLowerCase()}. Try again.`}
+      >
         {filtered ? (
           <>
-            <Text variant="bodyMedium">No products match these filters.</Text>
+            <Text variant="bodyMedium">Nothing matches these filters.</Text>
             <Button onPress={onClear}>Clear filters</Button>
           </>
         ) : (

@@ -362,7 +362,7 @@ location, not only by its name.
 - After step 3: both **Paracetamol 500mg** and the **USB-C / 25W** charger are listed, because both
   arrived on a supplier's receipt.
 - After step 6: neither test item is listed, because both are **Sellable**, not **Component**. If no
-  other item is a component, the list says "No products match these filters." with a **Clear filters** button.
+  other item is a component, the list says **Nothing matches these filters.** with a **Clear filters** button.
 - After step 9: only **Paracetamol 500mg** is listed — its storage location, **Pharmacy shelf 2**
   from Test 11, contains "shelf 2".
 
