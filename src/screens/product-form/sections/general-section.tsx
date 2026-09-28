@@ -1,12 +1,13 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
+import { Field, FieldGrid } from '../../../components/form-fields';
 import { MenuSelect } from '../../../components/menu-select';
 import { useCategoriesQuery } from '../../../features/categories/queries';
 import type { ResourceScope } from '../../../features/products/resources';
 import { generateSku } from '../../../features/products/schema';
 import type { ProductFormValues } from '../../../features/products/schema';
-import { CategoryPicker } from '../category-picker';
-import { Field, FieldGrid, TagsField, TextField, ToggleField } from '../fields';
+import { CategoryPicker } from '../../../components/category-picker';
+import { TagsField, TextField, ToggleField } from '../fields';
 
 export function GeneralSection({ merchantId, scope }: { merchantId: string; scope: ResourceScope }) {
   const { control, setValue } = useFormContext<ProductFormValues>();
@@ -25,7 +26,7 @@ export function GeneralSection({ merchantId, scope }: { merchantId: string; scop
           <Field label="Category" required error={fieldState.error?.message}>
             <CategoryPicker
               merchantId={merchantId}
-                scope={scope}
+              scope={scope}
               parentId={null}
               value={field.value}
               onChange={(id) => {
@@ -58,7 +59,7 @@ export function GeneralSection({ merchantId, scope }: { merchantId: string; scop
             ) : (
               <CategoryPicker
                 merchantId={merchantId}
-                scope={scope}
+              scope={scope}
                 parentId={categoryId}
                 value={field.value}
                 onChange={field.onChange}

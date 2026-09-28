@@ -2,25 +2,17 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { useShellMerchant } from '../../../../../../features/merchants/queries';
 import { ProductGate } from '../../../../../../screens/product-detail';
-import { ProductForm } from '../../../../../../screens/product-form';
+import { StockItemForm } from '../../../../../../screens/stock-item-form';
 
-export default function EditProductScreen() {
+export default function EditItemScreen() {
   const merchant = useShellMerchant();
   const { productId } = useLocalSearchParams<{ productId: string }>();
 
-  // The gate mounts the form only once the product has loaded, so its defaultValues are the saved
-  // product on the first render. `type` is unused when editing — a saved product keeps its type.
+  // The gate mounts the form only once the item has loaded, so its defaultValues are the saved item on
+  // the first render.
   return (
     <ProductGate id={productId} scope="inventory">
-      {(product) => (
-        <ProductForm
-          merchantId={merchant.id}
-          currency={merchant.currency}
-          scope="inventory"
-          type={product.type}
-          product={product}
-        />
-      )}
+      {(product) => <StockItemForm merchantId={merchant.id} product={product} />}
     </ProductGate>
   );
 }

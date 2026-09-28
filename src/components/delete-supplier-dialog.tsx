@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { useDeleteSupplierMutation } from '../features/suppliers/queries';
+import { hasReceipts, useDeleteSupplierMutation } from '../features/suppliers/queries';
 import type { Supplier } from '../features/suppliers/queries';
 import { useShellWide } from '../lib/columns';
 import { failureMessage } from '../lib/errors';
@@ -19,7 +19,7 @@ type Props = {
 
 type Notice = { type: 'error' | 'info'; text: string };
 
-/** Delete a supplier. Products using it lose the supplier (on delete set null). */
+/** Delete a supplier. Products using it lose the supplier (on delete set null); one with receipts is refused. */
 export function DeleteSupplierDialog({ supplier, inSheet, onDismiss }: Props) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
@@ -29,7 +29,12 @@ export function DeleteSupplierDialog({ supplier, inSheet, onDismiss }: Props) {
   const notice: Notice | null = remove.isPaused
     ? { type: 'info', text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
     : remove.isError
-      ? { type: 'error', text: failureMessage("Couldn't delete this supplier. Try again.") }
+      ? {
+          type: 'error',
+          text: hasReceipts(remove.error)
+            ? 'This supplier has receipts, so it can only be deactivated. Edit it and turn Active off.'
+            : failureMessage("Couldn't delete this supplier. Try again."),
+        }
       : null;
 
   return (

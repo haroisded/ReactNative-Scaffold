@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { isUsedInBundle, useDeleteProductsMutation } from '../features/products/queries';
+import { deleteRefusal, useDeleteProductsMutation } from '../features/products/queries';
 import { useShellWide } from '../lib/columns';
 import { failureMessage } from '../lib/errors';
 import { useAppTheme } from '../lib/theme';
@@ -41,9 +41,12 @@ export function DeleteProductDialog({ products, inSheet, onDismiss, onDone }: Pr
     : remove.isError
       ? {
           type: 'error' as const,
-          text: isUsedInBundle(remove.error)
-            ? `${single ? 'This product is' : 'One of these products is'} a component of a bundle. Remove it from the bundle first, or archive it instead.`
-            : failureMessage("Couldn't delete. Try again."),
+          text:
+            deleteRefusal(remove.error) === 'bundle'
+              ? `${single ? 'This product is' : 'One of these products is'} a component of a bundle. Remove it from the bundle first, or archive it instead.`
+              : deleteRefusal(remove.error) === 'stock'
+                ? `${single ? 'This item has' : 'One of these items has'} stock history, so it cannot be deleted. Archive it once its stock is gone.`
+                : failureMessage("Couldn't delete. Try again."),
         }
       : null;
 

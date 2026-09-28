@@ -2,7 +2,6 @@ import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
 
 import { ActivityIndicator } from '../../components/activity-indicator';
 import { useArchiveUndo } from '../../components/archive-undo';
@@ -10,11 +9,12 @@ import { Button } from '../../components/button';
 import { Checkbox } from '../../components/checkbox';
 import { DataTable } from '../../components/data-table';
 import { DeleteProductDialog } from '../../components/delete-product-dialog';
+import { HeaderTitle } from '../../components/header-title';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { Menu } from '../../components/menu';
 import { PageHeader } from '../../components/page-header';
-import { LowStockBadge, StatusText, Thumbnail, TypeBadge, availabilityLabel } from '../../components/product-badges';
+import { LowStockBadge, NeedsPriceBadge, StatusText, Thumbnail, TypeBadge, availabilityLabel } from '../../components/product-badges';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
 import { TextInput } from '../../components/text-input';
@@ -25,12 +25,19 @@ import { RESOURCE_META, RESOURCE_ROUTE } from '../../features/products/resources
 import type { ResourceScope } from '../../features/products/resources';
 import { STATUS_META, TYPE_META, productStatus, usesInventory } from '../../features/products/schema';
 import type { ProductStatus, ProductType } from '../../features/products/schema';
+import { STOCK_ROLE_LABEL, stockRole as stockRoles } from '../../features/products/stock-item';
+import type { StockRole } from '../../features/products/stock-item';
+import { localToday } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
 import { failureMessage, postgrestError } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { useSheetResult } from '../../Store/sheet-result';
 import { spacing } from '../../themes';
+import { InventoryDetail } from '../inventory-detail';
+import { ProductGate } from '../product-detail';
+import { GroupHeader, InventoryRow, SOURCE_FILTERS, groupInventory, itemSource } from './inventory-rows';
+import type { InventorySource } from './inventory-rows';
 
 type Props = {
   merchantId: string;
@@ -43,6 +50,10 @@ type Props = {
 const STATUS_FILTERS: { value: ProductStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All but archived' },
   ...productStatus.options.map((status) => ({ value: status, label: STATUS_META[status].label })),
+];
+const ROLE_FILTERS: { value: StockRole | ''; label: string }[] = [
+  { value: '', label: 'All' },
+  ...stockRoles.options.map((role) => ({ value: role, label: STOCK_ROLE_LABEL[role] })),
 ];
 const SORTS: { value: ProductSort; label: string }[] = [
   { value: 'name', label: 'Name' },
@@ -64,6 +75,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
       ? [{ value: '', label: 'All' }, ...meta.types.map((type) => ({ value: type, label: TYPE_META[type].badge }))]
       : [];
   const counted = meta.types.some(usesInventory);
+  const inventory = scope === 'inventory';
 
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
@@ -71,6 +83,12 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
   const [type, setType] = useState<ProductType | ''>('');
   const [status, setStatusFilter] = useState<ProductStatus | 'all'>('all');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  // Inventory only (design.md §6): the item's type, where its stock came from, the groups folded shut,
+  // and the item open in the tablet's second pane.
+  const [role, setRole] = useState<StockRole | ''>('');
+  const [source, setSource] = useState<InventorySource>('all');
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [paneId, setPaneId] = useState<string | null>(null);
   const [sort, setSort] = useState<ProductSort>('name');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -104,13 +122,18 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
     search,
     categoryId: categoryId || null,
     type: type || null,
+    stockRole: inventory ? role || null : null,
     status,
     lowStockOnly,
     sort,
   });
-  const rows = products.data ?? [];
+  // ponytail: Source is filtered here, not in the query — it reads the embedded lots. Move it to a
+  // generated column if the list gains pagination.
+  const rows = (products.data ?? []).filter((row) => !inventory || source === 'all' || itemSource(row) === source);
+  const today = localToday();
   const selectedRows = rows.filter((row) => selected.has(row.id));
-  const filtered = search !== '' || categoryId !== '' || type !== '' || status !== 'all' || lowStockOnly;
+  const filtered =
+    search !== '' || categoryId !== '' || type !== '' || status !== 'all' || lowStockOnly || role !== '' || source !== 'all';
 
   const toggle = (id: string) =>
     setSelected((previous) => {
@@ -125,8 +148,19 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
     setType('');
     setStatusFilter('all');
     setLowStockOnly(false);
+    setRole('');
+    setSource('all');
   };
-  const openDetail = (id: string) => router.push({ pathname: route.detail, params: { id: merchantId, productId: id } });
+  const toggleGroup = (id: string) =>
+    setCollapsed((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  // Wide, an Inventory item opens in the second pane instead of on its own screen.
+  const openDetail = (id: string) =>
+    inventory && wide ? setPaneId(id) : router.push({ pathname: route.detail, params: { id: merchantId, productId: id } });
   const openEdit = (id: string) => router.push({ pathname: route.edit, params: { id: merchantId, productId: id } });
 
   const bulkStatus = (next: ProductStatus) =>
@@ -157,13 +191,20 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         onChange={setCategoryId}
       />
       {typeFilters.length > 0 ? <FilterMenu label="Type" value={type} options={typeFilters} onChange={setType} /> : null}
+      {inventory ? (
+        <>
+          <FilterMenu label="Source" value={source} options={SOURCE_FILTERS} onChange={setSource} />
+          <FilterMenu label="Type" value={role} options={ROLE_FILTERS} onChange={setRole} />
+        </>
+      ) : null}
       <FilterMenu label="Status" value={status} options={STATUS_FILTERS} onChange={setStatusFilter} />
       <FilterMenu
         label="Sort"
         value={sort}
         // Sorting by stock, and filtering to what is running low, only mean something where a count is
         // kept: Inventory and Rentables. A flat service has no quantity.
-        options={counted ? SORTS : SORTS.filter((option) => option.value !== 'stock')}
+        // Inventory items carry no price of their own; their register drafts do.
+        options={SORTS.filter((option) => (counted || option.value !== 'stock') && (!inventory || option.value !== 'price'))}
         onChange={setSort}
       />
       {counted ? (
@@ -234,7 +275,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
             dense
             value={searchDraft}
             onChangeText={setSearchDraft}
-            placeholder="Search name or SKU"
+            placeholder={inventory ? 'Search name, SKU, barcode, location' : 'Search name or SKU'}
             accessibilityLabel="Search products"
             left={<TextInput.Icon icon="search" />}
             right={searchDraft !== '' ? <TextInput.Icon icon="close" onPress={() => setSearchDraft('')} accessibilityLabel="Clear search" /> : undefined}
@@ -285,7 +326,49 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         </HelperText>
       ) : null}
 
-      {wide ? (
+      {inventory ? (
+        <View style={[styles.fill, wide && styles.panes]}>
+          <View style={wide ? [styles.listPane, { borderRightColor: colors.outlineVariant }] : styles.fill}>
+            <FlashList
+              data={groupInventory(rows, collapsed)}
+              keyExtractor={(entry) => (entry.kind === 'group' ? `group:${entry.id}` : entry.item.id)}
+              getItemType={(entry) => entry.kind}
+              ListEmptyComponent={empty}
+              renderItem={({ item: entry }) =>
+                entry.kind === 'group' ? (
+                  <GroupHeader name={entry.name} count={entry.count} open={entry.open} onToggle={() => toggleGroup(entry.id)} />
+                ) : (
+                  <InventoryRow
+                    item={entry.item}
+                    today={today}
+                    nested={entry.nested}
+                    selecting={selectedRows.length > 0}
+                    selected={selected.has(entry.item.id)}
+                    active={wide && paneId === entry.item.id}
+                    onToggle={() => toggle(entry.item.id)}
+                    onOpen={() => openDetail(entry.item.id)}
+                  />
+                )
+              }
+            />
+          </View>
+          {wide ? (
+            <View style={styles.detailPane}>
+              {paneId ? (
+                <ProductGate key={paneId} id={paneId} scope="inventory">
+                  {(product) => <InventoryDetail merchantId={merchantId} product={product} embedded />}
+                </ProductGate>
+              ) : (
+                <View style={styles.state}>
+                  <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+                    Choose an item to see its lots, cases and history.
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+        </View>
+      ) : wide ? (
         <DataTable style={styles.fill}>
           <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
             <View style={styles.checkCell}>
@@ -394,15 +477,6 @@ function FilterMenu<Value extends string>({
   );
 }
 
-function HeaderTitle({ label, style }: { label: string; style: StyleProp<ViewStyle> }) {
-  return (
-    <DataTable.Title style={style}>
-      {/* DataTable.Title sets no variant of its own (instruction_mds/visual-language.md §5, Wide list). */}
-      <Text variant="labelMedium">{label}</Text>
-    </DataTable.Title>
-  );
-}
-
 type RowProps = {
   item: ProductListRow;
   currency: string;
@@ -452,6 +526,7 @@ function TableRow({
           {availabilityLabel(item)}
         </Text>
         {item.is_low_stock ? <LowStockBadge /> : null}
+        <NeedsPriceBadge product={item} />
       </View>
       <View style={styles.priceCell}>
         <Text variant="bodyMedium" numberOfLines={1}>
@@ -504,6 +579,7 @@ function CardRow({ item, currency, selecting, selected, onToggle, onOpen }: RowP
             <TypeBadge type={item.type} />
             <StatusText status={item.status} />
             {item.is_low_stock ? <LowStockBadge /> : null}
+            <NeedsPriceBadge product={item} />
           </View>
         </View>
         <View style={styles.cardAmount}>
@@ -539,6 +615,10 @@ const styles = StyleSheet.create({
   bulkCount: { paddingRight: spacing.sm },
   bulkNotice: { paddingHorizontal: spacing.md },
   state: { gap: spacing.ms, alignItems: 'flex-start', padding: spacing.md },
+  panes: { flexDirection: 'row' },
+  // The list side of the tablet's two panes; the detail takes the rest.
+  listPane: { flex: 2, borderRightWidth: 1 },
+  detailPane: { flex: 3 },
   tableRow: { borderBottomWidth: 1, minHeight: 60 },
   checkCell: { width: 44, justifyContent: 'center' },
   thumbCell: { width: 48, justifyContent: 'center' },

@@ -10,13 +10,13 @@ import type { ProductDetail } from './queries';
 export type ProductType = Enums<'product_type'>;
 export type ProductStatus = Enums<'product_status'>;
 export type MeasureUnit = Enums<'measure_unit'>;
-export type RatePeriod = Enums<'rate_period'>;
-export type DurationMode = Enums<'duration_mode'>;
-export type CustomFieldKind = Enums<'custom_field_kind'>;
+type RatePeriod = Enums<'rate_period'>;
+type DurationMode = Enums<'duration_mode'>;
+type CustomFieldKind = Enums<'custom_field_kind'>;
 
 // The enum values come from the generated Constants, so adding a value in a migration and regenerating
 // is the whole change on this side.
-export const productType = z.enum(Constants.public.Enums.product_type);
+const productType = z.enum(Constants.public.Enums.product_type);
 export const productStatus = z.enum(Constants.public.Enums.product_status);
 export const measureUnit = z.enum(Constants.public.Enums.measure_unit);
 export const ratePeriod = z.enum(Constants.public.Enums.rate_period);
@@ -173,7 +173,7 @@ export const SECTIONS_BY_TYPE = {
 
 export const usesInventory = (type: ProductType) => type === 'stock' || type === 'rental';
 export const usesAvailability = (type: ProductType) => type === 'rental' || type === 'bookable';
-export const usesVariants = (type: ProductType) => type !== 'flat';
+const usesVariants = (type: ProductType) => type !== 'flat';
 
 // ---------------------------------------------------------------------------------------------------
 // Field schemas
@@ -519,9 +519,6 @@ const formNumber = (value: number | null) => (value === null ? '' : String(value
 // Postgres `time` reads back as "HH:MM:SS"; the form works in minutes.
 const formTime = (value: string | null) => (value === null ? '' : value.slice(0, 5));
 
-/** What public.save_product receives. A type alias, so it is assignable to the generated `Json`. */
-export type SavePayload = ReturnType<typeof toSavePayload>;
-
 /**
  * The form, as the rows save_product writes. Columns a type does not use are sent as null, so changing
  * a Rental into a Flat Service also clears its stock and availability rather than leaving them behind.
@@ -633,7 +630,7 @@ export function fromProductDetail(product: ProductDetail): ProductFormValues {
   return {
     type: product.type,
     name: product.name,
-    categoryId: product.category_id,
+    categoryId: product.category_id ?? '',
     subcategoryId: product.subcategory_id ?? '',
     sku: product.sku ?? '',
     barcode: product.barcode ?? '',

@@ -52,6 +52,8 @@ export const ICONS = {
   layers: { ios: 'square.stack.3d.up', android: 'layers' },
   key: { ios: 'key', android: 'key' },
   list: { ios: 'list.bullet', android: 'list' },
+  // Stock: deliveries in and suppliers.
+  truck: { ios: 'truck.box', android: 'local_shipping' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },
   percent: { ios: 'percent', android: 'percent' },
   settings: { ios: 'gearshape', android: 'settings' },

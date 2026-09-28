@@ -2,6 +2,7 @@ import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../../components/button';
+import { AddButton, FieldGrid, RepeatRow } from '../../../components/form-fields';
 import { NoteCallout } from '../../../components/note-callout';
 import { Text } from '../../../components/text';
 import { useProductOptionsQuery } from '../../../features/products/queries';
@@ -9,7 +10,7 @@ import type { ProductFormValues } from '../../../features/products/schema';
 import { formatMoney } from '../../../lib/money';
 import { useAppTheme } from '../../../lib/theme';
 import { spacing } from '../../../themes';
-import { AddButton, ArrayError, FieldGrid, RepeatRow, SelectField, TextField, ToggleField, UNIT_OPTIONS } from '../fields';
+import { ArrayError, SelectField, TextField, ToggleField, UNIT_OPTIONS } from '../fields';
 
 type Props = {
   merchantId: string;

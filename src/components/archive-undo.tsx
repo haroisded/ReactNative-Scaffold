@@ -2,12 +2,13 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useSetProductStatusMutation } from '../features/products/queries';
+import { stockFailure } from '../features/stock-receipts/queries';
 import type { ProductStatus } from '../features/products/schema';
 import { failureMessage } from '../lib/errors';
 import { Snackbar } from './snackbar';
 
 /** A row as archiving needs to know it: what to archive, and what to put back on Undo. */
-export type ArchiveTarget = { id: string; name: string; status: ProductStatus };
+type ArchiveTarget = { id: string; name: string; status: ProductStatus };
 
 /**
  * Archive, with Undo.
@@ -26,10 +27,11 @@ export function useArchiveUndo() {
   // What the last write did, for the snackbar's wording. Restore is archive's inverse and shares its
   // Undo: restoring puts an archived product back as a draft, and Undo archives it again.
   const [restored, setRestored] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // 'stock': guard_stock_item refused — an Inventory item is archived only once its stock is gone.
+  const [failed, setFailed] = useState<'error' | 'stock' | null>(null);
 
   const write = (targets: ArchiveTarget[], status: 'archived' | 'draft', onDone?: () => void) => {
-    setFailed(false);
+    setFailed(null);
     setRestored(status === 'draft');
     setStatus.mutate(
       { ids: targets.map((target) => target.id), status },
@@ -38,7 +40,7 @@ export function useArchiveUndo() {
           setUndone(targets);
           onDone?.();
         },
-        onError: () => setFailed(true),
+        onError: (error) => setFailed(stockFailure(error) === 'stock_on_hand' ? 'stock' : 'error'),
       }
     );
   };
@@ -60,18 +62,21 @@ export function useArchiveUndo() {
 
   const single = undone?.length === 1 ? undone[0] : undefined;
   const done = restored ? 'restored as a draft' : 'archived';
-  const message = failed
-    ? failureMessage(restored ? "Couldn't restore. Try again." : "Couldn't archive. Try again.")
-    : single
-      ? `${single.name} ${done}`
-      : `${undone?.length ?? 0} items ${done}`;
+  const message =
+    failed === 'stock'
+      ? 'Stock is still on hand. Adjust or write it off before archiving.'
+      : failed
+        ? failureMessage(restored ? "Couldn't restore. Try again." : "Couldn't archive. Try again.")
+        : single
+          ? `${single.name} ${done}`
+          : `${undone?.length ?? 0} items ${done}`;
 
   const snackbar: ReactNode = (
     <Snackbar
-      visible={undone !== null || failed}
+      visible={undone !== null || failed !== null}
       onDismiss={() => {
         setUndone(null);
-        setFailed(false);
+        setFailed(null);
       }}
       duration={6000}
       action={failed ? undefined : { label: 'Undo', onPress: undo }}

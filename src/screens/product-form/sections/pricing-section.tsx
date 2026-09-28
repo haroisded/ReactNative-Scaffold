@@ -1,24 +1,14 @@
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
+import { AddButton, Field, FieldGrid, GroupHeading, RepeatRow } from '../../../components/form-fields';
 import { Text } from '../../../components/text';
 import { RATE_PERIOD_LABELS, ratePeriod } from '../../../features/products/schema';
 import type { MeasureUnit, ProductFormValues } from '../../../features/products/schema';
 import { currencySymbol } from '../../../lib/money';
 import { useAppTheme } from '../../../lib/theme';
 import { spacing } from '../../../themes';
-import {
-  AddButton,
-  ArrayError,
-  Field,
-  FieldGrid,
-  GroupHeading,
-  RepeatRow,
-  SelectField,
-  TextField,
-  ToggleField,
-  unitOptions,
-} from '../fields';
+import { ArrayError, SelectField, TextField, ToggleField, unitOptions } from '../fields';
 import { TaxClassPicker } from '../tax-class-picker';
 
 const PERIOD_OPTIONS = ratePeriod.options.map((period) => ({ value: period, label: RATE_PERIOD_LABELS[period] }));

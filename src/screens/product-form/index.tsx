@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdaptiveDialog } from '../../components/adaptive-dialog';
 import { Button } from '../../components/button';
+import { SectionHeading } from '../../components/form-fields';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
@@ -35,7 +36,6 @@ import { failureMessage } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { useUnsavedGuard } from '../../lib/unsaved-guard';
 import { spacing } from '../../themes';
-import { SectionHeading } from './fields';
 import { ReviewSection } from './review-section';
 import { AdvancedSection } from './sections/advanced-section';
 import { AvailabilitySection } from './sections/availability-section';

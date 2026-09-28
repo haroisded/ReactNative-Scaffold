@@ -4,9 +4,13 @@ import type { Tables } from '../../lib/database.types';
 import { postgrestError } from '../../lib/errors';
 import { STALE } from '../../lib/query';
 import { supabase } from '../../lib/supabase';
+import { productGroupsKey } from '../product-groups/queries';
 import type { ResourceScope } from './resources';
+import type { StockRole } from './stock-item';
 import { fromProductDetail, toSavePayload } from './schema';
 import type { ProductFormValues, ProductStatus, ProductType } from './schema';
+import { toStockItemPayload } from './stock-item';
+import type { StockItemValues } from './stock-item';
 
 export type Product = Tables<'products'>;
 
@@ -19,6 +23,8 @@ export type ProductFilters = {
   search: string;
   categoryId: string | null;
   type: ProductType | null;
+  /** Inventory only: Sellable / Component / Both. */
+  stockRole: StockRole | null;
   /** 'all' is every status except archived — archived products leave the list until asked for. */
   status: ProductStatus | 'all';
   lowStockOnly: boolean;
@@ -32,6 +38,7 @@ export const productsKey = {
   details: () => [...productsKey.all, 'detail'],
   detail: (args: { id: string }) => [...productsKey.details(), args],
   options: (args: { merchantId: string }) => [...productsKey.all, 'options', args],
+  stockOptions: (args: { merchantId: string }) => [...productsKey.all, 'stock-options', args],
 };
 
 // ilike's own wildcards first, then PostgREST's quoting: the search box's text is a literal, so a
@@ -50,7 +57,12 @@ export function useProductsQuery(filters: ProductFilters) {
       // useInfiniteQuery when a merchant's catalogue outgrows a single response.
       let query = supabase
         .from('products')
-        .select('*, category:product_categories!products_category_fk(name)')
+        // group and lots are the Inventory row's (src/screens/product-list/inventory-rows.tsx): the variant
+        // group it is listed under, and what its Expiring badge and Source filter read. Other screens' rows
+        // have neither, and the embeds come back null and empty.
+        .select(
+          '*, category:product_categories!products_category_fk(name), group:product_groups!products_group_fk(name), lots:stock_lots!stock_lots_product_fk(qty_remaining, expires_on, receipt:stock_receipts!stock_lots_receipt_fk(supplier_id, voided_at))'
+        )
         // Scoping to this system, not security — see the note in categories/queries.ts.
         .eq('merchant_id', filters.merchantId)
         // …and to this Resources screen. products.scope is written by the database from the type
@@ -60,10 +72,15 @@ export function useProductsQuery(filters: ProductFilters) {
       const search = filters.search.trim();
       if (search !== '') {
         const value = ilikeValue(search);
-        query = query.or(`name.ilike.${value},sku.ilike.${value}`);
+        // ponytail: the row's own text columns. The group's name and the attributes array are not reached
+        // by or(); searching them needs a generated search column.
+        query = query.or(
+          `name.ilike.${value},sku.ilike.${value},barcode.ilike.${value},storage_location.ilike.${value},description.ilike.${value},internal_notes.ilike.${value}`
+        );
       }
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId);
       if (filters.type) query = query.eq('type', filters.type);
+      if (filters.stockRole) query = query.eq('stock_role', filters.stockRole);
       query = filters.status === 'all' ? query.neq('status', 'archived') : query.eq('status', filters.status);
       // is_low_stock is a generated column because PostgREST cannot compare two columns in a filter.
       if (filters.lowStockOnly) query = query.eq('is_low_stock', true);
@@ -78,7 +95,7 @@ export function useProductsQuery(filters: ProductFilters) {
               : query.order('name');
 
       // throwOnError() on every call in this file, so a failure rejects with a real PostgrestError and
-      // saveFailure() / isUsedInBundle() can read its code — see the note in merchants/queries.ts.
+      // saveFailure() / deleteRefusal() can read its code — see the note in merchants/queries.ts.
       const { data } = await ordered.throwOnError();
       return data;
     },
@@ -98,7 +115,7 @@ const DETAIL_SELECT = `
   category:product_categories!products_category_fk(name),
   subcategory:product_categories!products_subcategory_fk(name),
   tax_class:tax_classes!products_tax_class_fk(name, rate),
-  supplier:suppliers!products_supplier_fk(name, contact),
+  supplier:suppliers!products_supplier_fk(name, contact_person),
   rate_tiers:product_rate_tiers!product_rate_tiers_product_fk(*),
   operating_hours:product_operating_hours!product_operating_hours_product_fk(*),
   variant_attributes:product_variant_attributes!product_variant_attributes_product_fk(*),
@@ -159,7 +176,27 @@ export function useProductOptionsQuery({ merchantId }: { merchantId: string }) {
   });
 }
 
-export type ProductOption = NonNullable<ReturnType<typeof useProductOptionsQuery>['data']>[number];
+/** The receipt line's item picker: every stock item not archived, with what a line needs to count it. */
+export function useStockItemOptionsQuery({ merchantId }: { merchantId: string }) {
+  return useQuery({
+    queryKey: productsKey.stockOptions({ merchantId }),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, sku, conversion_factor, pack_unit_name, base_unit_name, serial_tracked, attributes')
+        .eq('merchant_id', merchantId)
+        .eq('type', 'stock')
+        .neq('status', 'archived')
+        .order('name')
+        .throwOnError();
+
+      return data;
+    },
+    staleTime: STALE.MINUTES.ONE,
+  });
+}
+
+export type StockItemOption = NonNullable<ReturnType<typeof useStockItemOptionsQuery>['data']>[number];
 
 /**
  * The copy for a failed save. The three cases a merchant can cause and fix get their own sentence;
@@ -175,9 +212,15 @@ export function saveFailure(cause: Error | null): 'sku' | 'cycle' | 'variant' | 
   return null;
 }
 
-/** True when a delete was refused because a bundle still lists the product as a component. */
-export function isUsedInBundle(cause: Error | null) {
-  return postgrestError(cause)?.code === '23503';
+/**
+ * Why a delete was refused, from the foreign key Postgres names: a bundle still lists the product as a
+ * component, or an Inventory item has stock history — its lots and movements are the record of what
+ * arrived and left, so they keep the item (stock_lots_product_fk has no cascade on purpose).
+ */
+export function deleteRefusal(cause: Error | null): 'bundle' | 'stock' | null {
+  const error = postgrestError(cause);
+  if (error?.code !== '23503') return null;
+  return error.message.includes('stock_') ? 'stock' : 'bundle';
 }
 
 async function saveProduct(values: ProductFormValues, target: { merchantId: string; productId: string | null }) {
@@ -195,6 +238,31 @@ export function useSaveProductMutation({ merchantId }: { merchantId: string }) {
       saveProduct(values, { merchantId, productId }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: productsKey.all });
+    },
+  });
+}
+
+/**
+ * An Inventory item, through save_stock_item (20260928100100_stock_items.sql): the row, its group, and the
+ * register drafts it wants, in one transaction. Returns the item's id. Its refusals are named exceptions —
+ * read them with stockFailure from stock-receipts/queries.ts; a duplicate SKU is still saveFailure's 'sku'.
+ */
+export function useSaveStockItemMutation({ merchantId }: { merchantId: string }) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ values, product }: { values: StockItemValues; product: ProductDetail | null }) => {
+      const { data } = await supabase
+        .rpc('save_stock_item', { payload: toStockItemPayload(values, { merchantId, product }) })
+        .throwOnError();
+      return data;
+    },
+    onSuccess: async () => {
+      // productGroupsKey too: a new group name makes a group row.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: productsKey.all }),
+        queryClient.invalidateQueries({ queryKey: productGroupsKey.all }),
+      ]);
     },
   });
 }

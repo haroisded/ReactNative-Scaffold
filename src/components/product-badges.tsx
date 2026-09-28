@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import type { Product } from '../features/products/queries';
 import { STATUS_META, TYPE_META, UNIT_META } from '../features/products/schema';
 import type { ProductStatus, ProductType } from '../features/products/schema';
+import { STOCK_ROLE_LABEL } from '../features/products/stock-item';
+import type { StockRole } from '../features/products/stock-item';
 import { useAppTheme } from '../lib/theme';
 import { radius, spacing } from '../themes';
 import { Icon } from './icon';
@@ -40,6 +42,44 @@ export function LowStockBadge() {
   return (
     <Text variant="labelMedium" style={{ color: colors.error }}>
       Low stock
+    </Text>
+  );
+}
+
+/**
+ * A register draft save_stock_item made from an Inventory item, still without its price — it cannot be
+ * sold until priced. Drawn as a TypeBadge-style chip: a to-do, not an error.
+ */
+export function NeedsPriceBadge({ product }: { product: Pick<Product, 'source_item_id' | 'selling_price'> }) {
+  const { colors } = useAppTheme();
+  if (product.source_item_id === null || product.selling_price !== null) return null;
+
+  return (
+    <View style={[styles.badge, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceMuted }]}>
+      <Text variant="labelMedium">Needs price</Text>
+    </View>
+  );
+}
+
+/** An Inventory item's type: what it is for, not what kind of resource it is. Same chip as TypeBadge. */
+export function StockRoleBadge({ role }: { role: StockRole }) {
+  const { colors } = useAppTheme();
+
+  return (
+    <View style={[styles.badge, { borderColor: colors.outlineVariant, backgroundColor: colors.surfaceMuted }]}>
+      <Text variant="labelMedium">{STOCK_ROLE_LABEL[role]}</Text>
+    </View>
+  );
+}
+
+/** From expiryState (src/features/products/stock-item.ts). `error` for both, like LowStockBadge: a warning. */
+export function ExpiryBadge({ state }: { state: 'expired' | 'soon' | null }) {
+  const { colors } = useAppTheme();
+  if (!state) return null;
+
+  return (
+    <Text variant="labelMedium" style={{ color: colors.error }}>
+      {state === 'expired' ? 'Expired' : 'Expiring'}
     </Text>
   );
 }

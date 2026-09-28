@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
+import { AddButton, FieldGrid, RepeatRow } from '../../../components/form-fields';
 import { NoteCallout } from '../../../components/note-callout';
 import { Text } from '../../../components/text';
 import { VARIANT_MATRIX_CAP, buildVariantMatrix, usesInventory } from '../../../features/products/schema';
@@ -9,7 +10,7 @@ import type { ProductFormValues } from '../../../features/products/schema';
 import { currencySymbol } from '../../../lib/money';
 import { useAppTheme } from '../../../lib/theme';
 import { radius, spacing } from '../../../themes';
-import { AddButton, ArrayError, FieldGrid, RepeatRow, TagsField, TextField, ToggleField } from '../fields';
+import { ArrayError, TagsField, TextField, ToggleField } from '../fields';
 
 export function VariantsSection({ currency }: { currency: string }) {
   const { control } = useFormContext<ProductFormValues>();

@@ -6,7 +6,7 @@ import type { LayoutChangeEvent } from 'react-native';
 // Not a breakpoint. It is a card's *minimum* width, and the column count falls out of it — a phone
 // gets one or two, a small tablet three, a large one more, with no device check anywhere
 // (instruction_mds/layout.md §1).
-export const MIN_CARD = 260;
+const MIN_CARD = 260;
 
 // ponytail: M3's "expanded" window class. Tune it on a real tablet.
 //
@@ -19,6 +19,7 @@ export const RAIL_EXPANDED = 116; // icons + labels
 export const RAIL_COLLAPSED = 72; // icons only, after the menu action
 export const DRAWER_WIDTH = 300; // the narrow shell's off-canvas drawer
 export const SECTION_LIST = 210; // a form's section list, wide only
+export const REVIEW_SIDEBAR = 340; // a wizard's review column, wide only
 
 /**
  * The shell's one width decision, handed to the screens under it (instruction_mds/layout.md §9).

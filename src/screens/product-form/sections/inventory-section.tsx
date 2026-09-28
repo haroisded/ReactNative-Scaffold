@@ -1,10 +1,11 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
+import { Field, FieldGrid, GroupHeading } from '../../../components/form-fields';
 import { NoteCallout } from '../../../components/note-callout';
 import { UNIT_META } from '../../../features/products/schema';
 import type { MeasureUnit, ProductFormValues } from '../../../features/products/schema';
-import { DateField, Field, FieldGrid, GroupHeading, SelectField, TextField, ToggleField, unitOptions } from '../fields';
+import { DateField, SelectField, TextField, ToggleField, unitOptions } from '../fields';
 import { SupplierPicker } from '../supplier-picker';
 
 export function InventorySection({ merchantId, units }: { merchantId: string; units: MeasureUnit[] }) {

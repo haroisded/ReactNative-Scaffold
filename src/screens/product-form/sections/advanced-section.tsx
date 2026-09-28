@@ -1,11 +1,12 @@
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
+import { AddButton, FieldGrid, RepeatRow } from '../../../components/form-fields';
 import { Text } from '../../../components/text';
 import { CUSTOM_FIELD_KIND_LABELS, customFieldKind } from '../../../features/products/schema';
 import type { ProductFormValues } from '../../../features/products/schema';
 import { spacing } from '../../../themes';
-import { AddButton, DateField, FieldGrid, RepeatRow, SegmentedField, SelectField, TextField } from '../fields';
+import { DateField, SegmentedField, SelectField, TextField } from '../fields';
 
 const KIND_OPTIONS = customFieldKind.options.map((kind) => ({ value: kind, label: CUSTOM_FIELD_KIND_LABELS[kind] }));
 const YES_NO = [

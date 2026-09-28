@@ -1,6 +1,7 @@
 import { useController, useFormContext, useFormState, useWatch } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
+import { DateTimeInput, Field, FieldGrid, GroupHeading } from '../../../components/form-fields';
 import { HelperText } from '../../../components/helper-text';
 import { Switch } from '../../../components/switch';
 import { Text } from '../../../components/text';
@@ -9,18 +10,7 @@ import type { MeasureUnit, ProductFormValues } from '../../../features/products/
 import { useShellWide } from '../../../lib/columns';
 import { useAppTheme } from '../../../lib/theme';
 import { spacing } from '../../../themes';
-import {
-  DateField,
-  DateListField,
-  DateTimeInput,
-  Field,
-  FieldGrid,
-  GroupHeading,
-  SegmentedField,
-  SelectField,
-  TextField,
-  ToggleField,
-} from '../fields';
+import { DateField, DateListField, SegmentedField, SelectField, TextField, ToggleField } from '../fields';
 
 const DURATION_OPTIONS = durationMode.options.map((mode) => ({ value: mode, label: DURATION_MODE_LABELS[mode] }));
 

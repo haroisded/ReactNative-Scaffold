@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
-import { CategoryDialog } from '../../components/category-dialog';
-import { MenuSelect } from '../../components/menu-select';
-import { childrenOf, topLevel, useCategoriesQuery } from '../../features/categories/queries';
-import type { ResourceScope } from '../../features/products/resources';
-import { useShellWide } from '../../lib/columns';
-import { useSheetResult } from '../../Store/sheet-result';
+import { childrenOf, topLevel, useCategoriesQuery } from '../features/categories/queries';
+import type { ResourceScope } from '../features/products/resources';
+import { useShellWide } from '../lib/columns';
+import { useSheetResult } from '../Store/sheet-result';
+import { CategoryDialog } from './category-dialog';
+import { MenuSelect } from './menu-select';
 
 type Props = {
   merchantId: string;
@@ -32,6 +32,8 @@ type Props = {
  *
  * Wide, the dialog mounts here and hands the row back through `onCreated`. Narrow, it is a formSheet
  * route, so the row comes back through the sheet-result slot under this picker's key.
+ *
+ * In src/components/ because the product form and the stock item form both use it.
  */
 export function CategoryPicker({ merchantId, scope, parentId, value, onChange, accessibilityLabel, error, clearable }: Props) {
   const wide = useShellWide();

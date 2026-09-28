@@ -1,6 +1,7 @@
 import { useFormContext, useFormState, useWatch } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Field, FieldGrid } from '../../components/form-fields';
 import { Text } from '../../components/text';
 import {
   FIELD_SECTION,
@@ -13,7 +14,6 @@ import type { ProductFormValues, SectionId } from '../../features/products/schem
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
-import { Field, FieldGrid } from './fields';
 
 type Props = {
   /** The sections this type has, in the order the merchant stepped through them. */

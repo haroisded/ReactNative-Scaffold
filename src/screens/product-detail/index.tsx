@@ -12,7 +12,7 @@ import { DeleteProductDialog } from '../../components/delete-product-dialog';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
-import { LowStockBadge, Thumbnail, TypeBadge } from '../../components/product-badges';
+import { LowStockBadge, NeedsPriceBadge, Thumbnail, TypeBadge } from '../../components/product-badges';
 import { AppText, Text } from '../../components/text';
 import { useDuplicateProductMutation, useProductQuery } from '../../features/products/queries';
 import type { ProductDetail as Detail } from '../../features/products/queries';
@@ -202,7 +202,7 @@ export function ProductDetail({ merchantId, currency, product, scope }: Props) {
           <Row label="Location" value={product.storage_location} />
           <Row
             label="Supplier"
-            value={product.supplier ? [product.supplier.name, product.supplier.contact].filter(Boolean).join(' · ') : null}
+            value={product.supplier ? [product.supplier.name, product.supplier.contact_person].filter(Boolean).join(' · ') : null}
           />
           <Row label="Supplier code" value={product.supplier_item_code} />
           <Row label="Lead time" value={product.lead_time_days === null ? null : `${product.lead_time_days} days`} />
@@ -377,6 +377,7 @@ export function ProductDetail({ merchantId, currency, product, scope }: Props) {
                 </Text>
               </View>
               {product.is_low_stock ? <LowStockBadge /> : null}
+              <NeedsPriceBadge product={product} />
             </View>
             <AppText variant="amount">{formatMoney(product.selling_price, currency)}</AppText>
           </View>

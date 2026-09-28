@@ -16,7 +16,7 @@ import type { MeasureUnit, ProductType } from './schema';
  */
 export type ResourceScope = Enums<'category_scope'>;
 
-export type SetupList = 'categories' | 'taxClasses' | 'suppliers';
+export type SetupList = 'categories' | 'taxClasses';
 
 type ResourceMeta = {
   /** The page header's title, and the drawer label. */
@@ -54,7 +54,8 @@ export const RESOURCE_META = {
     item: 'item',
     types: ['stock'],
     units: ['piece', 'box', 'pack', 'kg', 'g', 'l', 'ml'],
-    setup: ['categories', 'suppliers'],
+    // Suppliers moved to Stock → Suppliers (src/screens/stock/).
+    setup: ['categories'],
   },
 } satisfies Record<ResourceScope, ResourceMeta>;
 
@@ -64,13 +65,6 @@ export const RESOURCE_META = {
  */
 export function isResourceScope(raw: string | undefined): raw is ResourceScope {
   return raw !== undefined && Object.hasOwn(RESOURCE_META, raw);
-}
-
-/** Which screen a saved product belongs to. The same mapping the database writes into products.scope. */
-export function scopeOfType(type: ProductType): ResourceScope {
-  if (type === 'stock') return 'inventory';
-  if (type === 'rental' || type === 'bookable') return 'rentables';
-  return 'products';
 }
 
 /**

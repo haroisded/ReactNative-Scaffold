@@ -30,12 +30,14 @@ import { radius, spacing } from '../../../../themes';
 
 type Destination = { name: string; label: string; icon: IconName };
 
-// The three Resources screens. One catalogue split by what a merchant is looking
-// at: things sold as a line, things rented or booked, and things counted on a shelf.
+// The Resources screens. One catalogue split by what a merchant is looking at: things sold as a line,
+// things rented or booked, and things counted on a shelf — then Stock, where counted things arrive
+// (receipts) and who sends them (suppliers).
 const RESOURCES: Destination[] = [
   { name: 'products', label: 'Products', icon: 'list' },
   { name: 'rentables', label: 'Rentables', icon: 'key' },
   { name: 'inventory', label: 'Inventory', icon: 'inventory' },
+  { name: 'stock', label: 'Stock', icon: 'truck' },
 ];
 
 // Rail order. `name` is the route file under this directory; icons are the app's own names, drawn as
@@ -43,7 +45,7 @@ const RESOURCES: Destination[] = [
 // object, so matching the focused route is a plain comparison with no type assertion.
 //
 // Resources is the one row that is not a destination: it has no route and navigates nowhere, it only
-// shows and hides the three screens under it.
+// shows and hides the screens under it.
 const DESTINATIONS: (Destination | { group: 'resources'; label: string; icon: IconName })[] = [
   { name: 'index', label: 'Home', icon: 'home' },
   { name: 'register', label: 'Register', icon: 'calculator' },
@@ -55,7 +57,7 @@ const DESTINATIONS: (Destination | { group: 'resources'; label: string; icon: Ic
   { name: 'audit', label: 'Audit', icon: 'clipboard' },
 ];
 
-/** Every route the drawer navigator holds: the rail's own destinations plus the three Resources. */
+/** Every route the drawer navigator holds: the rail's own destinations plus the Resources screens. */
 const ROUTES: Destination[] = [
   // A predicate, not a plain filter: `!('group' in entry)` does not narrow the array's element type.
   ...DESTINATIONS.filter((entry): entry is Destination => !('group' in entry)),
@@ -247,7 +249,7 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
   const active = state.routes[state.index]?.name;
   // The drawer always shows labels; the rail shows them only while expanded.
   const labelled = !wide || expanded;
-  // Open when one of the three is the screen being shown, so a reload into Inventory does not hide it.
+  // Open when one of them is the screen being shown, so a reload into Inventory does not hide it.
   // Initial state only: after that the merchant's last tap on the group decides.
   const [resourcesOpen, setResourcesOpen] = useState(() => RESOURCES.some((entry) => entry.name === active));
 
@@ -294,7 +296,7 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
                   trailing={resourcesOpen ? 'chevron-down' : 'chevron-right'}
                   expandedState={resourcesOpen}
                   onPress={() => {
-                    // On the icon-only rail the children would be three unlabelled icons under an
+                    // On the icon-only rail the children would be unlabelled icons under an
                     // unlabelled one, so widening the rail is the first half of opening the group.
                     if (wide && !expanded) onExpandRail();
                     setResourcesOpen((open) => !open);
@@ -341,7 +343,7 @@ type ItemProps = {
   wide: boolean;
   labelled: boolean;
   active?: boolean;
-  /** One of the three screens under Resources: indented, and a step smaller. */
+  /** One of the screens under Resources: indented, and a step smaller. */
   nested?: boolean;
   /** The group row's chevron. */
   trailing?: IconName;
@@ -414,7 +416,7 @@ const styles = StyleSheet.create({
   // rail, where the item itself is a column.
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1, minWidth: 0 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingLeft: spacing.ms, paddingRight: spacing.md },
-  // One step in from its group row, so the three Resources screens read as under it.
+  // One step in from its group row, so the Resources screens read as under it.
   nested: { paddingLeft: spacing.lg },
   state: { gap: spacing.ms, alignItems: 'flex-start', padding: spacing.lg },
 });
