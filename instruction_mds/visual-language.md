@@ -133,7 +133,7 @@ on Android.
 | Wide list | `DataTable`: a `labelMedium` `Text` as each `DataTable.Title`'s child, a `Checkbox.Android` bulk-select column, `IconButton` row actions |
 | Narrow list | `FlashList` rows: thumbnail, `titleMedium` name, badge, `bodySmall` meta, amount right-aligned |
 | Bulk action bar | a `surfaceVariant` strip: clear `IconButton`, count in `labelLarge`, text `Button`s; Delete in `error` |
-| Low-stock badge | `labelMedium` in `error` |
+| Low-stock and lot-expiry badges (Low, Expiring, Expired) | `labelMedium` in `error` — `src/components/product-badges.tsx`. A lot's Expired is a warning, not the faint Expired status under §3 Status colours |
 | Search | outlined dense `TextInput` with a `TextInput.Icon` |
 | Filter and sort | an outlined `Button` anchoring a `Menu` |
 | Type badge | `View` with a 1px `outlineVariant` border on `surfaceMuted`, holding `labelMedium` |
@@ -171,6 +171,7 @@ on Android.
 | Confirm or picker (narrow) | an expo-router route with `presentation: 'formSheet'`, `sheetAllowedDetents: 'fitToContents'`, `sheetCornerRadius: radius.xl`, living in `src/app/(app)/sheets/` as a leaf of the `(app)` Stack (an Android formSheet cannot host a nested stack). The frame and scrim belong to the OS, so content carries the theme: 2px `primary` top rule, then the same kicker, title and actions as the dialog, padded above the gesture bar. React Native's own `Modal presentationStyle="formSheet"` is iOS-only |
 | Either of the two | `src/components/adaptive-dialog.tsx`: `wide` renders the `Dialog`, `inSheet` renders a sheet route's body. The opener decides — wide mounts the dialog, narrow pushes `/sheets/<name>` with ids as params. A sheet that creates something hands the row back through `src/Store/sheet-result.ts` |
 | Narrow exceptions that stay a Paper bottom sheet | The unsaved-changes prompt (holds the navigation action the form blocked) and the iOS date/time picker |
+| A destructive confirm (delete, void) | `src/components/confirm-dialog.tsx` on top of `adaptive-dialog.tsx`: Cancel, a red confirm, the write's notice under the body. The unsaved-changes prompt is `src/components/discard-dialog.tsx`, driven by `src/lib/unsaved-guard.ts` |
 | Multi-step flow opened from a list | Narrow: a full-screen pushed route. Wide: a Paper `Modal` with `radius.xl` corners. Not a sheet — it holds a `Menu`, which positions from window coordinates and lands offset in a partial-height native sheet |
 | While a request is in flight | Dialog is `dismissable={false}`. A sheet route turns off `gestureEnabled` and swallows Android back; Android's swipe-down and scrim tap still close it natively. The request finishes regardless, and TanStack Query drops the unmounted sheet's `onSuccess` |
 

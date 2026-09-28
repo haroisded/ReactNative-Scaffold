@@ -31,13 +31,13 @@ Which directories exist under `src/`, and what goes in each. What goes *inside* 
 ```
 src/
   app/                    routes and layouts only
-  lib/                    supabase, auth, secure-storage, query, database.types.ts, columns.ts
+  lib/                    supabase, auth, secure-storage, query, database.types.ts, columns.ts, errors.ts  …
   Store/                  zustand — client state only
   features/
     products/             queries.ts  schema.ts
     orders/
   screens/
-    product-form/         index.tsx  pricing-section.tsx  sections/  …
+    product-form/         index.tsx  review-section.tsx  sections/  …
     product-list/
   components/             text.tsx  button.tsx  page-header.tsx  adaptive-dialog.tsx  …
 ```
@@ -60,11 +60,11 @@ Never create a feature folder named after a page.
 | Example | Goes in |
 | --- | --- |
 | Merchants read/write, create-system schema | `src/features/merchants/` |
-| Home's SystemCard, CreateSystemModal, RemoveSystemDialog | `src/screens/home/` |
+| Home's SystemCard, CreateSystemModal | `src/screens/home/` |
 | Profile read | `src/features/profiles/`; screen in `src/screens/profile/` |
 | Products queries and schema | `src/features/products/` |
 | Products list, form, detail | `src/screens/product-list/`, `product-form/`, `product-detail/` |
-| A dialog that also opens as a sheet route | `src/components/` — the route is its second host |
+| A dialog that also opens as a sheet route (RemoveSystemDialog, the delete dialogs) | `src/components/` — the route is its second host |
 | Register cart, held sales, payment, receipt | data in `src/features/sales/`; UI in `src/screens/register/` |
 | Column-count hook | `src/lib/columns.ts` |
 

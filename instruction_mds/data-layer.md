@@ -108,6 +108,11 @@ log plain network errors — the user is already being told.
 when `onlineManager` says so. A PostgREST or GoTrue string names columns and policies, tells the
 user nothing, and leaks the schema. Zod messages are the exception — they already read for the user.
 
+**A form's or confirm's line under its buttons** is `mutationNotice(mutation, errorText, fallback)`
+(`src/lib/errors.ts`): the paused copy first (§5), then `errorText` on a failed write, then the
+screen's own `fallback` error (`INVALID_FORM` after a failed validation). Do not re-wrap its result.
+Copy two screens share lives there too (`SKU_TAKEN`).
+
 ## 5. Paused vs pending
 
 With `onlineManager` wired and `networkMode: 'online'`, an offline request is **queued, not failed**.

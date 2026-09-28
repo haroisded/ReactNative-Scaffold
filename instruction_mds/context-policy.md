@@ -63,7 +63,9 @@ check that is still failing.
 
 ### How
 
-The agent **never runs a git write** — no `commit`, no `branch`, no `push`. It:
+The agent **never runs a git write** — no `commit`, no `branch`, no `push` — unless the human asks
+for that commit in the same session. Then it writes the file below and runs the `git commit -F` line
+itself; still no branch and no push. Otherwise it:
 
 1. writes the message to `.claude/commit-history/<timestamp>.txt`, where `<timestamp>` is the
    current local date and time as `YYYY-MM-DD_HH-MM-SS` — `2026-09-19_14-32-08.txt`. Sortable, and

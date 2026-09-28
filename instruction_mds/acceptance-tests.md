@@ -13,10 +13,13 @@ tablet. The testers are people who will use the POS, not developers.
    feedback fields — testers report a failure by its test number.
 4. **Cover every group in §2, in that order.** A group that cannot apply gets one line saying why —
    a skipped group with no reason is indistinguishable from a forgotten one.
-5. **Steps are single actions.** One tap, one typed value, one thing to look at. A step that says
-   "set up a product" is two tests' worth of ambiguity.
-6. **Expected output is something a person can see.** Text on screen, a screen that opens, an item
-   that appears or disappears. Never "the row is written" — say where the tester sees it.
+5. **Steps are single actions, each one findable.** One tap, one typed value, one thing to look at —
+   and say where it is on the screen. A step that says "set up a product" is two tests' worth of
+   ambiguity. §1.1 says how much to write.
+6. **Expected output is something a person can see, described so a stranger could find it.** Text on
+   screen, a screen that opens, an item that appears or disappears — named with where it is and what
+   it looks like. Never "the row is written", and never "the dialog closes" without saying which
+   dialog. §1.1.
 7. **Test data is made through the app.** Two sample records per feature (§3), created in the test
    steps, never assumed to exist.
 8. **Results come back in `.claude/tests/test-report/<feature>-test-report.md`, never in the test file.** The
@@ -32,18 +35,63 @@ tablet. The testers are people who will use the POS, not developers.
 ## Test 1 - Title: <what a tester would call it>
 
 ### What will be tested?
-<one or two sentences>
+<two or three sentences: which screen, what the tester does there, and what a pass proves>
 
 ### What do you need before starting?
 - <signed in as …, on the … screen, internet on, …>
 
 ### Steps
-1. <one action>
-2. <one action>
+1. <one action, with where it is on the screen>
+2. <one action, with where it is on the screen>
 
 ### What's the expected output?
-- <what the tester sees>
+- <where to look, and what is there — readable without the steps>
 ```
+
+### 1.1 How to write each section
+
+The tester is a shop owner running the script for the first time. They have not seen the screen
+before, and they do not know what this test was written to catch. Write every section for that
+person.
+
+**What will be tested?** Two or three sentences, no more. Name the screen, say what the tester is
+about to do in plain words, and say what a pass proves — the thing the shop would lose if it broke.
+No background, no history of the feature.
+
+> ❌ A write-off takes a reason and a note.
+>
+> ✅ On an item's page in **Inventory**, you will remove damaged stock with **Write off**. A pass
+> means the stock count goes down and the item's **History** records why, so the shop can later see
+> where missing stock went.
+
+**Steps.** Still one action per step (rule 5), but each step says where the thing is and what it
+looks like: at the top, at the bottom, in the side menu, the **⋮** button at the right of a row, a
+switch, a field labelled **Pack name**. Use the exact words the screen shows, in bold. Give typed
+values in `code`. When a tap opens a new screen or dialog, say what opens in the same step, so the
+tester knows they are in the right place before the next one:
+
+> ❌ 2. Tap **Write off**.
+>
+> ✅ 2. Tap **Write off** in the menu that opens. A **Write off** dialog opens over the page.
+
+**What's the expected output?** Each bullet must make sense to someone who skipped the steps. Never
+presume the tester knows what you mean:
+
+- Say **where** to look first — which screen, which part of it (the top of the page, the **History**
+  list, the Receipts list) — then **what** is there, with the exact text in bold.
+- Never refer to something by a word the tester has not been shown: not "the dialog", "the count",
+  "the badge", "the line" on its own. Name it: "the **Write off** dialog", "the amount at the top of
+  the item's page".
+- Explain a term the first time it appears ("loose units — tablets outside a full box"); after that
+  the short form is fine.
+- Say what does **not** happen when that is the point of the test ("no second receipt appears in
+  the list").
+- When a step number matters, lead with it: "After step 4, …".
+
+> ❌ The count drops by 5 tablets.
+>
+> ✅ At the top of **Paracetamol 500mg**'s page, the amount on hand is 5 tablets lower than before
+> step 1 — for example **9 box + 7 tablet** becomes **9 box + 2 tablet**.
 
 ## 2. Groups
 
