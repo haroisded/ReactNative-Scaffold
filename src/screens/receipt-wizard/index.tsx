@@ -19,7 +19,7 @@ import {
 } from '../../components/form-fields';
 import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
-import { ProgressBar } from '../../components/progress-bar';
+import { StepHeader } from '../../components/step-header';
 import { SupplierDialog } from '../../components/supplier-dialog';
 import { Text } from '../../components/text';
 import { useStockItemOptionsQuery } from '../../features/products/queries';
@@ -136,6 +136,7 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
   const review = (
     <ReceiptReview header={header} supplierName={supplierName(suppliers.data, header.supplierId)} lines={lines} items={items} currency={currency} />
   );
+  const pages = { header: headerFields, lines: lineList, review };
   const actions = <SaveActions saving={saving} onSave={submit} />;
 
   return (
@@ -143,12 +144,12 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
       <PageHeader kicker="Stock" title="New receipt" meta={lineCount(lines.length)} onBack={() => router.back()} />
 
       {wide ? (
-        <WideSplit pages={{ header: headerFields, lines: lineList, review }} notice={notice} actions={actions} />
+        <WideSplit pages={pages} notice={notice} actions={actions} />
       ) : (
         <NarrowSteps
           step={step}
           onStep={setStep}
-          pages={{ header: headerFields, lines: lineList, review }}
+          pages={pages}
           notice={notice}
           actions={actions}
           onNext={() => void next()}
@@ -329,7 +330,13 @@ type NarrowStepsProps = PageProps & { step: Step; onStep: (step: Step) => void; 
 function NarrowSteps({ step, onStep, pages, notice, actions, onNext }: NarrowStepsProps) {
   return (
     <>
-      <Stepper step={step} onBack={onStep} />
+      <StepHeader
+        index={STEPS.indexOf(step)}
+        count={STEPS.length}
+        title={STEP_TITLE[step]}
+        backLabel="Previous step"
+        onBack={() => onStep(STEPS[STEPS.indexOf(step) - 1] ?? 'header')}
+      />
       <ScrollView key={step} style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {pages[step]}
       </ScrollView>
@@ -343,33 +350,6 @@ function NarrowSteps({ step, onStep, pages, notice, actions, onNext }: NarrowSte
         )}
       </FormFooter>
     </>
-  );
-}
-
-/** Narrow, the step the merchant is on, and the way back to the one before. */
-function Stepper({ step, onBack }: { step: Step; onBack: (step: Step) => void }) {
-  const { colors } = useAppTheme();
-  const index = STEPS.indexOf(step);
-
-  return (
-    <View style={styles.stepper}>
-      <View style={styles.stepperRow}>
-        <IconButton
-          icon="chevron-left"
-          disabled={index === 0}
-          onPress={() => onBack(STEPS[index - 1] ?? 'header')}
-          accessibilityLabel="Previous step"
-          style={styles.stepBack}
-        />
-        <View style={styles.fill}>
-          <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
-            {`Step ${index + 1} of ${STEPS.length}`}
-          </Text>
-          <Text variant="titleMedium">{STEP_TITLE[step]}</Text>
-        </View>
-      </View>
-      <ProgressBar progress={(index + 1) / STEPS.length} color={colors.accent} />
-    </View>
   );
 }
 
@@ -388,8 +368,7 @@ function SaveActions({ saving, onSave }: { saving: boolean; onSave: () => void }
 
 function receiptNotice(save: { isPaused: boolean; isError: boolean; error: Error | null }, problem: string | null): Notice | null {
   const failure = stockFailure(save.error);
-  const notice = mutationNotice(save, (failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't save this receipt. Try again."));
-  return notice ?? (problem ? { type: 'error', text: problem } : null);
+  return mutationNotice(save, (failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't save this receipt. Try again."), problem);
 }
 
 function stepAfter(step: Step) {
@@ -438,7 +417,7 @@ function LineRow({ line, items, currency, disabled, onEdit, onRemove }: LineRowP
       <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
         {formatMoney(lineCost(line, item?.unitsPerPack ?? 1), currency)}
       </Text>
-      <IconButton icon="delete" onPress={onRemove} disabled={disabled} accessibilityLabel="Remove line" style={styles.stepBack} />
+      <IconButton icon="delete" onPress={onRemove} disabled={disabled} accessibilityLabel="Remove line" style={styles.removeLine} />
     </Pressable>
   );
 }
@@ -460,10 +439,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderCurve: 'continuous',
   },
-  stepper: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   // IconButton ships a 6dp margin of its own; zeroed so the row's gap is the only spacing.
-  stepBack: { margin: 0 },
+  removeLine: { margin: 0 },
   footer: { gap: spacing.sm, padding: spacing.ms, borderTopWidth: 1 },
   // row-reverse turns Paper's leading icon slot into a trailing one (instruction_mds/visual-language.md §5).
   trailingIcon: { flexDirection: 'row-reverse', justifyContent: 'flex-end' },

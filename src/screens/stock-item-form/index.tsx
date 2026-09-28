@@ -30,7 +30,7 @@ import {
 import type { StockItemValues } from '../../features/products/stock-item';
 import { stockFailure } from '../../features/stock-receipts/queries';
 import { useShellWide } from '../../lib/columns';
-import { failureMessage, mutationNotice } from '../../lib/errors';
+import { INVALID_FORM, SKU_TAKEN, failureMessage, mutationNotice } from '../../lib/errors';
 import type { Notice } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
@@ -364,10 +364,9 @@ function stockItemNotice(save: { isPaused: boolean; isError: boolean; error: Err
   const failure = stockFailure(save.error);
   const text =
     saveFailure(save.error) === 'sku'
-      ? 'Another product already uses this SKU. Change it, or auto-generate a new one.'
+      ? SKU_TAKEN
       : ((failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't save this item. Try again."));
-  const notice = mutationNotice(save, text);
-  return notice ?? (invalid ? { type: 'error', text: 'Some fields need attention before this can be saved.' } : null);
+  return mutationNotice(save, text, invalid ? INVALID_FORM : null);
 }
 
 const styles = StyleSheet.create({

@@ -28,14 +28,26 @@ export function failureMessage(fallback: string): string {
 /** The line under a form or confirm: an offline wait, or what went wrong. */
 export type Notice = { type: 'error' | 'info'; text: string };
 
+/** A form's own error when validation stops the save: the product form and the stock item form. */
+export const INVALID_FORM = 'Some fields need attention before this can be saved.';
+
+/** products_sku_unique (saveFailure() 'sku'): both forms that write a product can trip it. */
+export const SKU_TAKEN = 'Another product already uses this SKU. Change it, or auto-generate a new one.';
+
 /**
  * A mutation's notice. Paused before error: a write queued while offline is waiting, not failed
  * (instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects —
- * usually a refusal from postgrestError(), else failureMessage().
+ * usually a refusal from postgrestError(), else failureMessage(). `fallback` is the screen's own
+ * error — a failed validation — shown when the write has nothing to say.
  */
-export function mutationNotice(mutation: { isPaused: boolean; isError: boolean }, errorText: string): Notice | null {
+export function mutationNotice(
+  mutation: { isPaused: boolean; isError: boolean },
+  errorText: string,
+  fallback: string | null = null
+): Notice | null {
   if (mutation.isPaused) return { type: 'info', text: 'Waiting for a connection. This finishes on its own when you reconnect.' };
-  return mutation.isError ? { type: 'error', text: errorText } : null;
+  if (mutation.isError) return { type: 'error', text: errorText };
+  return fallback === null ? null : { type: 'error', text: fallback };
 }
 
 /**

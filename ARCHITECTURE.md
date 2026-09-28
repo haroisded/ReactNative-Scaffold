@@ -47,7 +47,8 @@ src/components/            one re-export per Paper primitive, plus what more tha
                            sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
                            category-picker, the confirm/create dialogs (void-receipt and
                            stock-movement among them, all on confirm-dialog), discard-dialog (the
-                           unsaved-changes prompt the three forms share), form-footer, query-state
+                           unsaved-changes prompt the three forms share), form-footer, step-header
+                           (the product form and receipt wizard's narrow stepper), query-state
                            (loading / error / retry), fact-grid, archive-undo, product-badges,
                            note-callout, placeholder-screen
 src/app/_layout.tsx        PaperProvider + QueryProvider + the two-state route guard

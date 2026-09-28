@@ -10,10 +10,9 @@ import { Button } from '../../components/button';
 import { DiscardDialog } from '../../components/discard-dialog';
 import { FormFooter, FormNoticeText } from '../../components/form-footer';
 import { SectionHeading } from '../../components/form-fields';
-import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
-import { ProgressBar } from '../../components/progress-bar';
 import { Snackbar } from '../../components/snackbar';
+import { StepHeader } from '../../components/step-header';
 import { Text } from '../../components/text';
 import { saveFailure, useSaveProductMutation } from '../../features/products/queries';
 import type { ProductDetail } from '../../features/products/queries';
@@ -30,7 +29,7 @@ import {
 } from '../../features/products/schema';
 import type { ProductFormValues, ProductType, SectionId } from '../../features/products/schema';
 import { SECTION_LIST, useShellWide } from '../../lib/columns';
-import { failureMessage, mutationNotice } from '../../lib/errors';
+import { INVALID_FORM, SKU_TAKEN, failureMessage, mutationNotice } from '../../lib/errors';
 import type { Notice } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
@@ -63,7 +62,7 @@ type Props = {
 
 // Keyed by saveFailure(): the constraints a merchant can trip from this form.
 const SAVE_FAILURE_COPY = new Map<ReturnType<typeof saveFailure>, string>([
-  ['sku', 'Another product already uses this SKU. Change it, or auto-generate a new one.'],
+  ['sku', SKU_TAKEN],
   ['cycle', 'One of the components already contains this product, so the bundle would contain itself.'],
   ['variant', 'Two variants have the same combination. Remove the repeated attribute value.'],
 ]);
@@ -194,10 +193,7 @@ function useSections(type: ProductType) {
   // the per-type table.
   const sections: Section[] = [...SECTIONS_BY_TYPE[type], { id: 'review', optional: false }];
   const [sectionId, setSectionId] = useState<SectionId>('general');
-  const index = Math.max(
-    0,
-    sections.findIndex((entry) => entry.id === sectionId)
-  );
+  const index = Math.max(0, sections.findIndex((entry) => entry.id === sectionId));
   const current = sections[index] ?? sections[0];
 
   // Open the first section, in the order the merchant sees them, that holds an error. Review itself is
@@ -325,31 +321,19 @@ function SectionRow({ section, position, active, failed, onPress }: SectionRowPr
 
 /** Narrow, one section at a time: Next until Review, which ends in the save buttons. */
 function NarrowSteps({ sections, current, index, failedSections, notice, body, onOpen, saveActions }: StepsProps & { saveActions: ReactElement }) {
-  const { colors } = useAppTheme();
   const reviewing = current.id === 'review';
 
   return (
     <>
-      <View style={styles.stepper}>
-        <View style={styles.stepperRow}>
-          <IconButton
-            icon="chevron-left"
-            disabled={index === 0}
-            onPress={() => onOpen(sections[index - 1]?.id ?? 'general')}
-            accessibilityLabel="Previous section"
-            style={styles.stepBack}
-          />
-          <View style={styles.fill}>
-            <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
-              {`Step ${index + 1} of ${sections.length}${current.optional ? ' · Optional' : ''}`}
-            </Text>
-            <Text variant="titleMedium" style={failedSections.has(current.id) ? { color: colors.error } : undefined}>
-              {SECTION_META[current.id].name}
-            </Text>
-          </View>
-        </View>
-        <ProgressBar progress={(index + 1) / sections.length} color={colors.accent} />
-      </View>
+      <StepHeader
+        index={index}
+        count={sections.length}
+        title={SECTION_META[current.id].name}
+        optional={current.optional}
+        failed={failedSections.has(current.id)}
+        backLabel="Previous section"
+        onBack={() => onOpen(sections[index - 1]?.id ?? 'general')}
+      />
       <ScrollView key={current.id} style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {body}
       </ScrollView>
@@ -455,8 +439,8 @@ function sectionsWithErrors(fields: string[]) {
 }
 
 function productNotice(save: { isPaused: boolean; isError: boolean; error: Error | null }, item: string, invalid: boolean): Notice | null {
-  const notice = mutationNotice(save, SAVE_FAILURE_COPY.get(saveFailure(save.error)) ?? failureMessage(`Couldn't save this ${item}. Try again.`));
-  return notice ?? (invalid ? { type: 'error', text: 'Some fields need attention before this can be saved.' } : null);
+  const text = SAVE_FAILURE_COPY.get(saveFailure(save.error)) ?? failureMessage(`Couldn't save this ${item}. Try again.`);
+  return mutationNotice(save, text, invalid ? INVALID_FORM : null);
 }
 
 const styles = StyleSheet.create({
@@ -473,10 +457,6 @@ const styles = StyleSheet.create({
     paddingRight: spacing.ms,
   },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
-  stepper: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  // IconButton ships a 6dp margin of its own; zeroed so the row's gap is the only spacing.
-  stepBack: { margin: 0 },
   footerRow: { flexDirection: 'row', gap: spacing.sm },
   // Three full-width buttons on the Review step do not fit a phone-width row, so they stack.
   footerStack: { gap: spacing.sm },
