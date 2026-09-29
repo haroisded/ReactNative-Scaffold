@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/page-header';
 import { QueryState } from '../../components/query-state';
 import { Text } from '../../components/text';
 import { VoidReceiptDialog } from '../../components/void-receipt-dialog';
+import { lotBalance } from '../../features/stock-movements/queries';
 import { RECEIPT_STATUS_LABEL, receiptStatus, receiptTotal, useStockReceiptQuery } from '../../features/stock-receipts/queries';
 import type { ReceiptDetail } from '../../features/stock-receipts/queries';
 import { useShellWide } from '../../lib/columns';
@@ -23,7 +24,7 @@ type Props = { currency: string; id: string };
 type Lot = ReceiptDetail['lots'][number];
 
 /**
- * One receipt, read-only (design.md §3: its quantities and costs are fixed once saved). Each line opens
+ * One receipt, read-only: its quantities and costs are fixed once saved. Each line opens
  * onto its cases, and each case onto its packs. Void is here, and only while nothing has been drawn —
  * void_receipt refuses otherwise and the dialog says so.
  */
@@ -58,7 +59,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
   };
   const muted = { color: colors.onSurfaceMuted };
   const facts: Fact[] = [
-    ['Supplier', receipt.supplier ? `${receipt.supplier.name} · ${receipt.supplier.code}` : 'Opening stock'],
+    ['Supplier', receipt.supplier ? `${receipt.supplier.name} · ${receipt.supplier.code}` : null],
     ['Received on', displayDate(receipt.received_on)],
     ['Invoice / DR', receipt.invoice_no],
     ['Received by', receipt.received_by],
@@ -70,7 +71,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
   return (
     <View style={styles.fill}>
       <PageHeader
-        kicker={receipt.supplier ? 'Receipt' : 'Opening stock'}
+        kicker="Receipt"
         title={receipt.code}
         meta={RECEIPT_STATUS_LABEL[status]}
         onBack={() => router.back()}
@@ -119,7 +120,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
   const muted = { color: colors.onSurfaceMuted };
   const loosePacks = lot.packs.filter((row) => row.case_id === null);
   const summary = lotSummary(lot, pack, base);
-  const hasChildren = lot.cases.length > 0 || lot.packs.length > 0;
+  const hasChildren = lot.case_rows.length > 0 || lot.packs.length > 0;
 
   return (
     <View style={[styles.card, { borderColor: colors.outlineVariant }]}>
@@ -141,7 +142,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
             {`${lot.code} · ${summary}`}
           </Text>
           <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
-            {`${lot.qty_remaining} of ${lot.qty_received ?? 0} ${base} left`}
+            {`${lotBalance(lot).remaining} of ${lot.qty_received ?? 0} ${base} left`}
           </Text>
         </View>
         <LotMoney lot={lot} currency={currency} base={base} />
@@ -149,9 +150,10 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
 
       {open ? (
         <View style={[styles.children, { borderTopColor: colors.outlineVariant }]}>
-          {lot.cases.map((row) => (
-            <CaseRow key={row.id} code={row.code} left={`${row.qty_remaining} ${base} left`} packs={lot.packs.filter((entry) => entry.case_id === row.id)} base={base} />
-          ))}
+          {lot.case_rows.map((row) => {
+            const packs = lot.packs.filter((entry) => entry.case_id === row.id);
+            return <CaseRow key={row.id} code={row.code} left={`${lotBalance({ packs }).remaining} ${base} left`} packs={packs} base={base} />;
+          })}
           {loosePacks.map((row) => (
             <PackRow key={row.id} pack={row} base={base} />
           ))}
@@ -163,7 +165,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
 
 /** "2 cases × 12 packs + 3 pcs · expires 1 Oct 2026" */
 function lotSummary(lot: Lot, pack: string, base: string) {
-  const received = lot.cases.length > 0 ? `${lot.cases.length} cases × ${lot.packs_per_case} ${pack}` : `${lot.packs_received} ${pack}`;
+  const received = lot.cases ? `${lot.cases} cases × ${lot.packs_per_case} ${pack}` : `${lot.packs_received} ${pack}`;
   return [
     lot.loose_units ? `${received} + ${lot.loose_units} ${base}` : received,
     lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
@@ -237,7 +239,7 @@ function PackRow({ pack, base }: { pack: Lot['packs'][number]; base: string }) {
         {pack.serial ? `${pack.code} · ${pack.serial}` : pack.code}
       </Text>
       <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-        {`${pack.qty_remaining} of ${pack.units} ${base}${pack.opened_at ? ' · open' : ''}`}
+        {`${pack.qty_remaining} of ${pack.units} ${base}${pack.qty_remaining > 0 && pack.qty_remaining < pack.units ? ' · open' : ''}`}
       </Text>
     </View>
   );

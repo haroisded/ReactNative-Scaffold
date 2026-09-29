@@ -35,7 +35,8 @@ type Destination = { name: string; label: string; icon: IconName };
 // (receipts) and who sends them (suppliers).
 const RESOURCES: Destination[] = [
   { name: 'products', label: 'Products', icon: 'list' },
-  { name: 'rentables', label: 'Rentables', icon: 'key' },
+  // Rentables is switched off for now: its routes and data stay, it is only left off this menu, and
+  // the Register never lists its items.
   { name: 'inventory', label: 'Inventory', icon: 'inventory' },
   { name: 'stock', label: 'Stock', icon: 'truck' },
 ];

@@ -16,6 +16,7 @@ import { HelperText } from './helper-text';
 import { IconButton } from './icon-button';
 import { MenuSelect } from './menu-select';
 import type { SelectOption } from './menu-select';
+import { SegmentedButtons } from './segmented-buttons';
 import { Switch } from './switch';
 import { Text } from './text';
 import { TextInput } from './text-input';
@@ -516,6 +517,36 @@ export function ControlledSwitch<T extends FieldValues>({
           {input.value ? on : off}
         </Text>
       </View>
+    </Field>
+  );
+}
+
+/**
+ * SegmentedButtons in a Field, bound to one string of a react-hook-form: a choice of two or three that
+ * is always visible, like Sell By (instruction_mds/visual-language.md §4, Segmented field).
+ */
+export function ControlledSegmented<T extends FieldValues>({
+  control,
+  name,
+  options,
+  disabled,
+  ...field
+}: ControlledProps<T, string> & { options: SelectOption[]; disabled?: boolean }) {
+  const { field: input, fieldState } = useController({ control, name });
+
+  return (
+    <Field {...field} error={fieldState.error?.message}>
+      <SegmentedButtons
+        density="small"
+        // SAFETY: `name` is a FieldPathByValue<T, string>, so the value at it is a string; TypeScript
+        // cannot resolve the generic path's value type inside the component.
+        value={input.value as string}
+        onValueChange={(value) => {
+          input.onChange(value);
+          input.onBlur();
+        }}
+        buttons={options.map((option) => ({ value: option.value, label: option.label, disabled }))}
+      />
     </Field>
   );
 }

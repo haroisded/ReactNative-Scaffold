@@ -1,9 +1,7 @@
 import * as z from 'zod';
 
-import type { MovementTarget } from './queries';
-
 // The Adjust / Write off / Return to supplier dialog (src/components/stock-movement-dialog.tsx). The
-// rules are record_stock_movement's (20260928100200_stock_receipts.sql §6), reported here before a
+// rules are record_stock_movement's (20260929100100_stock_ledger.sql §5), reported here before a
 // round trip: an adjust needs a note, a write-off needs a reason, and "Other" needs a note as well.
 
 export const movementKind = z.enum(['adjust', 'write_off', 'return_supplier']);
@@ -40,10 +38,10 @@ export const movementSchema = z
 
 export type MovementValues = z.infer<typeof movementSchema>;
 
-export function toMovementPayload(target: MovementTarget, values: MovementValues) {
+export function toMovementPayload(packId: string, values: MovementValues) {
   return {
     kind: values.kind,
-    ...('lotId' in target ? { lot_id: target.lotId } : 'caseId' in target ? { case_id: target.caseId } : { pack_id: target.packId }),
+    pack_id: packId,
     qty: Number(values.qty),
     reason: values.kind === 'write_off' ? values.reason : null,
     note: values.note === '' ? null : values.note,

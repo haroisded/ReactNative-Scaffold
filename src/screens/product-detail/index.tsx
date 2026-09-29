@@ -14,7 +14,7 @@ import { PageHeader } from '../../components/page-header';
 import { QueryState } from '../../components/query-state';
 import { LowStockBadge, NeedsPriceBadge, Thumbnail, TypeBadge } from '../../components/product-badges';
 import { AppText, Text } from '../../components/text';
-import { useDuplicateProductMutation, useProductQuery } from '../../features/products/queries';
+import { useDuplicateProductMutation, useProductQuery, useSourceItemQuery } from '../../features/products/queries';
 import type { ProductDetail as Detail } from '../../features/products/queries';
 import { RESOURCE_ROUTE } from '../../features/products/resources';
 import type { ResourceScope } from '../../features/products/resources';
@@ -203,8 +203,21 @@ function Summary({ product, currency, wide }: { product: Detail; currency: strin
           <NeedsPriceBadge product={product} />
         </View>
         <AppText variant="amount">{formatMoney(product.selling_price, currency)}</AppText>
+        {product.source_item_id ? <SourceItemLine itemId={product.source_item_id} /> : null}
       </View>
     </View>
+  );
+}
+
+/** "From Inventory: Paracetamol 500mg": the Inventory item a draft sells, and whose stock a sale draws. */
+function SourceItemLine({ itemId }: { itemId: string }) {
+  const { colors } = useAppTheme();
+  const item = useSourceItemQuery({ id: itemId }).data;
+  if (!item) return null;
+  return (
+    <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
+      {`From Inventory: ${item.name}${item.sku ? ` · ${item.sku}` : ''}`}
+    </Text>
   );
 }
 

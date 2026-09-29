@@ -2,101 +2,81 @@ import { StyleSheet, View } from 'react-native';
 
 import { displayDate } from '../../components/form-fields';
 import { Text } from '../../components/text';
-import type { StockItemOption } from '../../features/products/queries';
-import { lineCost } from '../../features/stock-receipts/schema';
-import type { ReceiptHeaderValues, ReceiptLineValues } from '../../features/stock-receipts/schema';
+import { caseTotals, landedCosts, lineCostPerPack, linePacks, receiptLines } from '../../features/stock-receipts/schema';
+import type { ReceiptValues } from '../../features/stock-receipts/schema';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
-import { lineItem, lineSummary } from './line-editor';
 
-type Props = {
-  header: ReceiptHeaderValues;
-  supplierName: string;
-  lines: ReceiptLineValues[];
-  items: StockItemOption[];
-  currency: string;
-};
+type Props = { receipt: ReceiptValues; supplierName: string; currency: string };
 
 /**
- * The receipt before it is saved: every line's value, freight spread across them by value, and the
- * landed total. The split here is a preview of the one save_receipt does; the saved lot costs are the
- * server's and are fixed from then on (design.md §3).
+ * The receipt before it is saved (Stock_Receiving.html step 7): each product's packs, cases and cost per
+ * base unit with its freight share, then the total. Pack and case codes are issued on save, so they read
+ * as a count here. The split is a preview of the one save_receipt does; the saved costs are the server's.
  */
-export function ReceiptReview({ header, supplierName, lines, items, currency }: Props) {
+export function ReceiptReview({ receipt, supplierName, currency }: Props) {
   const { colors } = useAppTheme();
-  const costs = lines.map((line) => lineCost(line, lineItem(line, items)?.unitsPerPack ?? 1));
-  const subtotal = costs.reduce((sum, cost) => sum + cost, 0);
-  const freight = Number(header.freight || 0);
+  const lines = receiptLines(receipt);
+  const costs = landedCosts(receipt);
+  const cases = receipt.multi ? null : caseTotals(receipt);
+  const freight = Number(receipt.freight || 0);
+  const total = costs.reduce((sum, cost) => sum + cost.value, 0) + freight;
   const muted = { color: colors.onSurfaceMuted };
 
   return (
     <View style={styles.root}>
-      <View style={styles.block}>
-        <Text variant="titleMedium">{supplierName}</Text>
+      <Row label="Supplier" value={supplierName} />
+      <Row label="Date received" value={receipt.receivedOn ? displayDate(receipt.receivedOn) : '—'} />
+      <Row label="Freight / other charges" value={freight ? formatMoney(freight, currency) : '—'} />
+
+      {lines.map((line, index) => {
+        const unit = line.sellBy === 'pack' ? 'pack' : line.baseUnit || 'unit';
+        const packs = linePacks(line, receipt);
+        return (
+          <View key={index} style={[styles.line, { borderTopColor: colors.outlineVariant }]}>
+            <Text variant="titleMedium">{line.name || 'Item'}</Text>
+            <Row label="Lot / batch" value={line.lotCode || 'Issued on save'} />
+            <Row label="Received packs" value={`${packs} · pack IDs issued on save`} />
+            {index === 0 && !receipt.multi ? (
+              <Row label="Cases" value={cases ? `${cases.cases} × ${cases.per} packs · case IDs issued on save` : 'None (loose packs)'} />
+            ) : null}
+            <Row label={`Total ${unit}`} value={String(costs[index].units)} />
+            <Row label="Cost per pack" value={formatMoney(lineCostPerPack(line, receipt), currency)} />
+            <Row label={`Cost per ${unit}`} value={`${formatMoney(costs[index].unitCost, currency)} landed`} />
+            {costs[index].share > 0 ? <Row label="Freight share" value={formatMoney(costs[index].share, currency)} /> : null}
+            <Row label="Expiry date" value={line.hasExpiry && line.expiresOn ? displayDate(line.expiresOn) : 'None'} />
+          </View>
+        );
+      })}
+
+      <View style={[styles.line, { borderTopColor: colors.onSurface }]}>
+        <Row label="Total" value={formatMoney(total, currency)} strong />
         <Text variant="bodySmall" style={muted}>
-          {[displayDate(header.receivedOn), header.invoiceNo, header.receivedBy && `by ${header.receivedBy}`]
-            .filter(Boolean)
-            .join(' · ')}
+          Freight is spread across the products by value and added into each cost per base unit.
         </Text>
-      </View>
-
-      <View style={[styles.block, styles.rule, { borderTopColor: colors.outlineVariant }]}>
-        {lines.length === 0 ? (
-          <Text variant="bodyMedium" style={muted}>
-            No lines yet.
-          </Text>
-        ) : (
-          lines.map((line, index) => {
-            const item = lineItem(line, items);
-            const share = subtotal > 0 ? (freight * costs[index]) / subtotal : 0;
-            return (
-              <View key={index} style={styles.row}>
-                <View style={styles.fill}>
-                  <Text variant="bodyMedium" numberOfLines={1}>
-                    {item?.name ?? 'Item'}
-                  </Text>
-                  <Text variant="bodySmall" style={muted} numberOfLines={1}>
-                    {share > 0
-                      ? `${lineSummary(line, item)} · + ${formatMoney(share, currency)} freight`
-                      : lineSummary(line, item)}
-                  </Text>
-                </View>
-                <Text variant="bodyMedium">{formatMoney(costs[index], currency)}</Text>
-              </View>
-            );
-          })
-        )}
-      </View>
-
-      <View style={[styles.block, styles.rule, { borderTopColor: colors.outlineVariant }]}>
-        <View style={styles.row}>
-          <Text variant="bodyMedium" style={[styles.fill, muted]}>
-            Lines
-          </Text>
-          <Text variant="bodyMedium">{formatMoney(subtotal, currency)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text variant="bodyMedium" style={[styles.fill, muted]}>
-            Freight
-          </Text>
-          <Text variant="bodyMedium">{formatMoney(freight, currency)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text variant="titleMedium" style={styles.fill}>
-            Total
-          </Text>
-          <Text variant="titleMedium">{formatMoney(subtotal + freight, currency)}</Text>
-        </View>
       </View>
     </View>
   );
 }
 
+function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  const { colors } = useAppTheme();
+  return (
+    <View style={styles.row}>
+      <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
+        {label}
+      </Text>
+      <Text variant={strong ? 'titleMedium' : 'bodyMedium'} style={styles.value}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  root: { gap: spacing.md },
-  block: { gap: spacing.sm },
-  rule: { borderTopWidth: 1, paddingTop: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms },
+  root: { gap: spacing.sm },
+  line: { gap: spacing.xs, borderTopWidth: 1, paddingTop: spacing.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.ms },
+  value: { flexShrink: 1, textAlign: 'right' },
 });

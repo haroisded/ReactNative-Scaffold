@@ -5,31 +5,37 @@ import { STALE } from '../../lib/query';
 import { supabase } from '../../lib/supabase';
 import { productsKey } from '../products/queries';
 import { toReceiptPayload } from './schema';
-import type { ReceiptHeaderValues, ReceiptLineValues } from './schema';
+import type { ReceiptValues } from './schema';
 
 // Stock → Receipts (src/screens/stock/), the receipt wizard and the receipt detail. The client only
 // reads these tables: their policies are select-only, and save_receipt / void_receipt are the writers
-// (20260928100200_stock_receipts.sql §4, §5).
+// (20260929100100_stock_ledger.sql §5, §6).
 const stockReceiptsKey = {
   all: ['stock-receipts'],
-  list: (args: { merchantId: string }) => [...stockReceiptsKey.all, 'list', args],
+  lines: (args: { merchantId: string }) => [...stockReceiptsKey.all, 'lines', args],
+  lotPacks: (args: { lotId: string }) => [...stockReceiptsKey.all, 'lot-packs', args],
   detail: (args: { id: string }) => [...stockReceiptsKey.all, 'detail', args],
 };
 
-export function useStockReceiptsQuery({ merchantId }: { merchantId: string }) {
+/**
+ * The Stock screen's rows: one per receipt line (a lot that came on a receipt), newest first, with what it
+ * has left. Inventory-added stock has no receipt and is not listed here.
+ */
+export function useReceiptLinesQuery({ merchantId }: { merchantId: string }) {
   return useQuery({
-    queryKey: stockReceiptsKey.list({ merchantId }),
+    queryKey: stockReceiptsKey.lines({ merchantId }),
     queryFn: async () => {
-      // ponytail: no pagination — every receipt in one response. Add range() when a merchant's history
-      // outgrows it.
+      // ponytail: no pagination — every receipt line in one response. Add range() when a merchant's
+      // history outgrows it.
       const { data } = await supabase
-        .from('stock_receipts')
+        .from('stock_lot_lines')
         .select(
-          'id, code, received_on, invoice_no, freight, voided_at, supplier:suppliers!stock_receipts_supplier_fk(name), lots:stock_lots!stock_lots_receipt_fk(line_cost, qty_received, qty_remaining)'
+          'id, receipt_id, code, qty_received, qty_remaining, packs_total, packs_open, line_cost, freight_share, unit_cost, location, expires_on, created_at, receipt:stock_receipts!stock_lots_receipt_fk(code, received_on, voided_at, supplier:suppliers!stock_receipts_supplier_fk(name)), product:products!stock_lots_product_fk(name, base_unit_name, pack_unit_name, group:product_groups!products_group_fk(name))'
         )
         .eq('merchant_id', merchantId)
-        .order('received_on', { ascending: false })
+        .eq('source', 'stock')
         .order('created_at', { ascending: false })
+        .order('position')
         .throwOnError();
 
       return data;
@@ -38,7 +44,24 @@ export function useStockReceiptsQuery({ merchantId }: { merchantId: string }) {
   });
 }
 
-export type ReceiptListRow = NonNullable<ReturnType<typeof useStockReceiptsQuery>['data']>[number];
+export type ReceiptLineRow = NonNullable<ReturnType<typeof useReceiptLinesQuery>['data']>[number];
+
+/** A receipt line's packs, with the case each sits in: the Stock row's drill. */
+export function useLotPacksQuery({ lotId }: { lotId: string }) {
+  return useQuery({
+    queryKey: stockReceiptsKey.lotPacks({ lotId }),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('stock_packs')
+        .select('id, code, serial, units, qty_remaining, case:stock_cases!stock_packs_case_fk(id, code, sscc)')
+        .eq('lot_id', lotId)
+        .order('code')
+        .throwOnError();
+      return data;
+    },
+    staleTime: STALE.SECONDS.THIRTY,
+  });
+}
 
 export type ReceiptStatus = 'full' | 'partial' | 'depleted' | 'void';
 
@@ -49,23 +72,30 @@ export const RECEIPT_STATUS_LABEL = {
   void: 'Void',
 } satisfies Record<ReceiptStatus, string>;
 
-type StatusSource = {
+/** Full while nothing has left, Depleted once everything has, Partial between. */
+export function lineStatus(line: { voided: boolean; received: number; remaining: number }): ReceiptStatus {
+  if (line.voided) return 'void';
+  if (line.remaining <= 0) return 'depleted';
+  return line.remaining >= line.received ? 'full' : 'partial';
+}
+
+type DetailSource = {
   voided_at: string | null;
   freight: number;
-  lots: { line_cost: number | null; qty_received: number | null; qty_remaining: number }[];
+  lots: { line_cost: number | null; qty_received: number | null; packs: { qty_remaining: number }[] }[];
 };
 
-/** Full while nothing has left, Depleted once everything has, Partial between. */
-export function receiptStatus(receipt: StatusSource): ReceiptStatus {
-  if (receipt.voided_at) return 'void';
-  const received = receipt.lots.reduce((sum, lot) => sum + (lot.qty_received ?? 0), 0);
-  const remaining = receipt.lots.reduce((sum, lot) => sum + lot.qty_remaining, 0);
-  if (remaining <= 0) return 'depleted';
-  return remaining >= received ? 'full' : 'partial';
+/** A whole receipt's status, from its lines' packs. */
+export function receiptStatus(receipt: DetailSource): ReceiptStatus {
+  return lineStatus({
+    voided: receipt.voided_at !== null,
+    received: receipt.lots.reduce((sum, lot) => sum + (lot.qty_received ?? 0), 0),
+    remaining: receipt.lots.reduce((sum, lot) => sum + lot.packs.reduce((acc, pack) => acc + pack.qty_remaining, 0), 0),
+  });
 }
 
 /** The landed total: every line's value plus freight. */
-export function receiptTotal(receipt: StatusSource) {
+export function receiptTotal(receipt: DetailSource) {
   return receipt.lots.reduce((sum, lot) => sum + (lot.line_cost ?? 0), 0) + receipt.freight;
 }
 
@@ -77,7 +107,7 @@ const DETAIL_SELECT = `
   lots:stock_lots!stock_lots_receipt_fk(
     *,
     product:products!stock_lots_product_fk(name, sku, pack_unit_name, base_unit_name),
-    cases:stock_cases!stock_cases_lot_fk(*),
+    case_rows:stock_cases!stock_cases_lot_fk(*),
     packs:stock_packs!stock_packs_lot_fk(*)
   )
 `;
@@ -89,7 +119,7 @@ async function loadReceipt(id: string) {
     .eq('id', id)
     // Embeds come back unordered; PostgREST orders them by alias path.
     .order('position', { referencedTable: 'lots' })
-    .order('code', { referencedTable: 'lots.cases' })
+    .order('code', { referencedTable: 'lots.case_rows' })
     .order('code', { referencedTable: 'lots.packs' })
     .maybeSingle()
     .throwOnError();
@@ -125,11 +155,11 @@ export function useSaveReceiptMutation({ merchantId }: { merchantId: string }) {
   const invalidate = useInvalidateStock();
 
   return useMutation({
-    mutationFn: async ({ header, lines }: { header: ReceiptHeaderValues; lines: ReceiptLineValues[] }) => {
-      // One RPC, one transaction: the header, every lot, case and pack, the receive movements and the
-      // freight split land together or not at all.
+    mutationFn: async (receipt: ReceiptValues) => {
+      // One RPC, one transaction: the header, any new item, every lot, case and pack, the receive
+      // movements and the freight split land together or not at all.
       const { data } = await supabase
-        .rpc('save_receipt', { payload: toReceiptPayload(merchantId, header, lines) })
+        .rpc('save_receipt', { payload: toReceiptPayload(merchantId, receipt) })
         .throwOnError();
       return data;
     },
@@ -150,7 +180,7 @@ export function useVoidReceiptMutation() {
 
 /**
  * The exception a writer raised, when it is one of the named refusals in
- * 20260928100200_stock_receipts.sql — `raise exception 'receipt_has_movements'` arrives as the message.
+ * 20260929100100_stock_ledger.sql — `raise exception 'receipt_in_use'` arrives as the message.
  * A screen picks its copy from this and never renders the message itself.
  */
 export function stockFailure(cause: Error | null) {

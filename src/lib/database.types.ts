@@ -410,7 +410,6 @@ export type Database = {
           scope: Database["public"]["Enums"]["category_scope"]
           sell_by: Database["public"]["Enums"]["stock_sell_by"] | null
           selling_price: number | null
-          serial_tracked: boolean
           shelf_life_days: number | null
           sku: string | null
           sold_directly: boolean
@@ -480,7 +479,6 @@ export type Database = {
           scope: Database["public"]["Enums"]["category_scope"]
           sell_by?: Database["public"]["Enums"]["stock_sell_by"] | null
           selling_price?: number | null
-          serial_tracked?: boolean
           shelf_life_days?: number | null
           sku?: string | null
           sold_directly?: boolean
@@ -550,7 +548,6 @@ export type Database = {
           scope?: Database["public"]["Enums"]["category_scope"]
           sell_by?: Database["public"]["Enums"]["stock_sell_by"] | null
           selling_price?: number | null
-          serial_tracked?: boolean
           shelf_life_days?: number | null
           sku?: string | null
           sold_directly?: boolean
@@ -648,30 +645,34 @@ export type Database = {
           code: string
           created_at: string
           id: string
-          location: string | null
           lot_id: string
           merchant_id: string
-          qty_remaining: number
+          sscc: string | null
         }
         Insert: {
           code: string
           created_at?: string
           id?: string
-          location?: string | null
           lot_id: string
           merchant_id: string
-          qty_remaining: number
+          sscc?: string | null
         }
         Update: {
           code?: string
           created_at?: string
           id?: string
-          location?: string | null
           lot_id?: string
           merchant_id?: string
-          qty_remaining?: number
+          sscc?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "stock_cases_lot_fk"
+            columns: ["lot_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_lot_lines"
+            referencedColumns: ["id", "merchant_id"]
+          },
           {
             foreignKeyName: "stock_cases_lot_fk"
             columns: ["lot_id", "merchant_id"]
@@ -690,7 +691,9 @@ export type Database = {
       }
       stock_lots: {
         Row: {
+          case_sscc: string | null
           cases: number | null
+          cases_per_pallet: number | null
           code: string
           cost_per_case: number | null
           cost_per_pack: number
@@ -705,20 +708,26 @@ export type Database = {
           notes: string | null
           packs_per_case: number | null
           packs_received: number
+          pallet_sscc: string | null
+          pallets: number | null
+          pallets_per_unit_load: number | null
           position: number
           product_id: string
           qty_received: number | null
-          qty_remaining: number
-          receipt_id: string
-          sscc: string | null
+          receipt_id: string | null
+          source: Database["public"]["Enums"]["stock_lot_source"]
           unit_cost: number
+          unit_load_sscc: string | null
+          unit_loads: number | null
           units_per_pack: number
         }
         Insert: {
+          case_sscc?: string | null
           cases?: number | null
+          cases_per_pallet?: number | null
           code: string
           cost_per_case?: number | null
-          cost_per_pack: number
+          cost_per_pack?: number
           created_at?: string
           expires_on?: string | null
           freight_share?: number
@@ -729,18 +738,24 @@ export type Database = {
           merchant_id: string
           notes?: string | null
           packs_per_case?: number | null
-          packs_received: number
+          packs_received?: number
+          pallet_sscc?: string | null
+          pallets?: number | null
+          pallets_per_unit_load?: number | null
           position?: number
           product_id: string
           qty_received?: number | null
-          qty_remaining: number
-          receipt_id: string
-          sscc?: string | null
+          receipt_id?: string | null
+          source: Database["public"]["Enums"]["stock_lot_source"]
           unit_cost?: number
+          unit_load_sscc?: string | null
+          unit_loads?: number | null
           units_per_pack: number
         }
         Update: {
+          case_sscc?: string | null
           cases?: number | null
+          cases_per_pallet?: number | null
           code?: string
           cost_per_case?: number | null
           cost_per_pack?: number
@@ -755,13 +770,17 @@ export type Database = {
           notes?: string | null
           packs_per_case?: number | null
           packs_received?: number
+          pallet_sscc?: string | null
+          pallets?: number | null
+          pallets_per_unit_load?: number | null
           position?: number
           product_id?: string
           qty_received?: number | null
-          qty_remaining?: number
-          receipt_id?: string
-          sscc?: string | null
+          receipt_id?: string | null
+          source?: Database["public"]["Enums"]["stock_lot_source"]
           unit_cost?: number
+          unit_load_sscc?: string | null
+          unit_loads?: number | null
           units_per_pack?: number
         }
         Relationships: [
@@ -790,7 +809,6 @@ export type Database = {
       }
       stock_movements: {
         Row: {
-          case_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -798,15 +816,13 @@ export type Database = {
           lot_id: string
           merchant_id: string
           note: string | null
-          override: boolean
-          pack_id: string | null
+          pack_id: string
           product_id: string
           qty: number
           reason: Database["public"]["Enums"]["write_off_reason"] | null
           ref: string | null
         }
         Insert: {
-          case_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -814,15 +830,13 @@ export type Database = {
           lot_id: string
           merchant_id: string
           note?: string | null
-          override?: boolean
-          pack_id?: string | null
+          pack_id: string
           product_id: string
           qty: number
           reason?: Database["public"]["Enums"]["write_off_reason"] | null
           ref?: string | null
         }
         Update: {
-          case_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -830,8 +844,7 @@ export type Database = {
           lot_id?: string
           merchant_id?: string
           note?: string | null
-          override?: boolean
-          pack_id?: string | null
+          pack_id?: string
           product_id?: string
           qty?: number
           reason?: Database["public"]["Enums"]["write_off_reason"] | null
@@ -839,10 +852,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "stock_movements_case_fk"
-            columns: ["case_id", "merchant_id"]
+            foreignKeyName: "stock_movements_lot_fk"
+            columns: ["lot_id", "merchant_id"]
             isOneToOne: false
-            referencedRelation: "stock_cases"
+            referencedRelation: "stock_lot_lines"
             referencedColumns: ["id", "merchant_id"]
           },
           {
@@ -867,6 +880,13 @@ export type Database = {
             referencedColumns: ["id", "merchant_id"]
           },
           {
+            foreignKeyName: "stock_movements_pack_fk"
+            columns: ["pack_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_pick_queue"
+            referencedColumns: ["pack_id", "merchant_id"]
+          },
+          {
             foreignKeyName: "stock_movements_product_fk"
             columns: ["product_id", "merchant_id"]
             isOneToOne: false
@@ -884,6 +904,7 @@ export type Database = {
           lot_id: string
           merchant_id: string
           opened_at: string | null
+          product_id: string
           qty_remaining: number
           serial: string | null
           units: number
@@ -896,6 +917,7 @@ export type Database = {
           lot_id: string
           merchant_id: string
           opened_at?: string | null
+          product_id: string
           qty_remaining: number
           serial?: string | null
           units: number
@@ -908,6 +930,7 @@ export type Database = {
           lot_id?: string
           merchant_id?: string
           opened_at?: string | null
+          product_id?: string
           qty_remaining?: number
           serial?: string | null
           units?: number
@@ -924,6 +947,13 @@ export type Database = {
             foreignKeyName: "stock_packs_lot_fk"
             columns: ["lot_id", "merchant_id"]
             isOneToOne: false
+            referencedRelation: "stock_lot_lines"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "stock_packs_lot_fk"
+            columns: ["lot_id", "merchant_id"]
+            isOneToOne: false
             referencedRelation: "stock_lots"
             referencedColumns: ["id", "merchant_id"]
           },
@@ -933,6 +963,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "merchants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_packs_product_fk"
+            columns: ["product_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "merchant_id"]
           },
         ]
       }
@@ -949,7 +986,7 @@ export type Database = {
           notes: string | null
           received_by: string | null
           received_on: string
-          supplier_id: string | null
+          supplier_id: string
           void_reason: string | null
           voided_at: string | null
         }
@@ -965,7 +1002,7 @@ export type Database = {
           notes?: string | null
           received_by?: string | null
           received_on?: string
-          supplier_id?: string | null
+          supplier_id: string
           void_reason?: string | null
           voided_at?: string | null
         }
@@ -981,7 +1018,7 @@ export type Database = {
           notes?: string | null
           received_by?: string | null
           received_on?: string
-          supplier_id?: string | null
+          supplier_id?: string
           void_reason?: string | null
           voided_at?: string | null
         }
@@ -1134,10 +1171,124 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      stock_lot_lines: {
+        Row: {
+          case_sscc: string | null
+          cases: number | null
+          cases_per_pallet: number | null
+          code: string | null
+          cost_per_case: number | null
+          cost_per_pack: number | null
+          created_at: string | null
+          expires_on: string | null
+          freight_share: number | null
+          id: string | null
+          line_cost: number | null
+          location: string | null
+          loose_units: number | null
+          merchant_id: string | null
+          notes: string | null
+          packs_active: number | null
+          packs_open: number | null
+          packs_per_case: number | null
+          packs_received: number | null
+          packs_total: number | null
+          pallet_sscc: string | null
+          pallets: number | null
+          pallets_per_unit_load: number | null
+          position: number | null
+          product_id: string | null
+          qty_received: number | null
+          qty_remaining: number | null
+          receipt_id: string | null
+          source: Database["public"]["Enums"]["stock_lot_source"] | null
+          unit_cost: number | null
+          unit_load_sscc: string | null
+          unit_loads: number | null
+          units_per_pack: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_lots_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_lots_product_fk"
+            columns: ["product_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "stock_lots_receipt_fk"
+            columns: ["receipt_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_receipts"
+            referencedColumns: ["id", "merchant_id"]
+          },
+        ]
+      }
+      stock_pick_queue: {
+        Row: {
+          case_id: string | null
+          code: string | null
+          expires_on: string | null
+          lot_id: string | null
+          merchant_id: string | null
+          pack_id: string | null
+          pick_rank: number | null
+          product_id: string | null
+          qty_remaining: number | null
+          units: number | null
+          whole_rank: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_packs_case_fk"
+            columns: ["case_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_cases"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "stock_packs_lot_fk"
+            columns: ["lot_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_lot_lines"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "stock_packs_lot_fk"
+            columns: ["lot_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_lots"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "stock_packs_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_packs_product_fk"
+            columns: ["product_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "merchant_id"]
+          },
+        ]
+      }
     }
     Functions: {
+      add_inventory_stock: { Args: { payload: Json }; Returns: string }
       delete_current_user: { Args: never; Returns: undefined }
+      draw_stock: { Args: { payload: Json }; Returns: Json }
+      ensure_register_faces: { Args: { p_item: string }; Returns: undefined }
       record_stock_movement: { Args: { payload: Json }; Returns: undefined }
       save_product: { Args: { payload: Json }; Returns: string }
       save_receipt: { Args: { payload: Json }; Returns: string }
@@ -1169,11 +1320,11 @@ export type Database = {
       product_status: "draft" | "active" | "inactive" | "archived"
       product_type: "stock" | "rental" | "bookable" | "flat"
       rate_period: "hour" | "day" | "week" | "month" | "night"
+      stock_lot_source: "stock" | "inventory"
       stock_movement_kind:
         | "receive"
         | "sale"
         | "consume"
-        | "open"
         | "adjust"
         | "write_off"
         | "return_supplier"
@@ -1341,11 +1492,11 @@ export const Constants = {
       product_status: ["draft", "active", "inactive", "archived"],
       product_type: ["stock", "rental", "bookable", "flat"],
       rate_period: ["hour", "day", "week", "month", "night"],
+      stock_lot_source: ["stock", "inventory"],
       stock_movement_kind: [
         "receive",
         "sale",
         "consume",
-        "open",
         "adjust",
         "write_off",
         "return_supplier",

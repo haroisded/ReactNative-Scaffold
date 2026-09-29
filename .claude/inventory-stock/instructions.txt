@@ -1,0 +1,206 @@
+# Session Context
+- This Session first focuses on clarifications before coding
+
+- This Session, the user plans to fix...
+• Inventory Screen
+• Stock Screen
+
+  after fixing "Inventory Screen" & "Stock Screen",
+  user plans to create a "Register Screen" and "Receipt Screen"
+
+
+# User notes, regarding about the 2 htmls
+- I plan to implement those 2 now in the current system,
+  though there are some...
+• Functionality and Flow
+• Potential problems and theoretical solutions
+• Data
+• UI changes
+• History
+• "Register Screen" and "Receipt Screen"
+  that I still need to give some clarity, but what is
+  inside the 2 HTMLS is exactly what I want for both
+  Inventory and Stock
+
+
+# Clarifications
+
+## Functionality
+- In the Stock Screen
+specifically the "New Stock Receipt", "5. Pack", "Sell By" field, the "6. Base Unit"
+Section is only present when "Base Unit" in the "Sell by" is selected and Hides if not
+( the Idea is that the changes which are Show and Hide is live )
+
+also this must be implemented in the inventory "create product"
+
+- In the Inventory Screen
+• Outputs Products ( and their necessary data required to be displayed ) Brought by Stocks
+• is also where  Products can be toggled as sellable / components / both
+• can create a "Product", not tied to any "Stocks" or "Supplier
+  ( this created "product" still falls to "sellable / components / both" )
+
+- In the Inventory Screen, need to implement the "Category" and "Subcategory"
+  that is currently in the "Products Screen Setup" to this Inventory Screen
+
+- Flow
+1) Stocks Added ( Fill up form is done )
+2) Products Brought by Stocks are automatically displayed in inventory,
+    and can be  toggled ( sellable / components / both )
+3) Products in the Inventory toggled as "sellable / both", can be selected as
+    options to be sold and put in the "Products"
+4) Products displayed in the "Products Screen",
+   are the only Products that can be sold in the
+   "Cash Register / Register Screen"
+
+
+## Potential problems and theoretical solutions
+- Numbered Potential Problems
+1) Inventory Product → Sellable Product transfer flow can cause data problems
+• Some fields (e.g. Tax, Selling Price, Recipe) exists only on Products
+  ( products created directly in the products screen )
+  that's Required for product to become sellable.
+
+• Products created in stock and shown in inventory lacks these fields.
+  ( Check Supabase DB via MCP (already connected) for full field list of
+  "Add Products" in Products Screen. )
+
+• Also this problem goes both Ways, there are "IDs" which are...
+  SKU, Serial number and Lot / Batch Number that are necessary for
+  a product( stock, inventory and products ) to have, which are not
+  present in the "Add Products" in Products Screen
+
+• There are Data that are already Present in Both Sides
+  ( in summary, data conflicts )
+
+• There might be more problems underlying that I may have not listed
+  or thought of, and I actually need help on this
+
+
+2) Sample problem In Real Life Businesses ( e.g.. pharmacy ),
+• Pack = Cup of Tablets
+• Base Unit = Tablet Themselves
+
+Say that the Seller is selling 2 Cups of Tablets
+from 2 Different "Cases"
+• Pack A ( from Case A )
+• Pack B ( from Case B )
+
+Then the Seller is Selling their "Base Unit" ( Tablets ), instead of "Packs"
+
+Question:
+•  How Can a "Base Unit" from 2 individual Packs  from 2 Individual Cases be tracked
+   Whenever a "Base Unit" is sold?
+
+•  How would this or rather how SHOULD this be reflected in the
+   "Inventory Page" and "Stock Page"?
+
+
+- theoretical solutions
+1) In this kind of problem, to tell you the truth, I don't have any idea
+   in how this would be handled in the database, I only know the "solution flow",
+   and the flow is that...
+
+→ Inventory Product(s) becomes "Sellable or Both" and is now present
+  in the Products Screen
+
+  ( note ):
+  for additional context, "component" simply just means it can be used as
+  *Recipes, by other products, meaning whenever a product is sold ( deducted )
+  then recipes used by that product is also deducted
+  ( check add products, in the "Products Screen" for this )
+
+→ Product(s) that became Sellable or Both that came from inventory,
+  still can't become as options to be sold in the register
+
+→ In the "Products Screen" To make a Product as Option for the register,
+  the user must click one of those "non-option" products
+  ( and actually I don't know what needs to be triggered to go to the next
+    so I need help on these )
+
+  and enter fields that are only present in the "Add Products" in the Products Screen
+  ( and yeah there are still some "required" and "opitonal" fields )
+
+
+2) This one... I really have no idea how to deal with this problem,
+   and need help on some guidance here, but yeah based on the problem
+   I presented I think you know the kind of result that I want
+   ( I just don't know how to find the solution for it )
+
+
+
+## Data
+- Stocks Screen, "New Stock Receipt", "5. Pack"
+• Pack Name ( required, duplicate name is fine )
+• SKU ( required )
+• Serial Number ( for context this is Manufacturer's serial, optional )
+• Lot / Batch Number ( optional )
+• Storage Location ( optional )
+• Received Packs ( optional )
+• Cost Per Pack ( required )
+• Re-order at ( optional )
+• Expiration Date ( required )
+
+- Stocks Screen, "New Stock Receipt", "6. Pack"
+• Base Unit Type ( Default = "pc", optional )
+• Base Units Cost Per Pack ( required )
+• Base Units Qty ( Default = "1", optional )
+• Base Units Qty Received ( optional )
+
+- Inventory Screen, "Create Product"
+• Pack Name ( required, duplicate name is fine )
+• SKU ( required )
+• Not Present, but needs to be included...
+• Serial Number ( optional )
+• Lot / Batch Number ( optional )
+• Pack Unit Name ( optional )
+• Re-order at ( optional )
+• Storage Location ( optional )
+• Notes ( optional )
+
+- Inventory Screen, "Create Product", "Base Unit" ( the newly added
+  that I said earlier in the "## Functionality" )
+
+  same data fields as [Stocks Screen, "New Stock Receipt", "6. Pack"]
+
+
+## UI
+- I don't know what data are only necessary to be read and outputted for...
+• inventory screen
+• stocks screen
+
+the reason why we must consider this is so that we can be able to generate a
+UX Friendly UI for both Mobile and Tablet ( android or iOS ) devices
+
+while still being able to show the necessary data for the Staff Users
+that requires necessary data to be shown, e.g..
+• Future Staff that might manage Stocks
+• Future Staff that might manage Inventory
+• Future Staff that might manage the Cash Register
+
+( note ):
+this are just core samples of scenarios that is necessary to be thought of
+regarding about the current problem, but I think you get the point
+
+
+- note: you can prompt me to screenshot the specific screens in the emulator,
+  so that you can see and make UI changes until YOU( yes you the ai ) is satisfied
+
+
+## History
+- Since this is a complete revamp for some pages, you can check the "git commit history",
+  to know what you need to revert in both the code base and supabase
+
+
+## "Register Screen" and "Receipt Screen( new )"
+
+- Register Screen, this is to just test if...
+• Products Screen
+• Inventory Screen
+• Stock Screen
+works as expected
+
+- Receipt Screen ( this is new, and needs to be added in the sidebar )
+• This is Connected to Register Screen, and this Receipt Screen
+  can't be created if Register Screen has not been created yet
+• For now I just want this to make it simple, it should just be a history
+  of transactions made by the Cashier in the Register Screen

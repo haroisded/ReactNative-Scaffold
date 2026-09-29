@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stock Receiving</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F4EE; --surface:#FFFFFF; --ink:#1C2333; --soft:#6B7280; --line:#E3DFD3;
+  --accent:#B4622A; --accent-ink:#fff; --ok:#4B7B5A; --ok-bg:#E7EFE8; --open-bg:#F6E6DA; --tag-bg:#EFE9DC;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#14171F;--surface:#1D212B;--ink:#ECE9E1;--soft:#98A0B0;--line:#2B303B;--tag-bg:#262B36;--ok-bg:#1E2A22;--open-bg:#33261C;}
+}
+:root[data-theme="dark"]{--bg:#14171F;--surface:#1D212B;--ink:#ECE9E1;--soft:#98A0B0;--line:#2B303B;--tag-bg:#262B36;--ok-bg:#1E2A22;--open-bg:#33261C;}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+header{padding:28px clamp(16px,4vw,48px) 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+header h1{font-size:22px;margin:0 0 4px;}
+header p{margin:0;color:var(--soft);font-size:14px;}
+.btn{font-family:var(--sans);font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 16px;border-radius:6px;cursor:pointer;}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+main{padding:20px clamp(16px,4vw,48px) 60px;max-width:1180px;margin:0 auto;}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:960px;}
+th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th{color:var(--soft);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em;background:var(--tag-bg);}
+tr:last-child td{border-bottom:none;}
+td.mono,.mono{font-family:var(--mono);}
+.lrow{cursor:pointer;}
+.lrow:hover td{background:var(--bg);}
+.car{display:inline-block;width:12px;color:var(--soft);transition:transform .15s;}
+.lrow.open .car{transform:rotate(90deg);}
+.drow td{padding:0;white-space:normal;background:var(--bg);}
+.drill{padding:6px 16px 14px 40px;position:sticky;left:0;max-width:min(1084px,calc(100vw - 2*clamp(16px,4vw,48px)));}
+td.wrap{white-space:normal;min-width:110px;}
+.case-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--soft);padding:10px 0 6px;}
+.case-head b{color:var(--ink);font-family:var(--mono);font-weight:500;}
+.prow{display:grid;grid-template-columns:78px 1fr 72px 1.3fr 110px 100px;gap:10px;align-items:center;padding:7px 10px;background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:5px;font-size:12.5px;}
+.prow.empty{opacity:.5;}
+.st{padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;display:inline-block;text-align:center;}
+.st-Open,.st-Partial{background:var(--open-bg);color:var(--accent);}
+.st-Sealed,.st-Full{background:var(--ok-bg);color:var(--ok);}
+.st-Empty,.st-Depleted,.st-Nopacks{background:var(--tag-bg);color:var(--soft);}
+.barwrap{display:flex;align-items:center;gap:8px;}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;flex:1;min-width:40px;}
+.bar i{display:block;height:100%;background:var(--accent);}
+.cellbar{display:flex;align-items:center;gap:6px;min-width:130px;}
+.cellbar .bar{max-width:44px;}
+.sub{color:var(--soft);font-size:12px;}
+.more{font-size:12px;color:var(--soft);text-decoration:underline;cursor:pointer;padding:4px 10px;display:inline-block;}
+.drill-note{font-size:12px;color:var(--soft);margin:8px 0 0;}
+.overlay{position:fixed;inset:0;background:rgba(20,20,20,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10;}
+.overlay.hidden{display:none;}
+.modal{background:var(--surface);border-radius:10px;width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+.modal-head h2{font-size:17px;margin:0;}
+.icon-btn{background:none;border:none;font-size:16px;cursor:pointer;color:var(--soft);}
+.steps-track{display:flex;padding:14px 20px 0;gap:4px;}
+.step-dot{flex:1;text-align:center;font-size:11px;color:var(--soft);padding-bottom:10px;border-bottom:3px solid var(--line);}
+.step-dot.active{color:var(--ink);border-color:var(--accent);font-weight:600;}
+.step-dot.done{border-color:var(--ok);}
+.modal-body{padding:20px;overflow-y:auto;flex:1;}
+.step{display:none;}
+.step.active{display:block;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;color:var(--soft);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font-family:var(--sans);font-size:14px;background:var(--bg);color:var(--ink);}
+.field input:read-only,.field input:disabled,.field select:disabled{opacity:.55;background:var(--tag-bg);}
+.field .fhint{font-size:11.5px;color:var(--soft);margin-top:5px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.hint{font-size:11.5px;color:var(--soft);padding:12px;}
+.optional-note{font-size:12px;color:var(--soft);margin:0 0 14px;}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+.modal-foot .right{display:flex;gap:8px;}
+.summary-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px;}
+.summary-row.sub{color:var(--soft);font-size:12.5px;border-bottom:none;padding-top:0;}
+.hidden-block{display:none!important;}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.toggle-row label{margin:0;font-size:14px;}
+.inline-gen{display:flex;gap:8px;}
+.inline-gen input{flex:1;}
+.btn.mini{padding:6px 10px;font-size:12px;white-space:nowrap;}
+.vlist-row{display:grid;grid-template-columns:1.6fr 1fr 1fr auto;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+.vlist-row .name{font-weight:600;}
+.vlist-row .sub{color:var(--soft);font-size:12px;}
+.vlist-wrap{border:1px solid var(--line);border-radius:8px;margin:10px 0;}
+.vlist-actions{display:flex;gap:10px;cursor:pointer;color:var(--soft);}
+.overlay.nested{z-index:20;}
+.switch{position:relative;display:inline-block;width:38px;height:22px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;position:absolute;}
+.switch .slider{position:absolute;inset:0;background:var(--line);border-radius:99px;cursor:pointer;transition:.15s;}
+.switch .slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;}
+.switch input:checked+.slider{background:var(--accent);}
+.switch input:checked+.slider:before{transform:translateX(16px);}
+.subsection{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--soft);margin:18px 0 10px;border-top:1px solid var(--line);padding-top:16px;}
+.subsection:first-child{border-top:none;padding-top:0;margin-top:0;}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px;}
+.seg-btn{flex:1;text-align:center;padding:9px 10px;font-size:13px;cursor:pointer;color:var(--soft);background:var(--surface);}
+.seg-btn+.seg-btn{border-left:1px solid var(--line);}
+.seg-btn.active{background:var(--accent);color:var(--accent-ink);font-weight:600;}
+@media (max-width:720px){
+  .row2{grid-template-columns:1fr;}
+  .drill{padding-left:16px;}
+  .prow{grid-template-columns:70px auto 1fr;}
+  .hide-sm{display:none!important;}
+  .step-dot{font-size:0;}
+  .step-dot.active{font-size:11px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Stock</h1><p>Receipts per item — received vs remaining, drill to case and pack.</p></div>
+  <button class="btn primary" onclick="openModal()">+ New Stock Receipt</button>
+</header>
+<main>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date / Receipt</th><th>Supplier</th><th>Item</th><th>Batch/Lot</th><th>Remaining / Received</th><th>Status</th><th>Cost</th><th>Unit Cost</th><th>Location</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <div class="modal-head"><h2>New Stock Receipt</h2><button class="icon-btn" onclick="closeModal()">✕</button></div>
+    <div class="steps-track" id="track"></div>
+    <div class="modal-body">
+
+      <div class="step" data-i="0">
+        <div class="field"><label>Supplier *</label><select id="supplier"><option>Metro Supplier Co.</option><option>MedLine Pharma Dist.</option><option>Fresh Farms Inc.</option></select></div>
+        <div class="row2">
+          <div class="field"><label>Invoice / DR No.</label><input id="invoice" placeholder="e.g. DR-4471"></div>
+          <div class="field"><label>Date Received *</label><input id="dateReceived" type="date"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Received By</label><input id="receivedBy" placeholder="Staff name"></div>
+          <div class="field"><label>Receiving Location</label><input id="receivingLocation" placeholder="e.g. Main Warehouse"></div>
+        </div>
+        <div class="field"><label>Freight / Other Charges (optional)</label><input id="freight" type="number" min="0" placeholder="e.g. delivery fee" oninput="calc()">
+          <div class="fhint">Landed cost — spread across this receipt's packs by value, added into Cost per Base Unit.</div></div>
+      </div>
+
+      <div class="step" data-i="1">
+        <p class="optional-note">Unit Load (Tier 5) — optional. Skip if not applicable.</p>
+        <div class="field"><label>Container ID / SSCC</label><input id="ulContainer" placeholder="Optional"></div>
+        <div class="row2">
+          <div class="field"><label>Received Unit Loads</label><input id="ulReceived" type="number" min="0" oninput="calc()"></div>
+          <div class="field"><label>Pallets per Unit Load</label><input id="ulPer" type="number" min="0" oninput="calc()"></div>
+        </div>
+        <div class="field"><label>Total Pallets (auto)</label><input id="ulTotal" class="mono" readonly></div>
+      </div>
+
+      <div class="step" data-i="2">
+        <p class="optional-note">Pallet (Tier 4) — optional. Skip if not applicable.</p>
+        <div class="field"><label>Container ID / SSCC</label><input id="plContainer" placeholder="Optional"></div>
+        <div class="row2">
+          <div class="field"><label>Received Pallets</label><input id="plReceived" type="number" min="0" oninput="calc()"></div>
+          <div class="field"><label>Cases per Pallet</label><input id="plPer" type="number" min="0" oninput="calc()"></div>
+        </div>
+        <div class="field"><label>Total Cases (auto)</label><input id="plTotal" class="mono" readonly></div>
+      </div>
+
+      <div class="step" data-i="3">
+        <p class="optional-note">Case (Tier 3) — optional. Skip if not applicable. Each case gets own ID (CS-####) on save.</p>
+        <div class="field"><label>Container ID / SSCC</label><input id="caContainer" placeholder="Optional"></div>
+        <div class="row2">
+          <div class="field"><label>Received Cases</label><input id="caReceived" type="number" min="0" oninput="calc()"></div>
+          <div class="field"><label>Packs per Case</label><input id="caPer" type="number" min="0" oninput="calc()"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Cost per Case</label><input id="caCost" type="number" min="0" oninput="calc()"></div>
+          <div class="field"><label>Total Cost (auto)</label><input id="caTotalCost" class="mono" readonly></div>
+        </div>
+        <div class="field"><label>Total Packs (auto)</label><input id="caTotalPacks" class="mono" readonly></div>
+      </div>
+
+      <div class="step" data-i="4">
+        <div class="toggle-row">
+          <label class="switch"><input type="checkbox" id="hasVariants" onchange="toggleHasVariants()"><span class="slider"></span></label>
+          <label for="hasVariants">This pack has other products/variants in it</label>
+        </div>
+
+        <div id="packSingleBlock">
+          <div class="subsection">Product Details</div>
+          <div class="row2">
+            <div class="field"><label>Pack Name</label><input id="packName"></div>
+            <div class="field"><label>Pack Type</label><select id="packType"><option>Sellable</option><option>Component</option><option>Both</option></select></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>SKU (optional)</label><div class="inline-gen"><input id="sku" class="mono"><button type="button" class="btn mini" onclick="genSku('')">Auto-generate</button></div></div>
+            <div class="field"><label>Serial Number (optional)</label><div class="inline-gen"><input id="serial" placeholder="Comma-separated"><button type="button" class="btn mini" onclick="genSerial('')">Auto-generate</button></div></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Lot / Batch Number (optional)</label><div class="inline-gen"><input id="lot" placeholder="e.g. LOT-20260927-04"><button type="button" class="btn mini" onclick="genLot('')">Auto-generate</button></div></div>
+            <div class="field"><label>Storage Location</label><input id="storageLoc"></div>
+          </div>
+
+          <div class="subsection">Sell By</div>
+          <input type="hidden" id="sellBy" value="Pack">
+          <div class="seg" id="sellBySeg">
+            <div class="seg-btn active" data-v="Pack" onclick="setSellBy('','Pack')">Pack</div>
+            <div class="seg-btn" data-v="Base Unit" onclick="setSellBy('','Base Unit')">Base Unit</div>
+            <div class="seg-btn" data-v="Both" onclick="setSellBy('','Both')">Both</div>
+          </div>
+
+          <div class="subsection">Receiving Details</div>
+          <div class="row2">
+            <div class="field"><label>Received Packs</label><input id="receivedPacks" type="number" min="0" oninput="calc()"></div>
+            <div class="field"><label>Cost per Pack</label><input id="costPerPack" type="number" min="0" oninput="calc()"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Re-order At</label><input id="reorderAt" type="number" min="0"></div>
+            <div class="field"><label>Expiration Date</label><input id="expiry" type="date"></div>
+          </div>
+          <div class="field"><label>Total Packs Cost</label><input id="packsCostDisp" class="mono" readonly></div>
+        </div>
+
+        <div id="packMultiBlock" class="hidden-block">
+          <button type="button" class="btn primary" onclick="openVariantModal()">+ Add Product/Variant</button>
+          <div class="vlist-wrap" id="variantList"></div>
+        </div>
+      </div>
+
+      <div class="step" data-i="5">
+        <div class="subsection">Base Unit Details</div>
+        <div class="row2">
+          <div class="field"><label>Base Unit Type</label><input id="baseUnit" placeholder="e.g. Tablet" oninput="calc()"></div>
+          <div class="field"><label>Base Units Cost Per Pack *</label><input id="baseCost" type="number" min="0" oninput="calc()"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Base Units Qty</label><input id="unitsPerPack" type="number" min="0" oninput="calc()"></div>
+          <div class="field"><label>Base Units Qty Received (optional)</label><input id="totalBaseUnits" type="number" min="0"></div>
+        </div>
+        <div class="field"><label>Total Base Units Cost</label><input id="baseCostDisp" class="mono" readonly></div>
+      </div>
+
+      <div class="step" data-i="6">
+        <p class="optional-note">Review before saving.</p>
+        <div id="summary"></div>
+        <div class="field" style="margin-top:14px;"><label>Notes</label><textarea id="notes" rows="3" placeholder="e.g. damaged boxes, short delivery..."></textarea></div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnBack" onclick="prevStep()">← Back</button>
+      <div class="right">
+        <button class="btn" id="btnSkip" onclick="skipStep()">Skip tier</button>
+        <button class="btn primary" id="btnNext" onclick="nextStep()">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden nested" id="pfOverlay">
+  <div class="modal">
+    <div class="modal-head"><h2>Add Product/Variant</h2><button class="icon-btn" onclick="closeVariantModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="subsection">Product Details</div>
+      <div class="row2">
+        <div class="field"><label>Pack Name</label><input id="pf_packName"></div>
+        <div class="field"><label>Pack Type</label><select id="pf_packType"><option>Sellable</option><option>Component</option><option>Both</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>SKU (optional)</label><div class="inline-gen"><input id="pf_sku" class="mono"><button type="button" class="btn mini" onclick="genSku('pf_')">Auto-generate</button></div></div>
+        <div class="field"><label>Serial Number (optional)</label><div class="inline-gen"><input id="pf_serial" placeholder="Comma-separated"><button type="button" class="btn mini" onclick="genSerial('pf_')">Auto-generate</button></div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Lot / Batch Number (optional)</label><div class="inline-gen"><input id="pf_lot"><button type="button" class="btn mini" onclick="genLot('pf_')">Auto-generate</button></div></div>
+        <div class="field"><label>Storage Location</label><input id="pf_storageLoc"></div>
+      </div>
+
+      <div class="subsection">Sell By</div>
+      <input type="hidden" id="pf_sellBy" value="Pack">
+      <div class="seg" id="pf_sellBySeg">
+        <div class="seg-btn active" data-v="Pack" onclick="setSellBy('pf_','Pack')">Pack</div>
+        <div class="seg-btn" data-v="Base Unit" onclick="setSellBy('pf_','Base Unit')">Base Unit</div>
+        <div class="seg-btn" data-v="Both" onclick="setSellBy('pf_','Both')">Both</div>
+      </div>
+
+      <div class="subsection">Receiving Details</div>
+      <div class="row2">
+        <div class="field"><label>Received Packs</label><input id="pf_receivedPacks" type="number" min="0" oninput="calcPack('pf_')"></div>
+        <div class="field"><label>Cost per Pack</label><input id="pf_costPerPack" type="number" min="0" oninput="calcPack('pf_')"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Reorder At</label><input id="pf_reorderAt" type="number" min="0"></div>
+        <div class="field"><label>Expiration Date</label><input id="pf_expiry" type="date"></div>
+      </div>
+      <div class="field"><label>Total Packs Cost</label><input id="pf_packsCostDisp" class="mono" readonly></div>
+
+      <div id="pf_baseBlock" class="hidden-block">
+        <div class="subsection">Base Unit Details</div>
+        <div class="row2">
+          <div class="field"><label>Base Unit Type</label><input id="pf_baseUnit" placeholder="e.g. Tablet" oninput="calcPack('pf_')"></div>
+          <div class="field"><label>Base Units Cost Per Pack *</label><input id="pf_baseCost" type="number" min="0" oninput="calcPack('pf_')"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Base Units Qty</label><input id="pf_unitsPerPack" type="number" min="0" oninput="calcPack('pf_')"></div>
+          <div class="field"><label>Base Units Qty Received (optional)</label><input id="pf_totalBaseUnits" type="number" min="0"></div>
+        </div>
+        <div class="field"><label>Total Base Units Cost</label><input id="pf_baseCostDisp" class="mono" readonly></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeVariantModal()">Cancel</button>
+      <button class="btn primary" onclick="saveVariant()">Save to list</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- seed (same as Inventory page) ---------- */
+const ITEMS=[
+  {id:'rice',parent:null,name:'Rice 5kg',sku:'RICE-5K',type:'Sellable',sellBy:'Pack',base:'',packUnit:'sack',upp:1,reorder:5,loc:'Shelf A1'},
+  {id:'oil',parent:null,name:'Cooking Oil 1L',sku:'OIL-1L',type:'Component',sellBy:'Pack',base:'',packUnit:'bottle',upp:1,reorder:6,loc:'Shelf A3'},
+  {id:'para',parent:null,name:'Paracetamol 500mg',sku:'PARA-500',type:'Sellable',sellBy:'Base Unit',base:'tablet',packUnit:'cup',upp:12,reorder:20,loc:'Pharmacy P1'},
+  {id:'amox',parent:null,name:'Amoxicillin 250mg',sku:'AMX-250',type:'Sellable',sellBy:'Base Unit',base:'capsule',packUnit:'strip',upp:10,reorder:15,loc:'Pharmacy P2'},
+  {id:'chk-whole',parent:'Chicken',name:'Whole Chicken',sku:'CHK-WH',type:'Sellable',sellBy:'Pack',base:'',packUnit:'bird',upp:1,reorder:4,loc:'Freezer 1'},
+  {id:'chk-breast',parent:'Chicken',name:'Chicken Breast',sku:'CHK-BR',type:'Both',sellBy:'Both',base:'pc',packUnit:'tray',upp:4,reorder:8,loc:'Freezer 1'},
+  {id:'chk-bones',parent:'Chicken',name:'Bones/Trimmings',sku:'CHK-BN',type:'Component',sellBy:'Pack',base:'',packUnit:'bag',upp:1,reorder:5,loc:'Freezer 2'},
+  {id:'ts-rl',parent:'T-Shirt',name:'Red / L',sku:'TS-RD-L',type:'Sellable',sellBy:'Pack',base:'',packUnit:'pc',upp:1,reorder:3,loc:'Rack B2'},
+  {id:'ts-bm',parent:'T-Shirt',name:'Blue / M',sku:'TS-BL-M',type:'Sellable',sellBy:'Pack',base:'',packUnit:'pc',upp:1,reorder:3,loc:'Rack B2'}
+];
+const RECEIPTS_SEED=[
+  {id:'RC-0010',date:'2026-09-05',supplier:'Metro Supplier Co.',loc:'Main Warehouse',lines:[
+    {itemId:'rice',lot:'',exp:'',cpp:250,groups:[{caseId:null,rems:[0,0,0,0,0,1,1,1,1,1,1,1]}]},
+    {itemId:'oil',lot:'LOT-20260905-01',exp:'2027-06-30',cpp:95,groups:[{caseId:'CS-0001',sscc:'00614141000000011',rems:[0,0,0,0,0,0,0,0,1,1,1,1]}]}]},
+  {id:'RC-0011',date:'2026-09-10',supplier:'MedLine Pharma Dist.',loc:'Pharmacy',lines:[
+    {itemId:'para',lot:'LOT-20260910-01',exp:'2027-12-31',cpp:48,groups:[{caseId:'CS-0002',sscc:'',rems:[0,0,5]}]},
+    {itemId:'amox',lot:'LOT-20260910-02',exp:'2027-01-31',cpp:85,groups:[{caseId:null,rems:[3]}]}]},
+  {id:'RC-0012',date:'2026-09-18',supplier:'Fresh Farms Inc.',loc:'Cold Room',lines:[
+    {itemId:'chk-whole',lot:'LOT-20260918-01',exp:'2026-10-18',cpp:200,groups:[{caseId:null,rems:[0,0,1,1,1,1,1,1]}]},
+    {itemId:'chk-breast',lot:'LOT-20260918-02',exp:'2026-10-10',cpp:180,groups:[{caseId:null,rems:[0,1,4,4,4]}]},
+    {itemId:'chk-bones',lot:'LOT-20260918-03',exp:'2026-10-05',cpp:40,groups:[{caseId:null,rems:[1,1,1]}]}]},
+  {id:'RC-0013',date:'2026-09-20',supplier:'MedLine Pharma Dist.',loc:'Pharmacy',freight:60,lines:[
+    {itemId:'para',lot:'LOT-20260920-01',exp:'2027-12-31',cpp:50,groups:[{caseId:'CS-0003',sscc:'',rems:[2,12,12]}]},
+    {itemId:'amox',lot:'LOT-20260920-02',exp:'2027-03-31',cpp:85,groups:[{caseId:null,rems:[10]}]}]},
+  {id:'RC-0014',date:'2026-09-24',supplier:'Metro Supplier Co.',loc:'Main Warehouse',lines:[
+    {itemId:'ts-rl',lot:'',exp:'',cpp:180,groups:[{caseId:'CS-0004',sscc:'',rems:[0,0,1,1,1,1]}]},
+    {itemId:'ts-bm',lot:'',exp:'',cpp:180,groups:[{caseId:'CS-0004',sscc:'',rems:[0,1,1]}]}]}
+];
+const pad=n=>String(n).padStart(4,'0');
+let packs=[], lines=[], pkSeq=1, csSeq=5, rcSeq=15, newId=1;
+const cases={}; // caseId -> {sscc}
+function round4(x){ return Math.round(x*10000)/10000; }
+function peso(v,d=2){ return '₱'+(+v||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function allocFreight(rid,fr){ // landed cost: freight spread across receipt's packs by value
+  const ps=packs.filter(p=>p.receipt===rid), val=ps.reduce((s,p)=>s+p.packCost,0);
+  ps.forEach(p=>{ p.freight=fr?(val?fr*p.packCost/val:fr/ps.length):0; p.unitCost=round4((p.packCost+p.freight)/(p.total||1)); });
+}
+RECEIPTS_SEED.forEach(r=>{ r.lines.forEach((l,li)=>{
+  const it=ITEMS.find(i=>i.id===l.itemId), lineId=r.id+'-'+(li+1);
+  l.groups.forEach(g=>{
+    if(g.caseId) cases[g.caseId]={sscc:g.sscc||''};
+    g.rems.forEach(rem=>packs.push({id:'PK-'+pad(pkSeq++),itemId:l.itemId,lineId,receipt:r.id,received:r.date,
+      caseId:g.caseId,lot:l.lot,exp:l.exp,total:it.upp,rem,serial:'',packCost:l.cpp,freight:0,unitCost:0}));
+  });
+  lines.push({id:lineId,receipt:r.id,date:r.date,supplier:r.supplier,loc:r.loc,itemId:l.itemId,lot:l.lot,exp:l.exp,cpp:l.cpp});
+}); allocFreight(r.id,r.freight||0); });
+
+/* ---------- helpers ---------- */
+const getItem=id=>ITEMS.find(i=>i.id===id);
+const label=it=>it.parent?`${it.parent} — ${it.name}`:it.name;
+const st=p=>p.rem===0?'Empty':p.rem===p.total?'Sealed':'Open';
+const unitName=it=>it.base||it.packUnit||'unit';
+const plural=(u,n)=>n===1||u.endsWith('s')?u:u+'s';
+function fmt(d){ if(!d) return '—'; const [y,m,dd]=d.split('-'); return `${m}/${dd}/${y}`; }
+const openLines=new Set(['RC-0013-1']), openGroups=new Set();
+
+/* ---------- receipts table ---------- */
+function lineStats(l){
+  const ps=packs.filter(p=>p.lineId===l.id);
+  const total=ps.reduce((s,p)=>s+p.total,0), rem=ps.reduce((s,p)=>s+p.rem,0);
+  const cost=ps.reduce((s,p)=>s+p.packCost+p.freight,0);
+  return {ps,total,rem,cost,avgUnit:total?cost/total:0,status:total===0?'No packs':rem===0?'Depleted':rem===total?'Full':'Partial'};
+}
+function toggleLine(id){ openLines.has(id)?openLines.delete(id):openLines.add(id); renderTable(); }
+function renderTable(){
+  const rows=lines.slice().sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
+  $('tbody').innerHTML=rows.map(l=>{
+    const it=getItem(l.itemId), s=lineStats(l), u=unitName(it), open=openLines.has(l.id);
+    const pct=s.total?Math.round(s.rem/s.total*100):0;
+    return `<tr class="lrow ${open?'open':''}" onclick="toggleLine('${l.id}')">
+      <td><span class="car">▸</span> ${fmt(l.date)}<div class="sub mono" style="padding-left:16px">${l.receipt}</div></td>
+      <td class="wrap">${esc(l.supplier)}</td>
+      <td class="wrap">${esc(label(it))}</td>
+      <td class="mono">${esc(l.lot||'—')}</td>
+      <td><span class="cellbar"><span class="bar"><i style="width:${pct}%"></i></span><span class="mono">${s.rem} / ${s.total}</span><span class="sub">${esc(plural(u,s.total))}</span></span></td>
+      <td><span class="st st-${s.status.replace(' ','')}">${s.status}</span></td>
+      <td class="mono">${peso(s.cost)}</td>
+      <td class="mono" title="${peso(s.avgUnit,4)}">${peso(s.avgUnit)}<span class="sub">/${esc(u)}</span></td>
+      <td class="wrap" style="min-width:90px">${esc(l.loc)}</td>
+    </tr>`+(open?`<tr class="drow"><td colspan="9">${lineDrill(l,s,it)}</td></tr>`:'');
+  }).join('');
+}
+function lineDrill(l,s,it){
+  const u=unitName(it), groups={}, order=[];
+  s.ps.forEach(p=>{ const k=p.caseId||'__loose__'; if(!groups[k]){groups[k]=[];order.push(k);} groups[k].push(p); });
+  const html=order.map(k=>{
+    const ps=groups[k], rem=ps.reduce((a,p)=>a+p.rem,0), tot=ps.reduce((a,p)=>a+p.total,0);
+    const act=ps.filter(p=>p.rem>0).length, openN=ps.filter(p=>st(p)==='Open').length;
+    const head=k==='__loose__'?'<b>Loose packs</b> · no case'
+      :`<b>Case ${k}</b>${cases[k]&&cases[k].sscc?` · SSCC ${esc(cases[k].sscc)}`:''}`;
+    const gk=l.id+'|'+k; let vis=ps, hidden=0;
+    if(!openGroups.has(gk)&&ps.length>6){ hidden=ps.length-5; vis=ps.slice(0,5); }
+    return `<div class="case-head"><span>${head}</span><span>${rem}/${tot} ${esc(plural(u,tot))} left · ${ps.length} packs · ${act} active · ${openN} open</span></div>`
+      +vis.map(p=>{
+        const pct=p.total?Math.round(p.rem/p.total*100):0, sname=st(p);
+        return `<div class="prow ${p.rem===0?'empty':''}">
+          <span class="mono">${p.id}</span>
+          <span class="sub hide-sm">${p.serial?'SN '+esc(p.serial):'no serial'}</span>
+          <span class="st st-${sname}">${sname}</span>
+          <span class="barwrap"><span class="bar"><i style="width:${pct}%"></i></span><span class="mono">${p.rem}/${p.total}</span></span>
+          <span class="sub hide-sm">exp ${fmt(p.exp)}</span>
+          <span class="mono hide-sm" title="${peso(p.unitCost,4)} = (${peso(p.packCost)} + freight ${peso(p.freight)}) ÷ ${p.total}">${peso(p.unitCost)}/${esc(u)}</span>
+        </div>`;}).join('')
+      +(hidden?`<span class="more" data-k="${esc(gk)}" onclick="openGroups.add(this.dataset.k);renderTable()">+ ${hidden} more packs</span>`:'');
+  }).join('');
+  return `<div class="drill">${html}<p class="drill-note">Receipt data fixed as history; remaining counts update live as units sell/consume. Unit cost snapshotted per pack (pack cost + freight share).</p></div>`;
+}
+
+/* ---------- stepper ---------- */
+const steps=['General','Unit Load','Pallet','Case','Pack','Base Unit','Review'];
+const optional=[false,true,true,true,false,true,false];
+let cur=0, packVariants=[], editIndex=null;
+
+function renderTrack(){
+  $('track').innerHTML=steps.map((s,i)=>`<div class="step-dot ${i===cur?'active':''} ${i<cur?'done':''}">${i+1}. ${s}</div>`).join('');
+}
+function baseUnitNeeded(){ return !$('hasVariants').checked && $('sellBy').value!=='Pack'; }
+function showStep(){
+  document.querySelectorAll('.step').forEach(el=>el.classList.toggle('active',+el.dataset.i===cur));
+  renderTrack();
+  $('btnBack').disabled=cur===0;
+  $('btnSkip').style.visibility=optional[cur]?'visible':'hidden';
+  $('btnNext').textContent=cur===steps.length-1?'Save Receipt':'Next →';
+  if(cur===6) renderSummary();
+}
+function nextStep(){
+  if(cur===steps.length-1){ submit(); return; }
+  cur++;
+  if(cur===5&&!baseUnitNeeded()) cur++;
+  showStep();
+}
+function prevStep(){
+  if(cur>0){
+    cur--;
+    if(cur===5&&!baseUnitNeeded()) cur--;
+    showStep();
+  }
+}
+function skipStep(){ nextStep(); }
+function openModal(){
+  cur=0;
+  document.querySelectorAll('#overlay input:not([type=checkbox]), #overlay textarea').forEach(el=>el.value='');
+  $('dateReceived').value=new Date().toISOString().slice(0,10);
+  $('hasVariants').checked=false; toggleHasVariants(); packVariants=[]; renderVariantList();
+  $('packType').value='Sellable'; setSellBy('','Pack');
+  $('overlay').classList.remove('hidden'); calc(); showStep();
+}
+function closeModal(){ $('overlay').classList.add('hidden'); }
+function toggleHasVariants(){
+  const on=$('hasVariants').checked;
+  $('packSingleBlock').classList.toggle('hidden-block',on);
+  $('packMultiBlock').classList.toggle('hidden-block',!on);
+}
+function setSellBy(prefix,val){
+  $(prefix+'sellBy').value=val;
+  $(prefix+'sellBySeg').querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===val));
+  if(prefix==='pf_') $('pf_baseBlock').classList.toggle('hidden-block',val==='Pack');
+  calcPack(prefix);
+}
+
+const n=id=>+($(id).value||0);
+function genLot(prefix){
+  const d=($('dateReceived').value||new Date().toISOString().slice(0,10)).replace(/-/g,'');
+  $(prefix+'lot').value=`LOT-${d}-${String(Math.floor(10+Math.random()*90))}`;
+}
+function genSku(prefix){
+  const d=($('dateReceived').value||new Date().toISOString().slice(0,10)).replace(/-/g,'');
+  $(prefix+'sku').value=`SKU-${d}-${String(Math.floor(10+Math.random()*90))}`;
+}
+function packCount(prefix){ return n(prefix+'receivedPacks')||(prefix===''?n('caTotalPacks'):0); }
+const singlePackCount=()=>packCount('');
+function genSerial(prefix){
+  const d=($('dateReceived').value||new Date().toISOString().slice(0,10)).replace(/-/g,'');
+  const count=packCount(prefix)||1, arr=[];
+  for(let i=1;i<=count;i++) arr.push(`SN-${d}-${String(i).padStart(2,'0')}`);
+  $(prefix+'serial').value=arr.join(', ');
+}
+function calc(){
+  $('ulTotal').value=n('ulReceived')*n('ulPer')||0;
+  $('plTotal').value=n('plReceived')*n('plPer')||0;
+  $('caTotalPacks').value=n('caReceived')*n('caPer')||0;
+  const tc=n('caReceived')*n('caCost');
+  $('caTotalCost').value=tc?'₱'+tc.toLocaleString():0;
+  $('receivedPacks').placeholder=n('caTotalPacks')?`From Case tier: ${n('caTotalPacks')}`:'';
+  calcPack('');
+}
+function packCost(prefix){ return n(prefix+'costPerPack')||(prefix===''&&n('caPer')?n('caCost')/n('caPer'):0); }
+function calcPack(prefix){
+  const count=packCount(prefix), cpp=packCost(prefix);
+  const packsCost=cpp*count;
+  $(prefix+'packsCostDisp').value=packsCost?peso(packsCost):'—';
+  const upp=n(prefix+'unitsPerPack')||0, bc=n(prefix+'baseCost')||0;
+  const baseTotal=bc*upp*count;
+  $(prefix+'baseCostDisp').value=baseTotal?peso(baseTotal):'—';
+}
+
+/* ---------- multi-variant list ---------- */
+function openVariantModal(idx){
+  editIndex=(idx===undefined)?null:idx;
+  const v=editIndex!=null?packVariants[editIndex]:null;
+  const fields=['packName','sku','storageLoc','baseUnit','unitsPerPack','reorderAt','lot','receivedPacks','costPerPack','baseCost','serial','expiry','totalBaseUnits'];
+  if(v){
+    fields.forEach(f=>$('pf_'+f).value=v[f]??'');
+    $('pf_packType').value=v.packType;
+  } else {
+    fields.forEach(f=>$('pf_'+f).value='');
+    $('pf_packType').value='Sellable';
+  }
+  setSellBy('pf_',v?v.sellBy:'Pack');
+  $('pfOverlay').classList.remove('hidden');
+}
+function closeVariantModal(){ $('pfOverlay').classList.add('hidden'); }
+function saveVariant(){
+  const v={packName:$('pf_packName').value||'New Item',sku:$('pf_sku').value,packType:$('pf_packType').value,
+    sellBy:$('pf_sellBy').value,storageLoc:$('pf_storageLoc').value,baseUnit:$('pf_baseUnit').value,unitsPerPack:n('pf_unitsPerPack')||1,
+    reorderAt:n('pf_reorderAt'),lot:$('pf_lot').value,receivedPacks:n('pf_receivedPacks'),costPerPack:n('pf_costPerPack'),
+    baseCost:n('pf_baseCost'),serial:$('pf_serial').value,expiry:$('pf_expiry').value,totalBaseUnits:n('pf_totalBaseUnits')};
+  if(editIndex!=null) packVariants[editIndex]=v; else packVariants.push(v);
+  closeVariantModal(); renderVariantList();
+}
+function removeVariant(i){ packVariants.splice(i,1); renderVariantList(); }
+function renderVariantList(){
+  $('variantList').innerHTML=packVariants.map((v,i)=>`<div class="vlist-row">
+    <div><div class="name">${esc(v.packName)}</div><div class="sub mono">${esc(v.sku||'—')}</div></div>
+    <div class="sub">${v.receivedPacks} packs</div>
+    <div class="sub">₱${v.costPerPack}/pack</div>
+    <div class="vlist-actions"><span onclick="openVariantModal(${i})" title="Edit">✎</span><span onclick="removeVariant(${i})" title="Remove">✕</span></div>
+  </div>`).join('')||'<p class="hint">No products/variants added yet.</p>';
+}
+
+/* ---------- review steps ---------- */
+function costEntries(){
+  const fr=n('freight');
+  const es=$('hasVariants').checked
+    ?packVariants.map(v=>({name:v.packName,unit:v.baseUnit||'unit',upp:v.unitsPerPack||1,count:v.receivedPacks,cpp:v.costPerPack}))
+    :[{name:$('packName').value||'Item',unit:$('baseUnit').value||'unit',upp:n('unitsPerPack')||1,count:singlePackCount(),cpp:packCost('')}];
+  const val=es.reduce((s,e)=>s+e.cpp*e.count,0), pk=es.reduce((s,e)=>s+e.count,0);
+  es.forEach(e=>{ e.units=e.count*e.upp; e.base=e.cpp/e.upp;
+    e.share=fr?(val?fr*e.cpp*e.count/val:(pk?fr*e.count/pk:0)):0;
+    e.landed=e.units?(e.cpp*e.count+e.share)/e.units:e.base; });
+  return es;
+}
+function pkRange(count,offset){ return count<1?'—':count===1?'PK-'+pad(pkSeq+offset):`PK-${pad(pkSeq+offset)} … PK-${pad(pkSeq+offset+count-1)}`; }
+function renderSummary(){
+  const rows=[['Supplier',$('supplier').value],['Date Received',fmt($('dateReceived').value)],['Freight / Other Charges',n('freight')?peso(n('freight')):'—']];
+  if($('hasVariants').checked){
+    let off=0;
+    const es=costEntries();
+    packVariants.forEach((v,i)=>{ rows.push([v.packName,`${v.receivedPacks} packs · ${pkRange(v.receivedPacks,off)} · ${peso(es[i].landed,4)}/${es[i].unit}`]); off+=v.receivedPacks; });
+  } else {
+    const c=singlePackCount(), caR=n('caReceived'), caP=n('caPer');
+    rows.push(['Item',$('packName').value||'—'],['Lot/Batch',$('lot').value||'—'],['Received Packs',c],
+      ['Pack IDs (auto)',pkRange(c,0)],
+      ['Cases',caR&&caP?`${caR} → CS-${pad(csSeq)}${caR>1?' … CS-'+pad(csSeq+caR-1):''}`:'none (loose packs)'],
+      ['Total Base Units',$('totalBaseUnits').value||0],['Cost per Pack',packCost('')?peso(packCost('')):'—'],['Cost per Base Unit',peso(costEntries()[0].landed,4)],['Expiry Date',fmt($('expiry').value)]);
+  }
+  $('summary').innerHTML=rows.map(r=>`<div class="summary-row"><span>${esc(r[0])}</span><span class="mono">${esc(r[1])}</span></div>`).join('');
+}
+
+/* ---------- save ---------- */
+function newItem(f){
+  const it={id:'new-'+(newId++),parent:null,name:f.packName||'New Item',sku:f.sku,type:f.packType,sellBy:f.sellBy,base:f.baseUnit,
+      packUnit:'pack',upp:Math.max(1,+f.unitsPerPack||1),reorder:+f.reorderAt||0,loc:f.storageLoc};
+  ITEMS.push(it);
+  return it;
+}
+function addLine(rid,date,sup,loc,idx,it,lot,exp,cpp,count,caseList,serialStr){
+  const lineId=rid+'-'+idx, serials=(serialStr||'').split(',').map(s=>s.trim()).filter(Boolean);
+  let k=0;
+  const mk=caseId=>{ packs.push({id:'PK-'+pad(pkSeq++),itemId:it.id,lineId,receipt:rid,received:date,caseId,lot,exp,total:it.upp,rem:it.upp,serial:serials[k]||'',packCost:cpp||0,freight:0,unitCost:0}); k++; };
+  caseList.forEach(c=>{ for(let j=0;j<c.count&&k<count;j++) mk(c.id); });
+  while(k<count) mk(null);
+  lines.push({id:lineId,receipt:rid,date,supplier:sup,loc,itemId:it.id,lot,exp,cpp:cpp||0});
+  openLines.add(lineId);
+}
+function submit(){
+  const rid='RC-'+pad(rcSeq++), date=$('dateReceived').value||new Date().toISOString().slice(0,10);
+  const sup=$('supplier').value, loc=$('receivingLocation').value||'Main Warehouse';
+  if($('hasVariants').checked){
+    packVariants.forEach((v,i)=>{
+      const it=newItem(v);
+      addLine(rid,date,sup,v.storageLoc||loc,i+1,it,v.lot,v.expiry,v.costPerPack,v.receivedPacks,[],v.serial);
+    });
+  } else {
+    const f={packName:$('packName').value,sku:$('sku').value,packType:$('packType').value,sellBy:$('sellBy').value,
+      baseUnit:$('baseUnit').value,unitsPerPack:n('unitsPerPack'),reorderAt:n('reorderAt'),storageLoc:$('storageLoc').value};
+    const it=newItem(f), caseList=[], caR=n('caReceived'), caP=n('caPer');
+    for(let c=0;c<caR&&caP>0;c++){ const id='CS-'+pad(csSeq++); cases[id]={sscc:c===0?$('caContainer').value:''}; caseList.push({id,count:caP}); }
+    const cpp=n('costPerPack')||(caP?n('caCost')/caP:0);
+    addLine(rid,date,sup,it.loc||loc,1,it,$('lot').value,$('expiry').value,cpp,singlePackCount(),caseList,$('serial').value);
+  }
+  allocFreight(rid,n('freight'));
+  renderTable(); closeModal();
+}
+renderTable();
+</script>
+</body>
+</html>

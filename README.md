@@ -33,7 +33,11 @@ together and explained inline.
 - **Session stored in the Keychain / Keystore** via `expo-secure-store`, not plaintext AsyncStorage
 - **SQL migrations** for `profiles` and `merchants` with RLS, the tenancy seam, and in-app account deletion
 - **A merchant shell with its first business screens** — Products: list, stepped create / edit form,
-  detail, archive and delete, and Setup for categories, tax classes and suppliers
+  detail, archive and delete, Setup for categories and tax classes, and Add from Inventory;
+  Inventory: items with a lot-and-pack drill, the next pick marked; Stock: suppliers and a seven-step
+  receipt wizard (Unit Load → Pallet → Case → Pack → Base Unit), one row per physical pack
+- **A stock ledger** with a pick order (open packs first, then closest expiry) and `draw_stock`, ready
+  for the Register to sell loose units or whole packs
 - **React Native Paper** for the whole UI, themed from `src/themes.js`
 - **Patched dependency** via `patch-package`, applied automatically on install
 - **Lint** — oxlint with a local `anti-slop` plugin in `tools/oxlint/`, wired up in `.oxlintrc.json`

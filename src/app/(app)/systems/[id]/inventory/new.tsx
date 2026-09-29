@@ -5,5 +5,5 @@ import { StockItemForm } from '../../../../../screens/stock-item-form';
 export default function NewItemScreen() {
   const merchant = useShellMerchant();
 
-  return <StockItemForm merchantId={merchant.id} product={null} />;
+  return <StockItemForm merchantId={merchant.id} currency={merchant.currency} product={null} />;
 }

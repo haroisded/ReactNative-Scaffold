@@ -11,7 +11,7 @@ export default function InventoryDetailScreen() {
 
   return (
     <ProductGate id={productId} scope="inventory">
-      {(product) => <InventoryDetail merchantId={merchant.id} product={product} />}
+      {(product) => <InventoryDetail merchantId={merchant.id} product={product} currency={merchant.currency} />}
     </ProductGate>
   );
 }

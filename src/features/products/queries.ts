@@ -39,6 +39,9 @@ export const productsKey = {
   detail: (args: { id: string }) => [...productsKey.details(), args],
   options: (args: { merchantId: string }) => [...productsKey.all, 'options', args],
   stockOptions: (args: { merchantId: string }) => [...productsKey.all, 'stock-options', args],
+  addables: (args: { merchantId: string }) => [...productsKey.all, 'addables', args],
+  sourceItem: (args: { id: string }) => [...productsKey.all, 'source-item', args],
+  faces: (args: { itemId: string }) => [...productsKey.all, 'faces', args],
 };
 
 // ilike's own wildcards first, then PostgREST's quoting: the search box's text is a literal, so a
@@ -57,12 +60,14 @@ export function useProductsQuery(filters: ProductFilters) {
       // useInfiniteQuery when a merchant's catalogue outgrows a single response.
       let query = supabase
         .from('products')
-        // group and lots are the Inventory row's (src/screens/product-list/inventory-rows.tsx): the variant
-        // group it is listed under, and what its Expiring badge and Source filter read. Other screens' rows
-        // have neither, and the embeds come back null and empty.
+        // group, lots and packs are the Inventory row's (src/screens/product-list/inventory-rows.tsx): the
+        // variant group it is listed under, where its stock came from (the Source filter), and its live
+        // packs — how many, how many open, and which lots' expiry the badge reads. Other screens' rows have
+        // none of them, and the embeds come back null and empty.
         .select(
-          '*, category:product_categories!products_category_fk(name), group:product_groups!products_group_fk(name), lots:stock_lots!stock_lots_product_fk(qty_remaining, expires_on, receipt:stock_receipts!stock_lots_receipt_fk(supplier_id, voided_at))'
+          '*, category:product_categories!products_category_fk(name), group:product_groups!products_group_fk(name), lots:stock_lots!stock_lots_product_fk(id, source, expires_on), packs:stock_packs!stock_packs_product_fk(lot_id, units, qty_remaining)'
         )
+        .gt('packs.qty_remaining', 0)
         // Scoping to this system, not security — see the note in categories/queries.ts.
         .eq('merchant_id', filters.merchantId)
         // …and to this Resources screen. products.scope is written by the database from the type
@@ -183,7 +188,9 @@ export function useStockItemOptionsQuery({ merchantId }: { merchantId: string })
     queryFn: async () => {
       const { data } = await supabase
         .from('products')
-        .select('id, name, sku, conversion_factor, pack_unit_name, base_unit_name, serial_tracked, attributes')
+        .select(
+          'id, name, sku, conversion_factor, pack_unit_name, base_unit_name, attributes, sell_by, stock_role, perishable, reorder_threshold, storage_location'
+        )
         .eq('merchant_id', merchantId)
         .eq('type', 'stock')
         .neq('status', 'archived')
@@ -197,6 +204,124 @@ export function useStockItemOptionsQuery({ merchantId }: { merchantId: string })
 }
 
 export type StockItemOption = NonNullable<ReturnType<typeof useStockItemOptionsQuery>['data']>[number];
+
+/**
+ * The Inventory list's inline Type menu. A plain update: products_sync_register_faces makes, deletes or
+ * archives the item's Products drafts to match (20260929100000_stock_items.sql §6).
+ */
+export function useSetStockRoleMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, stockRole }: { id: string; stockRole: StockRole }) => {
+      await supabase.from('products').update({ stock_role: stockRole }).eq('id', id).throwOnError();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: productsKey.all });
+    },
+  });
+}
+
+type FaceUnit = 'pack' | 'piece';
+
+/** The Sell By units an item wants a Products draft for. */
+function wantedUnits(sellBy: StockItemOption['sell_by']): FaceUnit[] {
+  if (sellBy === 'both') return ['pack', 'piece'];
+  return sellBy === 'base' ? ['piece'] : ['pack'];
+}
+
+/**
+ * Products → "Add from Inventory": Sellable and Both items missing a draft or published face for a unit
+ * they sell by. A face someone deleted, or one archived, is what this brings back.
+ */
+export function useInventoryAddablesQuery({ merchantId }: { merchantId: string }) {
+  return useQuery({
+    queryKey: productsKey.addables({ merchantId }),
+    queryFn: async () => {
+      // Two reads rather than an embed: products points at itself through source_item_id, and an embed on
+      // a self-referencing key reads in only one direction.
+      const [items, faces] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, sku, sell_by, pack_unit_name, base_unit_name')
+          .eq('merchant_id', merchantId)
+          .eq('type', 'stock')
+          .neq('status', 'archived')
+          .in('stock_role', ['sellable', 'both'])
+          .order('name')
+          .throwOnError(),
+        supabase
+          .from('products')
+          .select('source_item_id, components:product_components!product_components_product_fk(unit)')
+          .eq('merchant_id', merchantId)
+          .not('source_item_id', 'is', null)
+          .neq('status', 'archived')
+          .throwOnError(),
+      ]);
+
+      const have = new Set(faces.data.flatMap((face) => face.components.map((c) => `${face.source_item_id}:${c.unit}`)));
+      return items.data
+        .map((item) => ({ ...item, missing: wantedUnits(item.sell_by).filter((unit) => !have.has(`${item.id}:${unit}`)) }))
+        .filter((item) => item.missing.length > 0);
+    },
+    staleTime: STALE.SECONDS.THIRTY,
+  });
+}
+
+export type InventoryAddable = NonNullable<ReturnType<typeof useInventoryAddablesQuery>['data']>[number];
+
+/** Makes an item's missing Products drafts (ensure_register_faces), and returns the drafts it now has. */
+export function useEnsureRegisterFacesMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ itemId }: { itemId: string }) => {
+      await supabase.rpc('ensure_register_faces', { p_item: itemId }).throwOnError();
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, status')
+        .eq('source_item_id', itemId)
+        .neq('status', 'archived')
+        .order('name')
+        .throwOnError();
+      return data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: productsKey.all });
+    },
+  });
+}
+
+/** A Products draft's Inventory item: the name its "From Inventory" line shows. */
+export function useSourceItemQuery({ id }: { id: string | null }) {
+  return useQuery({
+    queryKey: productsKey.sourceItem({ id: id ?? '' }),
+    queryFn: async () => {
+      const { data } = await supabase.from('products').select('id, name, sku').eq('id', id ?? '').maybeSingle().throwOnError();
+      return data;
+    },
+    enabled: id !== null,
+    staleTime: STALE.MINUTES.ONE,
+  });
+}
+
+/** An item's Products drafts, for the Inventory detail's "Selling as" block. */
+export function useItemFacesQuery({ itemId }: { itemId: string }) {
+  return useQuery({
+    queryKey: productsKey.faces({ itemId }),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, status, selling_price')
+        .eq('source_item_id', itemId)
+        .neq('status', 'archived')
+        .order('name')
+        .throwOnError();
+      return data;
+    },
+    staleTime: STALE.SECONDS.THIRTY,
+  });
+}
 
 /**
  * The copy for a failed save. The three cases a merchant can cause and fix get their own sentence;
@@ -243,8 +368,9 @@ export function useSaveProductMutation({ merchantId }: { merchantId: string }) {
 }
 
 /**
- * An Inventory item, through save_stock_item (20260928100100_stock_items.sql): the row, its group, and the
- * register drafts it wants, in one transaction. Returns the item's id. Its refusals are named exceptions —
+ * An Inventory item, through save_stock_item (20260929100000_stock_items.sql): the row, its group, its
+ * optional opening stock, and — through the faces trigger — the Products drafts it wants, in one
+ * transaction. Returns the item's id. Its refusals are named exceptions —
  * read them with stockFailure from stock-receipts/queries.ts; a duplicate SKU is still saveFailure's 'sku'.
  */
 export function useSaveStockItemMutation({ merchantId }: { merchantId: string }) {

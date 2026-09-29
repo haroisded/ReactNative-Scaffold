@@ -19,6 +19,7 @@ export const unstable_settings = { anchor: '(tabs)' };
 // push with no sheet presentation and no contentStyle, which is how delete-product shipped as a
 // top-aligned white screen (tests/test-report/resources-test-report.md, Test 7).
 const SHEETS = [
+  'sheets/add-from-inventory',
   'sheets/category',
   'sheets/delete-account',
   'sheets/delete-category',

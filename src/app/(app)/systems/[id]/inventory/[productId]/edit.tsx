@@ -12,7 +12,7 @@ export default function EditItemScreen() {
   // the first render.
   return (
     <ProductGate id={productId} scope="inventory">
-      {(product) => <StockItemForm merchantId={merchant.id} product={product} />}
+      {(product) => <StockItemForm merchantId={merchant.id} currency={merchant.currency} product={product} />}
     </ProductGate>
   );
 }

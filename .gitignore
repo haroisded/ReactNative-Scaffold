@@ -53,6 +53,9 @@ desktop.ini
 # Claude Code local overrides (per-machine permission grants)
 .claude/settings.local.json
 
+# headroom wrap state (live pid, port, env-var ownership) — per-machine, never shared
+.claude/.headroom_wrap_*
+
 # commit messages staged for `git commit -F` — the handoff, not a second history
 # (instruction_mds/context-policy.md §2)
 .claude/commit-history/

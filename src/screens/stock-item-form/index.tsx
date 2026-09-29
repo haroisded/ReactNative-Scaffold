@@ -32,16 +32,18 @@ import { stockFailure } from '../../features/stock-receipts/queries';
 import { useShellWide } from '../../lib/columns';
 import { INVALID_FORM, SKU_TAKEN, failureMessage, mutationNotice } from '../../lib/errors';
 import type { Notice } from '../../lib/errors';
+import { currencySymbol } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
 import { spacing } from '../../themes';
 
-type Props = { merchantId: string; product: ProductDetail | null };
+type Props = { merchantId: string; currency: string; product: ProductDetail | null };
 
 // Keyed by the exception save_stock_item or guard_stock_item raises; stockFailure() hands back any
 // snake_case message.
 const FAILURE_COPY = new Map([
-  ['stock_item_units_locked', 'Units per pack and serial numbers can change only while nothing is on hand.'],
+  ['stock_item_units_locked', 'Units per pack can change only while nothing is on hand.'],
+  ['receipt_line_quantity', 'Loose units must be fewer than one full pack.'],
   ['product_not_found', 'This item was archived or deleted elsewhere. Go back and open it again.'],
 ]);
 
@@ -61,7 +63,7 @@ const SELL_BY_BUTTONS = stockSellBy.options.map((value) => ({ value, label: SELL
  * One scroll of five sections, not the product form's stepper: every field here fits on one phone
  * screen or two, and a stepper would hide the Base Unit fields that Pack Info depends on.
  */
-export function StockItemForm({ merchantId, product }: Props) {
+export function StockItemForm({ merchantId, currency, product }: Props) {
   const wide = useShellWide();
   const save = useSaveStockItemMutation({ merchantId });
 
@@ -113,12 +115,12 @@ export function StockItemForm({ merchantId, product }: Props) {
 
         <VariantSection merchantId={merchantId} control={control} setValue={setValue} />
         <PackInfoSection merchantId={merchantId} control={control} setValue={setValue} />
-        <UnitSections control={control} locked={locked} />
+        <UnitSections control={control} locked={locked} creating={!editing} currency={currency} />
 
         <SectionHeading title="Extra" hint="Optional" />
         <FieldGrid>
+          <ControlledText control={control} name="notes" label="Notes" span="full" multiline maxLength={2000} />
           <ControlledText control={control} name="description" label="Description" span="full" multiline maxLength={2000} />
-          <ControlledText control={control} name="notes" label="Internal notes" span="full" multiline maxLength={2000} />
         </FieldGrid>
       </ScrollView>
 
@@ -217,8 +219,8 @@ function PackInfoSection({ merchantId, control, setValue }: SectionProps) {
           control={control}
           name="sku"
           label="SKU"
+          required
           maxLength={64}
-          placeholder="Blank makes one"
           action={{
             label: 'Auto-generate',
             onPress: () => setValue('sku', generateSku('stock', categoryName), { shouldDirty: true, shouldValidate: true }),
@@ -232,15 +234,19 @@ function PackInfoSection({ merchantId, control, setValue }: SectionProps) {
             buttons={ROLE_BUTTONS}
           />
         </Field>
-        {role.field.value === 'component' ? null : (
-          <Field label="Sell by" required span="full" hint="Makes the register drafts" error={sellBy.fieldState.error?.message}>
-            <SegmentedButtons
-              value={sellBy.field.value}
-              onValueChange={(value) => sellBy.field.onChange(stockSellBy.parse(value))}
-              buttons={SELL_BY_BUTTONS}
-            />
-          </Field>
-        )}
+        <Field
+          label="Sell by"
+          required
+          span="full"
+          hint={role.field.value === 'component' ? 'How it is counted' : 'Makes its Products drafts'}
+          error={sellBy.fieldState.error?.message}
+        >
+          <SegmentedButtons
+            value={sellBy.field.value}
+            onValueChange={(value) => sellBy.field.onChange(stockSellBy.parse(value))}
+            buttons={SELL_BY_BUTTONS}
+          />
+        </Field>
         <Field label="Category">
           <CategoryPicker
             merchantId={merchantId}
@@ -287,56 +293,59 @@ function SubcategoryField({ merchantId, control, categoryId }: Omit<SectionProps
   );
 }
 
-/** Base unit and stock settings, which both name the units the merchant typed. */
-function UnitSections({ control, locked }: { control: Control<StockItemValues>; locked: boolean }) {
-  const [packUnit, baseUnit] = useWatch({ control, name: ['packUnit', 'baseUnit'] });
+type UnitProps = { control: Control<StockItemValues>; locked: boolean; creating: boolean; currency: string };
+
+/**
+ * The pack and base unit, stock settings, and — on a new item — its stock on hand. The Base unit section
+ * only exists while something is sold by the base unit, and appears and disappears as Sell by changes.
+ */
+function UnitSections({ control, locked, creating, currency }: UnitProps) {
+  const [packUnit, baseUnit, sellBy] = useWatch({ control, name: ['packUnit', 'baseUnit', 'sellBy'] });
   const pack = packUnit || 'pack';
-  const base = baseUnit || 'unit';
+  const byPack = sellBy === 'pack';
+  const base = byPack ? pack : baseUnit || 'unit';
 
   return (
     <>
-      <SectionHeading title="Base unit" hint="How one pack is counted" />
+      <SectionHeading title="Stock settings" hint="Where it is kept and when to warn" />
       <FieldGrid>
-        <ControlledText control={control} name="packUnit" label="Pack unit" placeholder="box" maxLength={20} />
-        <ControlledText control={control} name="baseUnit" label="Base unit" placeholder="pcs" maxLength={20} />
-        <ControlledText
-          control={control}
-          name="unitsPerPack"
-          label={`${base} per ${pack}`}
-          required
-          keyboardType="decimal-pad"
-          disabled={locked}
-          hint={locked ? 'Locked while stock is on hand' : undefined}
-        />
-        <ControlledSwitch
-          control={control}
-          name="serialTracked"
-          label="Serial numbers"
-          on={`Each ${pack} has a serial`}
-          off="No serials"
-          disabled={locked}
-        />
+        <ControlledText control={control} name="packUnit" label="Pack unit name" placeholder="e.g. cup, box, tray" maxLength={20} />
+        <ControlledText control={control} name="storageLocation" label="Storage location" maxLength={120} placeholder="Back room, shelf 2" />
+        <ControlledText control={control} name="reorderAt" label="Re-order at" hint="In base units" keyboardType="decimal-pad" suffix={base} />
+        <ControlledSwitch control={control} name="hasExpiry" label="Expiry" on="Has an expiration date" off="Does not expire" />
+        <ControlledText control={control} name="expiryAlertDays" label="Expiry alert" hint="Days before a lot expires" keyboardType="number-pad" suffix="days" />
       </FieldGrid>
 
-      <SectionHeading title="Stock settings" hint="When to warn" />
-      <FieldGrid>
-        <ControlledText
-          control={control}
-          name="storageLocation"
-          label="Storage location"
-          maxLength={120}
-          placeholder="Back room, shelf 2"
-        />
-        <ControlledText control={control} name="reorderAt" label="Reorder at" keyboardType="decimal-pad" suffix={base} />
-        <ControlledText
-          control={control}
-          name="expiryAlertDays"
-          label="Expiry alert"
-          hint="Days before a lot expires"
-          keyboardType="number-pad"
-          suffix="days"
-        />
-      </FieldGrid>
+      {byPack ? null : (
+        <>
+          <SectionHeading title="Base unit" hint="What one pack holds" />
+          <FieldGrid>
+            <ControlledText control={control} name="baseUnit" label="Base unit type" placeholder="e.g. tablet" maxLength={20} />
+            <ControlledText
+              control={control}
+              name="unitsPerPack"
+              label={`${base} per ${pack}`}
+              required
+              keyboardType="decimal-pad"
+              disabled={locked}
+              hint={locked ? 'Locked while stock is on hand' : undefined}
+            />
+          </FieldGrid>
+        </>
+      )}
+
+      {creating ? (
+        <>
+          <SectionHeading title="Stock on hand" hint="Optional — not tied to a supplier" />
+          <FieldGrid>
+            <ControlledText control={control} name="openingPacks" label={`${pack} on hand`} keyboardType="number-pad" />
+            {byPack ? null : (
+              <ControlledText control={control} name="openingLoose" label={`Loose ${base}`} hint="Outside a full pack" keyboardType="decimal-pad" />
+            )}
+            <ControlledText control={control} name="openingCost" label={`Cost per ${pack}`} keyboardType="decimal-pad" prefix={currencySymbol(currency)} />
+          </FieldGrid>
+        </>
+      ) : null}
     </>
   );
 }

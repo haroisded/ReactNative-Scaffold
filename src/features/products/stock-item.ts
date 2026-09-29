@@ -5,7 +5,7 @@ import type { Enums } from '../../lib/database.types';
 import type { ProductDetail } from './queries';
 
 // The Inventory item form (src/screens/stock-item-form/), saved through save_stock_item
-// (20260928100100_stock_items.sql §6). Form input only; reads are typed by database.types.ts.
+// (20260929100000_stock_items.sql §7). Form input only; reads are typed by database.types.ts.
 
 export type StockRole = Enums<'stock_role'>;
 type StockSellBy = Enums<'stock_sell_by'>;
@@ -42,7 +42,7 @@ export const stockItemSchema = z
     /** "Red, L" — one attribute per comma, stored as products.attributes. */
     attributes: text(200, 'Attributes'),
     name: text(120, 'Name').min(1, 'Enter a name.'),
-    sku: text(64, 'SKU'),
+    sku: text(64, 'SKU').min(1, 'Enter a SKU, or tap Auto-generate.'),
     barcode: text(64, 'Barcode'),
     stockRole,
     sellBy: stockSellBy,
@@ -50,15 +50,27 @@ export const stockItemSchema = z
     subcategoryId: z.string(),
     packUnit: text(20, 'Pack unit'),
     baseUnit: text(20, 'Base unit'),
-    unitsPerPack: amount('Units per pack').refine((value) => Number(value) > 0, 'Enter how many base units one pack holds.'),
-    serialTracked: z.boolean(),
+    unitsPerPack: amount('Units per pack'),
+    /** products.perishable: when on, every receipt line for this item needs an expiry date. */
+    hasExpiry: z.boolean(),
     storageLocation: text(120, 'Storage location'),
     reorderAt: amount('Reorder at'),
     expiryAlertDays: z.string().trim().regex(/^\d{0,4}$/, 'Days is a whole number.'),
     description: text(2000, 'Description'),
     notes: text(2000, 'Notes'),
+    /** Stock on hand, create only: written as Inventory-added stock with no receipt or supplier. */
+    openingPacks: z.string().trim().regex(/^\d{0,6}$/, 'Packs is a whole number.'),
+    openingLoose: amount('Loose units'),
+    openingCost: amount('Cost per pack'),
   })
   .superRefine((item, ctx) => {
+    // The Base unit section only shows when something is sold or counted by the base unit.
+    if (item.sellBy !== 'pack') {
+      if (!(Number(item.unitsPerPack) > 0))
+        ctx.addIssue({ code: 'custom', path: ['unitsPerPack'], message: 'Enter how many base units one pack holds.' });
+      if (item.openingLoose !== '' && Number(item.openingLoose) >= Number(item.unitsPerPack))
+        ctx.addIssue({ code: 'custom', path: ['openingLoose'], message: 'Loose units must be fewer than one full pack.' });
+    }
     if (!item.isVariant) return;
     if (item.newGroup && item.newGroupName === '')
       ctx.addIssue({ code: 'custom', path: ['newGroupName'], message: 'Enter the group name.' });
@@ -82,14 +94,17 @@ export const emptyStockItem: StockItemValues = {
   categoryId: '',
   subcategoryId: '',
   packUnit: '',
-  baseUnit: '',
+  baseUnit: 'pc',
   unitsPerPack: '1',
-  serialTracked: false,
+  hasExpiry: true,
   storageLocation: '',
   reorderAt: '',
   expiryAlertDays: '',
   description: '',
   notes: '',
+  openingPacks: '',
+  openingLoose: '',
+  openingCost: '',
 };
 
 const str = (value: number | string | null) => (value === null ? '' : String(value));
@@ -111,12 +126,15 @@ export function fromStockItem(product: ProductDetail): StockItemValues {
     packUnit: product.pack_unit_name ?? '',
     baseUnit: product.base_unit_name ?? '',
     unitsPerPack: str(product.conversion_factor ?? 1),
-    serialTracked: product.serial_tracked,
+    hasExpiry: product.perishable,
     storageLocation: product.storage_location ?? '',
     reorderAt: str(product.reorder_threshold),
     expiryAlertDays: str(product.expiry_alert_days),
     description: product.description ?? '',
     notes: product.internal_notes ?? '',
+    openingPacks: '',
+    openingLoose: '',
+    openingCost: '',
   };
 }
 
@@ -130,6 +148,7 @@ const numberOrNull = (value: string) => (value === '' ? null : Number(value));
  */
 export function toStockItemPayload(values: StockItemValues, target: { merchantId: string; product: ProductDetail | null }) {
   const variant = values.isVariant;
+  const byPack = values.sellBy === 'pack';
   return {
     item: {
       id: target.product?.id ?? null,
@@ -146,12 +165,13 @@ export function toStockItemPayload(values: StockItemValues, target: { merchantId
       storage_location: orNull(values.storageLocation),
       reorder_threshold: numberOrNull(values.reorderAt),
       expiry_alert_days: numberOrNull(values.expiryAlertDays),
-      conversion_factor: Number(values.unitsPerPack),
+      // Sold by the pack only: no base unit, so one pack is one unit.
+      conversion_factor: byPack ? 1 : Number(values.unitsPerPack),
       pack_unit_name: orNull(values.packUnit),
-      base_unit_name: orNull(values.baseUnit),
+      base_unit_name: byPack ? null : orNull(values.baseUnit),
       sell_by: values.sellBy,
       stock_role: values.stockRole,
-      serial_tracked: values.serialTracked,
+      perishable: values.hasExpiry,
       group_id: variant && !values.newGroup ? orNull(values.groupId) : null,
       attributes: variant
         ? values.attributes
@@ -162,6 +182,14 @@ export function toStockItemPayload(values: StockItemValues, target: { merchantId
       internal_notes: orNull(values.notes),
     },
     group_name: variant && values.newGroup ? values.newGroupName : null,
+    opening:
+      target.product === null
+        ? {
+            packs: Number(values.openingPacks || 0),
+            loose_units: byPack ? 0 : Number(values.openingLoose || 0),
+            cost_per_pack: numberOrNull(values.openingCost),
+          }
+        : null,
   };
 }
 

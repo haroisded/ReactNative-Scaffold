@@ -85,6 +85,7 @@ Only here:
 - A toggle that is on, and the stepper's progress bar.
 - Discount state on a cart — applied discount lines, "Eligible" and "Apply" tags, the eligible strip.
 - The left rule of a note callout, and the Cart count badge on the selected mobile tab.
+- A pack's Open status, the stock remaining bar, and the **Next pick** badge (filled `accent`, `onAccent` text) — `src/components/pack-row.tsx`.
 
 Everything else is ink on white.
 
@@ -133,6 +134,7 @@ on Android.
 | Wide list | `DataTable`: a `labelMedium` `Text` as each `DataTable.Title`'s child, a `Checkbox.Android` bulk-select column, `IconButton` row actions |
 | Narrow list | `FlashList` rows: thumbnail, `titleMedium` name, badge, `bodySmall` meta, amount right-aligned |
 | Bulk action bar | a `surfaceVariant` strip: clear `IconButton`, count in `labelLarge`, text `Button`s; Delete in `error` |
+| Pack row (Stock and Inventory drills) | outlined `radius.sm` row: `titleMedium` code, status in `labelMedium` (Sealed `onSurface`, Open `accent`, Empty `onSurfaceFaint` and the row at half opacity), `bodySmall` caption, `ProgressBar` in `accent` with `rem/units` — `src/components/pack-row.tsx`; lots of them under a lot head — `src/components/lot-drill.tsx` |
 | Low-stock and lot-expiry badges (Low, Expiring, Expired) | `labelMedium` in `error` — `src/components/product-badges.tsx`. A lot's Expired is a warning, not the faint Expired status under §3 Status colours |
 | Search | outlined dense `TextInput` with a `TextInput.Icon` |
 | Filter and sort | an outlined `Button` anchoring a `Menu` |
@@ -145,7 +147,7 @@ on Android.
 | --- | --- |
 | Product or Discount type selector | `SegmentedButtons` (wrap to two per row on narrow) |
 | Section list (wide) | `Pressable` rows; active row on `surfaceMuted` with a 3px `accent` bar |
-| Stepper (narrow) | "Step n of N" in `labelMedium`, `IconButton` back, contained Next `Button`, `ProgressBar` in `accent` |
+| Stepper (narrow) | "Step n of N" in `labelMedium`, `IconButton` back, contained Next `Button`, `ProgressBar` in `accent`. An optional step (the receipt's Unit Load, Pallet, Case) reads "· Optional" and adds a text `Button` "Skip tier" under Next |
 | Field label | `labelMedium` above the control, `*` in `accent`, hint in `bodySmall` on the right |
 | Text field | outlined dense `TextInput`, no floating `label`; `left` / `right` affixes carry `$` and units |
 | Select | outlined non-editable `TextInput` anchoring a `Menu` — `src/components/menu-select.tsx` |

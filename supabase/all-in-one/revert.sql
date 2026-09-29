@@ -4,6 +4,89 @@
 -- DESTROYS DATA. Every revert, newest first, which takes the schema back to nothing. A migration
 -- marked `-- no-revert:` has no block here.
 
+-- ===== 20260929100100_stock_ledger.sql =====
+
+-- Reverts 20260929100100_stock_ledger.sql.
+--
+-- DESTROYS DATA: every receipt, lot, case, pack and serial, and the whole stock ledger. Each item's
+-- qty_on_hand and cost_price stay at their last computed values and become plain editable columns again,
+-- so what is on hand survives as a number with no lot, expiry or history behind it. Re-applying turns
+-- those numbers back into Inventory-added stock.
+--
+-- Run this before 20260929100000_stock_items.sql's revert (instruction_mds/migrations.md rule 6). The app
+-- expects the new shape — src/features and src/lib/database.types.ts — so regenerate the types after.
+
+drop function if exists public.void_receipt(uuid, text);
+drop function if exists public.record_stock_movement(jsonb);
+drop function if exists public.draw_stock(jsonb);
+drop function if exists public.add_inventory_stock(jsonb);
+drop function if exists public.save_receipt(jsonb);
+drop function if exists private.create_lot(public.products, public.stock_receipts, integer, jsonb);
+drop function if exists private.recompute_stock(uuid);
+
+drop trigger if exists products_guard_stock on public.products;
+drop function if exists private.guard_stock_item();
+
+drop view if exists public.stock_pick_queue;
+drop view if exists public.stock_lot_lines;
+
+drop table if exists public.stock_movements;
+drop table if exists public.stock_packs;
+drop table if exists public.stock_cases;
+drop table if exists public.stock_lots;
+drop table if exists public.stock_receipts;
+
+drop type if exists public.stock_lot_source;
+drop type if exists public.write_off_reason;
+drop type if exists public.stock_movement_kind;
+
+
+-- ===== 20260929100000_stock_items.sql =====
+
+-- Reverts 20260929100000_stock_items.sql.
+--
+-- DESTROYS DATA: every product group, and each product's pack and base unit names, Sell By, role,
+-- group, attributes and face link. Faces that never got a category are deleted (their component rows go
+-- with them), because category_id becomes required again. Generated SKUs stay: sku is an older column,
+-- and a SKU is never taken back.
+--
+-- Fails on purpose while a stock item has no category: give it one first rather than lose the item.
+--
+-- Run 20260929100100_stock_ledger.sql's revert first (instruction_mds/migrations.md rule 6). The app
+-- expects the new shape — src/features/products and src/lib/database.types.ts — so regenerate the types
+-- after running this.
+
+drop function if exists public.save_stock_item(jsonb);
+drop trigger if exists products_sync_register_faces on public.products;
+drop function if exists private.sync_register_faces();
+drop function if exists public.ensure_register_faces(uuid);
+drop trigger if exists products_assign_sku on public.products;
+
+delete from public.products where source_item_id is not null and category_id is null;
+
+alter table if exists public.products drop constraint if exists products_stock_fields;
+alter table if exists public.products drop constraint if exists products_category_required;
+alter table if exists public.products alter column category_id set not null;
+
+alter table if exists public.products drop constraint if exists products_unit_names_length;
+alter table if exists public.products drop constraint if exists products_source_item_fk;
+alter table if exists public.products drop constraint if exists products_group_fk;
+
+alter table if exists public.products
+  drop column if exists source_item_id,
+  drop column if exists attributes,
+  drop column if exists group_id,
+  drop column if exists stock_role,
+  drop column if exists sell_by,
+  drop column if exists base_unit_name,
+  drop column if exists pack_unit_name;
+
+drop table if exists public.product_groups;
+
+drop type if exists public.stock_role;
+drop type if exists public.stock_sell_by;
+
+
 -- ===== 20260928100300_supplier_code_default.sql =====
 
 -- Reverts 20260928100300_supplier_code_default.sql.
@@ -19,80 +102,6 @@ create trigger suppliers_assign_code
   execute function private.assign_code('supplier', 'SUP-', '4', 'code');
 
 alter table if exists public.suppliers alter column code drop default;
-
-
--- ===== 20260928100200_stock_receipts.sql =====
-
--- Reverts 20260928100200_stock_receipts.sql.
---
--- DESTROYS DATA: every receipt, lot, case, pack and serial, and the whole stock ledger. Each item's
--- qty_on_hand and cost_price stay at their last computed values and become plain editable columns again,
--- so what is on hand survives as a number with no lot, expiry or history behind it. The opening-stock
--- receipt goes with the rest; re-applying makes a new one from those numbers.
---
--- Run this before 20260928100100_stock_items.sql's revert (instruction_mds/migrations.md rule 6). The app expects the
--- new shape — src/features and src/lib/database.types.ts — so regenerate the types after running this.
-
-drop function if exists public.record_stock_movement(jsonb);
-drop function if exists public.void_receipt(uuid, text);
-drop function if exists public.save_receipt(jsonb);
-
-drop trigger if exists products_guard_stock on public.products;
-drop function if exists private.guard_stock_item();
-
-drop table if exists public.stock_movements;
-drop table if exists public.stock_packs;
-drop table if exists public.stock_cases;
-drop table if exists public.stock_lots;
-drop table if exists public.stock_receipts;
-
-drop function if exists private.recompute_stock(uuid);
-
-drop type if exists public.write_off_reason;
-drop type if exists public.stock_movement_kind;
-
-
--- ===== 20260928100100_stock_items.sql =====
-
--- Reverts 20260928100100_stock_items.sql.
---
--- DESTROYS DATA: every product group, and each product's pack and base unit names, Sell By, role,
--- serial switch, group, attributes and draft link. Register drafts that never got a category are
--- deleted (their component rows go with them), because category_id becomes required again. Generated
--- SKUs stay: sku is an older column, and a SKU is never taken back.
---
--- Fails on purpose while a stock item has no category: give it one first rather than lose the item.
---
--- Run 20260928100200_stock_receipts.sql's revert first (instruction_mds/migrations.md rule 6). The app expects the
--- new shape — src/features/products and src/lib/database.types.ts — so regenerate the types after
--- running this.
-
-drop function if exists public.save_stock_item(jsonb);
-drop trigger if exists products_assign_sku on public.products;
-
-delete from public.products where source_item_id is not null and category_id is null;
-
-alter table if exists public.products drop constraint if exists products_category_required;
-alter table if exists public.products alter column category_id set not null;
-
-alter table if exists public.products drop constraint if exists products_unit_names_length;
-alter table if exists public.products drop constraint if exists products_source_item_fk;
-alter table if exists public.products drop constraint if exists products_group_fk;
-
-alter table if exists public.products
-  drop column if exists source_item_id,
-  drop column if exists attributes,
-  drop column if exists group_id,
-  drop column if exists serial_tracked,
-  drop column if exists stock_role,
-  drop column if exists sell_by,
-  drop column if exists base_unit_name,
-  drop column if exists pack_unit_name;
-
-drop table if exists public.product_groups;
-
-drop type if exists public.stock_role;
-drop type if exists public.stock_sell_by;
 
 
 -- ===== 20260928100000_suppliers_extend.sql =====

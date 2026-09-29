@@ -19,7 +19,7 @@ type Props = {
 type Pane = 'receipts' | 'suppliers';
 
 /**
- * Stock: what came in, and who it came from (.claude/inventory-stock/design.md §6). One screen with a
+ * Stock: what came in, and who it came from (.claude/inventory-stock/Stock_Receiving.html). One screen with a
  * Receipts | Suppliers switch rather than two drawer entries, because a supplier exists here to be
  * named on a receipt.
  */
@@ -41,7 +41,7 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
       <PageHeader
         kicker={merchantName}
         title="Stock"
-        meta={pane === 'receipts' ? 'Deliveries received, newest first' : 'Who you buy from'}
+        meta={pane === 'receipts' ? 'Receipts per item — received vs remaining, drill to case and pack' : 'Who you buy from'}
         actions={
           pane === 'receipts' ? (
             <Button
@@ -49,7 +49,7 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
               icon="add"
               onPress={() => router.push({ pathname: '/systems/[id]/stock/receipts/new', params: { id: merchantId } })}
             >
-              New receipt
+              New stock receipt
             </Button>
           ) : (
             <Button mode="contained" icon="add" onPress={addSupplier}>

@@ -7,7 +7,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useArchiveUndo } from '../../components/archive-undo';
 import { Button } from '../../components/button';
 import { Checkbox } from '../../components/checkbox';
+import { Chip } from '../../components/chip';
 import { DataTable } from '../../components/data-table';
+import { AddFromInventoryDialog } from '../../components/add-from-inventory-dialog';
 import { DeleteProductDialog } from '../../components/delete-product-dialog';
 import { HeaderTitle } from '../../components/header-title';
 import { HelperText } from '../../components/helper-text';
@@ -38,7 +40,7 @@ import { useSheetResult } from '../../Store/sheet-result';
 import { spacing } from '../../themes';
 import { InventoryDetail } from '../inventory-detail';
 import { ProductGate } from '../product-detail';
-import { GroupHeader, InventoryRow, SOURCE_FILTERS, groupInventory, itemSource } from './inventory-rows';
+import { GroupHeader, InventoryRow, SOURCE_FILTERS, SectionLabel, groupInventory, itemSource } from './inventory-rows';
 import type { InventorySource } from './inventory-rows';
 
 type Props = {
@@ -69,7 +71,7 @@ type Filters = {
   type: ProductType | '';
   status: ProductStatus | 'all';
   lowStockOnly: boolean;
-  // Inventory only (design.md §6): the item's type, and where its stock came from.
+  // Inventory only: the item's type, and where its stock came from.
   role: StockRole | '';
   source: InventorySource;
   sort: ProductSort;
@@ -85,11 +87,14 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
   const inventory = scope === 'inventory';
 
   const [searchDraft, setSearchDraft] = useState('');
-  const [search, setSearch] = useState('');
+  const search = useDebounced(searchDraft);
   const [filters, setFilters] = useState(NO_FILTERS);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // The rows awaiting delete, held here and not in a row: FlashList recycles its cells.
   const [deleting, setDeleting] = useState<Target[] | null>(null);
+  // Inventory only: whether the lot drill lists packs that are used up.
+  const [showEmpty, setShowEmpty] = useState(false);
+  const { addFromInventory, addDialog } = useAddFromInventory(merchantId, wide);
   // Archive writes immediately and offers Undo; only Delete still asks (src/components/archive-undo.tsx).
   const { archive, snackbar } = useArchiveUndo();
   // Narrow, the delete dialog is a formSheet route; its outcome comes back here to clear the selection.
@@ -100,11 +105,6 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
     else router.push({ pathname: '/sheets/delete-product', params: { products: JSON.stringify(targets), resultKey: 'delete-product:list' } });
   };
 
-  // A request per pause in typing, not per keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => setSearch(searchDraft), 300);
-    return () => clearTimeout(timer);
-  }, [searchDraft]);
 
   const { products, rows } = useProductRows(merchantId, scope, search, filters);
   const selectedRows = rows.filter((row) => selected.has(row.id));
@@ -132,39 +132,30 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         kicker={merchantName}
         title={meta.title}
         meta={products.data ? countLabel(rows.length, meta.item, filtered) : undefined}
-        actions={
-          <>
-            <Button mode="outlined" icon="settings" onPress={() => router.push({ pathname: route.setup, params: { id: merchantId } })}>
-              Setup
-            </Button>
-            <Button mode="contained" icon="add" onPress={() => router.push({ pathname: route.new, params: { id: merchantId } })}>
-              {`Add ${meta.item}`}
-            </Button>
-          </>
-        }
+        actions={<ListActions merchantId={merchantId} scope={scope} onAddFromInventory={addFromInventory} />}
       />
 
       <Toolbar wide={wide} inventory={inventory} search={searchDraft} onSearch={setSearchDraft}>
         <FilterControls merchantId={merchantId} scope={scope} filters={filters} onChange={patch} />
       </Toolbar>
 
+      <InventoryChips visible={inventory} filters={filters} onChange={patch} showEmpty={showEmpty} onShowEmpty={setShowEmpty} />
+
       <BulkBar rows={selectedRows} onClear={clearSelection} archive={archive} remove={remove} />
 
-      {inventory ? (
-        <InventoryPanes {...list} merchantId={merchantId} wide={wide} />
-      ) : wide ? (
-        <ProductTable
-          {...list}
-          currency={currency}
-          onSelect={setSelected}
-          onEdit={(id) => router.push({ pathname: route.edit, params: { id: merchantId, productId: id } })}
-          onArchive={(item) => archive([{ id: item.id, name: item.name, status: item.status }])}
-          onDelete={(item) => remove([{ id: item.id, name: item.name }])}
-        />
-      ) : (
-        <CardList {...list} currency={currency} />
-      )}
+      <ListBody
+        scope={scope}
+        wide={wide}
+        list={list}
+        merchantId={merchantId}
+        currency={currency}
+        showEmpty={showEmpty}
+        onSelect={setSelected}
+        archive={archive}
+        remove={remove}
+      />
 
+      {addDialog}
       {deleting ? (
         <DeleteProductDialog
           products={deleting}
@@ -177,6 +168,75 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
       ) : null}
       {snackbar}
     </View>
+  );
+}
+
+/** The search box's text once typing pauses: a request per pause, not per keystroke. */
+function useDebounced(value: string) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), 300);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return settled;
+}
+
+/** Products → Add from Inventory: a dialog on a tablet, the sheet route on a phone. */
+function useAddFromInventory(merchantId: string, wide: boolean) {
+  const [adding, setAdding] = useState(false);
+  const addFromInventory = () => {
+    if (wide) setAdding(true);
+    else router.push({ pathname: '/sheets/add-from-inventory', params: { merchantId } });
+  };
+  const addDialog = adding ? <AddFromInventoryDialog merchantId={merchantId} onDismiss={() => setAdding(false)} /> : null;
+  return { addFromInventory, addDialog };
+}
+
+type ListBodyProps = {
+  scope: ResourceScope;
+  wide: boolean;
+  list: ListProps;
+  merchantId: string;
+  currency: string;
+  showEmpty: boolean;
+  onSelect: (selected: ReadonlySet<string>) => void;
+  archive: ReturnType<typeof useArchiveUndo>['archive'];
+  remove: (targets: Target[]) => void;
+};
+
+/** Inventory's grouped panes, the wide table, or the narrow cards. */
+function ListBody({ scope, wide, list, merchantId, currency, showEmpty, onSelect, archive, remove }: ListBodyProps) {
+  if (scope === 'inventory') return <InventoryPanes {...list} merchantId={merchantId} currency={currency} wide={wide} showEmpty={showEmpty} />;
+  if (!wide) return <CardList {...list} currency={currency} />;
+  return (
+    <ProductTable
+      {...list}
+      currency={currency}
+      onSelect={onSelect}
+      onEdit={(id) => router.push({ pathname: RESOURCE_ROUTE[scope].edit, params: { id: merchantId, productId: id } })}
+      onArchive={(item) => archive([{ id: item.id, name: item.name, status: item.status }])}
+      onDelete={(item) => remove([{ id: item.id, name: item.name }])}
+    />
+  );
+}
+
+/** Setup, Add from Inventory (Products only), and Add. */
+function ListActions({ merchantId, scope, onAddFromInventory }: { merchantId: string; scope: ResourceScope; onAddFromInventory: () => void }) {
+  const route = RESOURCE_ROUTE[scope];
+  return (
+    <>
+      <Button mode="outlined" icon="settings" onPress={() => router.push({ pathname: route.setup, params: { id: merchantId } })}>
+        Setup
+      </Button>
+      {scope === 'products' ? (
+        <Button mode="outlined" icon="inventory" onPress={onAddFromInventory}>
+          Add from Inventory
+        </Button>
+      ) : null}
+      <Button mode="contained" icon="add" onPress={() => router.push({ pathname: route.new, params: { id: merchantId } })}>
+        {`Add ${RESOURCE_META[scope].item}`}
+      </Button>
+    </>
   );
 }
 
@@ -283,12 +343,6 @@ function FilterControls({
           onChange={(type) => onChange({ type })}
         />
       ) : null}
-      {inventory ? (
-        <>
-          <FilterMenu label="Source" value={filters.source} options={SOURCE_FILTERS} onChange={(source) => onChange({ source })} />
-          <FilterMenu label="Type" value={filters.role} options={ROLE_FILTERS} onChange={(role) => onChange({ role })} />
-        </>
-      ) : null}
       <FilterMenu label="Status" value={filters.status} options={STATUS_FILTERS} onChange={(status) => onChange({ status })} />
       <FilterMenu label="Sort" value={filters.sort} options={sorts} onChange={(sort) => onChange({ sort })} />
       {counted ? (
@@ -342,6 +396,50 @@ function EmptyList({
           </>
         )}
       </QueryState>
+    </View>
+  );
+}
+
+type ChipsProps = {
+  /** Inventory only; other screens draw nothing here. */
+  visible: boolean;
+  filters: Filters;
+  onChange: (next: Partial<Filters>) => void;
+  showEmpty: boolean;
+  onShowEmpty: (showEmpty: boolean) => void;
+};
+
+/**
+ * Inventory's always-visible filters (.claude/inventory-stock/Inventory.html): where the stock came from,
+ * the item's type, and whether the drill lists empty packs — with the pick order the drill marks.
+ */
+function InventoryChips({ visible, filters, onChange, showEmpty, onShowEmpty }: ChipsProps) {
+  const { colors } = useAppTheme();
+  if (!visible) return null;
+
+  return (
+    <View style={styles.chipBlock}>
+      <View style={styles.chipRow}>
+        {SOURCE_FILTERS.map((option) => (
+          <Chip key={option.value} compact selected={filters.source === option.value} showSelectedCheck={false} onPress={() => onChange({ source: option.value })}>
+            {option.label}
+          </Chip>
+        ))}
+      </View>
+      <View style={styles.chipRow}>
+        {ROLE_FILTERS.map((option) => (
+          <Chip key={option.value || 'all'} compact selected={filters.role === option.value} showSelectedCheck={false} onPress={() => onChange({ role: option.value })}>
+            {option.label}
+          </Chip>
+        ))}
+        <View style={styles.switchRow}>
+          <Switch value={showEmpty} onValueChange={onShowEmpty} color={colors.accent} accessibilityLabel="Show empty packs" />
+          <Text variant="bodyMedium">Show empty packs</Text>
+        </View>
+      </View>
+      <Text variant="bodySmall" style={[styles.pickOrder, { color: colors.onSurfaceMuted }]}>
+        Pick order: open before sealed → closest expiry → fewest left → oldest first → pack ID. Unit cost = (pack cost + freight share) ÷ units per pack, fixed per pack at receipt.
+      </Text>
     </View>
   );
 }
@@ -400,26 +498,37 @@ type ListProps = {
   empty: ReactElement;
 };
 
-/** Inventory's grouped list, and wide, the open item beside it (design.md §6). */
-function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, wide }: ListProps & { merchantId: string; wide: boolean }) {
+type PanesProps = ListProps & { merchantId: string; currency: string; wide: boolean; showEmpty: boolean };
+
+/**
+ * Inventory's grouped list. Wide, it spans the screen in columns until an item is opened, then narrows to
+ * a row list beside the item (instruction_mds/layout.md §2: a row card gets a second pane, never more
+ * width). Narrow, an item opens on its own screen.
+ */
+function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, currency, wide, showEmpty }: PanesProps) {
   const { colors } = useAppTheme();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  // Rows whose lot drill is open. Held here, not in a row: FlashList recycles its cells.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [paneId, setPaneId] = useState<string | null>(null);
   const today = localToday();
   const selecting = rows.some((row) => selected.has(row.id));
-  // Wide, an item opens in the second pane instead of on its own screen.
+  const paned = wide && paneId !== null;
   const open = (id: string) => (wide ? setPaneId(id) : onOpen(id));
 
   return (
-    <View style={[styles.fill, wide && styles.panes]}>
-      <View style={wide ? [styles.listPane, { borderRightColor: colors.outlineVariant }] : styles.fill}>
+    <View style={[styles.fill, paned && styles.panes]}>
+      <View style={paned ? [styles.listPane, { borderRightColor: colors.outlineVariant }] : styles.fill}>
         <FlashList
           data={groupInventory(rows, collapsed)}
-          keyExtractor={(entry) => (entry.kind === 'group' ? `group:${entry.id}` : entry.item.id)}
+          keyExtractor={(entry) => (entry.kind === 'item' ? entry.item.id : `${entry.kind}:${entry.id}`)}
           getItemType={(entry) => entry.kind}
+          extraData={{ expanded, showEmpty, selected, paneId }}
           ListEmptyComponent={empty}
           renderItem={({ item: entry }) =>
-            entry.kind === 'group' ? (
+            entry.kind === 'label' ? (
+              <SectionLabel name={entry.name} />
+            ) : entry.kind === 'group' ? (
               <GroupHeader
                 name={entry.name}
                 count={entry.count}
@@ -430,10 +539,15 @@ function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, w
               <InventoryRow
                 item={entry.item}
                 today={today}
+                currency={currency}
+                wide={wide && !paned}
                 nested={entry.nested}
+                expanded={expanded.has(entry.item.id)}
+                showEmpty={showEmpty}
+                onExpand={() => setExpanded((previous) => toggled(previous, entry.item.id))}
                 selecting={selecting}
                 selected={selected.has(entry.item.id)}
-                active={wide && paneId === entry.item.id}
+                active={paneId === entry.item.id}
                 onToggle={() => onToggle(entry.item.id)}
                 onOpen={() => open(entry.item.id)}
               />
@@ -441,19 +555,13 @@ function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, w
           }
         />
       </View>
-      {wide ? (
+      {paned ? (
         <View style={styles.detailPane}>
-          {paneId ? (
-            <ProductGate key={paneId} id={paneId} scope="inventory">
-              {(product) => <InventoryDetail merchantId={merchantId} product={product} embedded />}
-            </ProductGate>
-          ) : (
-            <View style={styles.state}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-                Choose an item to see its lots, cases and history.
-              </Text>
-            </View>
-          )}
+          <ProductGate key={paneId} id={paneId} scope="inventory">
+            {(product) => (
+              <InventoryDetail merchantId={merchantId} product={product} currency={currency} embedded onClose={() => setPaneId(null)} />
+            )}
+          </ProductGate>
         </View>
       ) : null}
     </View>
@@ -743,6 +851,9 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   filters: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  chipBlock: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.ms },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  pickOrder: { maxWidth: 640 },
   trailingIcon: { flexDirection: 'row-reverse' },
   bulkBar: {
     flexDirection: 'row',

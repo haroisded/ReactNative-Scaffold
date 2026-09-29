@@ -99,20 +99,20 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
       <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
         Profile
       </Text>
-      <Field control={control} name="name" label="Name" placeholder="e.g. Metro Wholesale" autoFocus={!supplier} />
+      <Field control={control} name="name" label="Supplier name" placeholder="e.g. Metro Wholesale" autoFocus={!supplier} />
       <Field control={control} name="code" label="Code" placeholder="Issued when left blank" autoCapitalize="characters" />
       <Field control={control} name="contactPerson" label="Contact person" />
       <Field control={control} name="phone" label="Phone" keyboardType="phone-pad" />
       <Field control={control} name="email" label="Email" keyboardType="email-address" autoCapitalize="none" />
       <Field control={control} name="address" label="Address" />
-      <TypeField merchantId={merchantId} value={watch('supplierTypeId')} onChange={(value) => setValue('supplierTypeId', value)} />
 
       <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
         Terms
       </Text>
       <Field control={control} name="paymentTerms" label="Payment terms" placeholder="e.g. Net 30, COD" />
-      <Field control={control} name="leadTimeDays" label="Lead time (days)" keyboardType="number-pad" />
-      <Field control={control} name="tin" label="TIN" placeholder="e.g. 123-456-789-000" />
+      <TypeField merchantId={merchantId} value={watch('supplierTypeId')} onChange={(value) => setValue('supplierTypeId', value)} />
+      <Field control={control} name="leadTimeDays" label="Lead time (days)" placeholder="Days between order placed and order received" keyboardType="number-pad" />
+      <Field control={control} name="tin" label="Tax ID / TIN" placeholder="Supplier's government tax registration number" />
 
       <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
         Extra
@@ -125,7 +125,7 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
           <View style={styles.switchRow}>
             <Switch value={field.value} onValueChange={field.onChange} color={colors.accent} accessibilityLabel="Active" />
             <View style={styles.fill}>
-              <Text variant="bodyMedium">Active</Text>
+              <Text variant="bodyMedium">Active — can be picked when receiving stock</Text>
               <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
                 An inactive supplier is left out of new receipts. Its receipts stay.
               </Text>

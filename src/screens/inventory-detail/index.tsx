@@ -1,61 +1,63 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ArchiveButton, useArchiveUndo } from '../../components/archive-undo';
 import { Button } from '../../components/button';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
-import { displayDate } from '../../components/form-fields';
 import { IconButton } from '../../components/icon-button';
+import { LotDrill } from '../../components/lot-drill';
 import { Menu } from '../../components/menu';
 import { PageHeader } from '../../components/page-header';
+import { LowStockBadge, StatusText, StockRoleBadge } from '../../components/product-badges';
 import { QueryState } from '../../components/query-state';
-import { ExpiryBadge, LowStockBadge, NeedsPriceBadge, StatusText, StockRoleBadge } from '../../components/product-badges';
 import { StockMovementDialog } from '../../components/stock-movement-dialog';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
+import { useItemFacesQuery } from '../../features/products/queries';
 import type { ProductDetail } from '../../features/products/queries';
 import { RESOURCE_ROUTE } from '../../features/products/resources';
-import { expiryState, packsAndLoose } from '../../features/products/stock-item';
+import { STATUS_META } from '../../features/products/schema';
+import { SELL_BY_LABEL, packsAndLoose } from '../../features/products/stock-item';
 import { MOVEMENT_KIND_LABEL, useItemStockQuery, useMovementHistoryQuery } from '../../features/stock-movements/queries';
-import type { MovementRow, MovementTarget } from '../../features/stock-movements/queries';
+import type { MovementRow, StockLot, StockPack } from '../../features/stock-movements/queries';
 import type { ManualMovementKind } from '../../features/stock-movements/schema';
-import { localToday } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
+import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { radius, spacing } from '../../themes';
 
 type Props = {
   merchantId: string;
   product: ProductDetail;
+  currency: string;
   /** Set when this is the tablet list's second pane: there is nothing to go back to. */
   embedded?: boolean;
+  /** Closes the second pane, handing the list its full width back. */
+  onClose?: () => void;
 };
 
-type Moving = { target: MovementTarget; kind: ManualMovementKind };
-
-type Lot = NonNullable<ReturnType<typeof useItemStockQuery>['data']>[number];
+type Moving = { packId: string; kind: ManualMovementKind };
 
 /**
- * One Inventory item and where its stock sits (design.md §6): the lots it arrived in, their cases, the
- * packs already opened, and every movement. Each row adjusts, writes off or returns through
- * record_stock_movement; nothing here edits a count directly. Stock only arrives through a receipt.
+ * One Inventory item: what it is, where its stock sits — lot by lot, pack by pack, with the next pick
+ * marked — how it is sold on the Products screen, and everything that has moved. Adjust, write off and
+ * return start from a pack's menu.
  */
-export function InventoryDetail({ merchantId, product, embedded }: Props) {
-  const { colors } = useAppTheme();
+export function InventoryDetail({ merchantId, product, currency, embedded, onClose }: Props) {
   const wide = useShellWide();
   const { toggle, snackbar } = useArchiveUndo();
   const [moving, setMoving] = useState<Moving | null>(null);
 
-  const base = product.base_unit_name ?? 'units';
+  const base = product.base_unit_name ?? product.pack_unit_name ?? 'units';
   const perPack = product.conversion_factor ?? 1;
-  const toggleArchive = () => toggle(product);
   const edit = () => router.push({ pathname: RESOURCE_ROUTE.inventory.edit, params: { id: merchantId, productId: product.id } });
   const move = (next: Moving) => {
+    // Narrow, a confirm is a formSheet route (instruction_mds/visual-language.md §4).
     if (wide) setMoving(next);
-    else router.push({ pathname: '/sheets/stock-movement', params: { productId: product.id, kind: next.kind, ...next.target } });
+    else router.push({ pathname: '/sheets/stock-movement', params: { productId: product.id, kind: next.kind, packId: next.packId } });
   };
 
   return (
@@ -63,22 +65,8 @@ export function InventoryDetail({ merchantId, product, embedded }: Props) {
       <PageHeader
         kicker="Inventory item"
         title={product.name}
-        onBack={embedded ? undefined : () => router.back()}
-        actions={
-          wide ? (
-            <>
-              <ArchiveButton status={product.status} onPress={toggleArchive} />
-              <Button mode="contained" icon="edit" onPress={edit}>
-                Edit
-              </Button>
-            </>
-          ) : (
-            <>
-              <ArchiveButton status={product.status} onPress={toggleArchive} compact style={styles.headerIcon} />
-              <IconButton icon="edit" onPress={edit} accessibilityLabel="Edit" style={styles.headerIcon} />
-            </>
-          )
-        }
+        onBack={embedded ? onClose : () => router.back()}
+        actions={<HeaderActions wide={wide} product={product} onArchive={() => toggle(product)} onEdit={edit} />}
       />
 
       <ScrollView style={styles.fill} contentContainerStyle={styles.content}>
@@ -86,25 +74,59 @@ export function InventoryDetail({ merchantId, product, embedded }: Props) {
           {product.stock_role ? <StockRoleBadge role={product.stock_role} /> : null}
           <StatusText status={product.status} />
           {product.is_low_stock ? <LowStockBadge /> : null}
-          <NeedsPriceBadge product={product} />
         </View>
-        <View>
-          <Text variant="headlineSmall">{packsAndLoose(product.qty_on_hand ?? 0, perPack, product.pack_unit_name, base)}</Text>
-          {perPack > 1 ? (
-            <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-              {`${product.qty_on_hand ?? 0} ${base} on hand`}
-            </Text>
-          ) : null}
-        </View>
+        <OnHand product={product} base={base} currency={currency} />
         <FactGrid facts={itemFacts(product, base, perPack)} />
-        <StockSection product={product} base={base} onMove={move} />
+        <FacesSection merchantId={merchantId} product={product} currency={currency} />
+        <StockSection product={product} base={base} currency={currency} onMove={move} />
         <HistorySection productId={product.id} base={base} />
       </ScrollView>
 
-      {moving ? (
-        <StockMovementDialog productId={product.id} target={moving.target} kind={moving.kind} onDismiss={() => setMoving(null)} />
-      ) : null}
+      {moving ? <StockMovementDialog productId={product.id} packId={moving.packId} kind={moving.kind} onDismiss={() => setMoving(null)} /> : null}
       {snackbar}
+    </View>
+  );
+}
+
+type HeaderActionsProps = { wide: boolean; product: ProductDetail; onArchive: () => void; onEdit: () => void };
+
+function HeaderActions({ wide, product, onArchive, onEdit }: HeaderActionsProps) {
+  if (wide) {
+    return (
+      <>
+        <ArchiveButton status={product.status} onPress={onArchive} />
+        <Button mode="contained" icon="edit" onPress={onEdit}>
+          Edit
+        </Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <ArchiveButton status={product.status} onPress={onArchive} compact style={styles.headerIcon} />
+      <IconButton icon="edit" onPress={onEdit} accessibilityLabel="Edit" style={styles.headerIcon} />
+    </>
+  );
+}
+
+/** "9 cups + 7 tablets", then the base-unit total, average cost and value. */
+function OnHand({ product, base, currency }: { product: ProductDetail; base: string; currency: string }) {
+  const { colors } = useAppTheme();
+  const qty = product.qty_on_hand ?? 0;
+  const perPack = product.conversion_factor ?? 1;
+  const cost = product.cost_price;
+  return (
+    <View>
+      <Text variant="headlineSmall">{packsAndLoose(qty, perPack, product.pack_unit_name, base)}</Text>
+      <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+        {[
+          perPack > 1 ? `${qty} ${base} on hand` : null,
+          cost === null ? null : `${formatMoney(cost, currency)}/${base} avg`,
+          cost === null ? null : `value ${formatMoney(qty * cost, currency)}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </Text>
     </View>
   );
 }
@@ -114,123 +136,115 @@ function itemFacts(product: ProductDetail, base: string, perPack: number): Fact[
     ['SKU', product.sku],
     ['Barcode', product.barcode],
     ['Variant', product.attributes.join(' · ')],
+    ['Sell by', product.sell_by ? SELL_BY_LABEL[product.sell_by] : null],
+    ['Pack unit', product.pack_unit_name],
     ['Per pack', perPack > 1 ? `1 ${product.pack_unit_name ?? 'pack'} = ${perPack} ${base}` : null],
     ['Reorder at', product.reorder_threshold === null ? null : `${product.reorder_threshold} ${base}`],
     ['Location', product.storage_location],
+    ['Expiry', product.perishable ? 'Has an expiration date' : 'Does not expire'],
     ['Expiry alert', product.expiry_alert_days === null ? null : `${product.expiry_alert_days} days before`],
-    ['Serial numbers', product.serial_tracked ? 'Tracked per pack' : null],
     ['Category', [product.category?.name, product.subcategory?.name].filter(Boolean).join(' › ')],
+    ['Notes', product.internal_notes],
   ];
 }
 
-type SectionProps = { product: ProductDetail; base: string; onMove: (moving: Moving) => void };
+/**
+ * "Selling as": the item's drafts on the Products screen, one per Sell By unit. A draft needs a price
+ * before the Register can sell it.
+ */
+function FacesSection({ merchantId, product, currency }: { merchantId: string; product: ProductDetail; currency: string }) {
+  const { colors } = useAppTheme();
+  const faces = useItemFacesQuery({ itemId: product.id });
+  if (product.stock_role === 'component' || !faces.data) return null;
 
-/** The item's lots, then the cases and packs inside them — each row a place a movement can start. */
-function StockSection({ product, base, onMove }: SectionProps) {
-  const stock = useItemStockQuery({ productId: product.id });
-
-  if (!stock.data) {
-    return (
-      <View style={styles.state}>
-        <QueryState
-          query={stock}
-          offline="You're offline. Stock will load when you reconnect."
-          failure="Couldn't load this item's stock. Try again."
-        />
-      </View>
-    );
-  }
-  return <StockLists product={product} base={base} onMove={onMove} lots={stock.data} />;
+  return (
+    <>
+      <Text variant="titleMedium">Selling as</Text>
+      {faces.data.length === 0 ? (
+        <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
+          No product yet. Use Add from Inventory on the Products screen to make one.
+        </Text>
+      ) : (
+        <Card>
+          {faces.data.map((face) => (
+            <Pressable
+              key={face.id}
+              onPress={() => router.push({ pathname: RESOURCE_ROUTE.products.detail, params: { id: merchantId, productId: face.id } })}
+              // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
+              android_ripple={{ color: colors.ripple }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${face.name}`}
+              style={[styles.row, { borderBottomColor: colors.surfaceVariant }]}
+            >
+              <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.fill}>
+                {face.name}
+              </Text>
+              <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: face.selling_price === null ? colors.error : colors[STATUS_META[face.status].tone] }}>
+                {face.selling_price === null ? 'Needs price' : `${STATUS_META[face.status].label} · ${formatMoney(face.selling_price, currency)}`}
+              </Text>
+            </Pressable>
+          ))}
+        </Card>
+      )}
+    </>
+  );
 }
 
-function StockLists({ product, base, onMove, lots }: SectionProps & { lots: Lot[] }) {
-  const { colors } = useAppTheme();
-  const [showEmpty, setShowEmpty] = useState(false);
-  const today = localToday();
-  const expiry = (lot: Lot) => expiryState(lot.expires_on, product.expiry_alert_days, today);
-  const kept = (row: { qty_remaining: number }) => showEmpty || row.qty_remaining > 0;
+type StockProps = { product: ProductDetail; base: string; currency: string; onMove: (moving: Moving) => void };
 
-  const shownLots = lots.filter(kept);
-  const cases = shownLots.flatMap((lot) => lot.cases.filter(kept).map((row) => ({ row, lot })));
-  // A serial item moves one pack at a time (stock_target_pack_required), so every pack is listed;
-  // otherwise only the opened ones — a sealed pack is counted in its case or lot.
-  const packs = shownLots.flatMap((lot) =>
-    lot.packs.filter((row) => (product.serial_tracked || row.opened_at !== null) && kept(row)).map((row) => ({ row, lot }))
-  );
+/** The item's lots and packs, each live pack with its menu. */
+function StockSection({ product, base, currency, onMove }: StockProps) {
+  const { colors } = useAppTheme();
+  const stock = useItemStockQuery({ productId: product.id });
+  const [showEmpty, setShowEmpty] = useState(false);
 
   return (
     <>
       <View style={styles.sectionHead}>
-        <Text variant="titleMedium" style={styles.fill}>{`Lots (${shownLots.length})`}</Text>
-        <Switch value={showEmpty} onValueChange={setShowEmpty} color={colors.accent} accessibilityLabel="Show empty" />
-        <Text variant="bodyMedium">Show empty</Text>
-      </View>
-      {shownLots.length === 0 ? (
-        <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-          {lots.length > 0 ? 'Every lot is used up.' : 'No stock yet. It arrives through a receipt on the Stock screen.'}
+        <Text variant="titleMedium" style={styles.fill}>
+          {`Lots (${stock.data?.lots.length ?? 0})`}
         </Text>
+        <Switch value={showEmpty} onValueChange={setShowEmpty} color={colors.accent} accessibilityLabel="Show empty packs" />
+        <Text variant="bodyMedium">Show empty packs</Text>
+      </View>
+      {stock.data ? (
+        <LotDrill
+          lots={stock.data.lots}
+          nextPick={product.sell_by === 'pack' ? stock.data.nextPick.pack : stock.data.nextPick.base}
+          unit={base}
+          currency={currency}
+          expiryAlertDays={product.expiry_alert_days}
+          showEmpty={showEmpty}
+          packAction={(pack, lot) => <PackMenu pack={pack} lot={lot} onMove={onMove} />}
+        />
       ) : (
-        <StockCard>
-          {shownLots.map((lot) => (
-            <StockRow
-              key={lot.id}
-              title={lot.code}
-              detail={lotDetail(lot)}
-              amount={`${lot.qty_remaining} ${base}`}
-              expiry={expiry(lot)}
-              // A serial item's lot cannot be moved as a whole; its packs can. Nor can the units already
-              // in a case or pack (stock_target_too_high): the lot offers only what sits outside them.
-              actions={product.serial_tracked || unassigned(lot) <= 0 ? null : { lotId: lot.id }}
-              returnable={lot.receipt.supplier_id !== null}
-              onMove={onMove}
-            />
-          ))}
-        </StockCard>
+        <View style={styles.state}>
+          <QueryState query={stock} offline="You're offline. Stock will load when you reconnect." failure="Couldn't load this item's stock. Try again." />
+        </View>
       )}
-
-      <StockCard title={`Cases (${cases.length})`} hidden={cases.length === 0}>
-        {cases.map(({ row, lot }) => (
-          <StockRow
-            key={row.id}
-            title={row.code}
-            detail={[`lot ${lot.code}`]}
-            amount={`${row.qty_remaining} ${base}`}
-            expiry={expiry(lot)}
-            actions={product.serial_tracked || row.qty_remaining === 0 ? null : { caseId: row.id }}
-            returnable={lot.receipt.supplier_id !== null}
-            onMove={onMove}
-          />
-        ))}
-      </StockCard>
-
-      <StockCard title={`${product.serial_tracked ? 'Packs' : 'Open packs'} (${packs.length})`} hidden={packs.length === 0}>
-        {packs.map(({ row, lot }) => (
-          <StockRow
-            key={row.id}
-            title={row.serial ? `${row.code} · ${row.serial}` : row.code}
-            detail={[`lot ${lot.code}`, row.opened_at ? `opened ${displayDate(row.opened_at.slice(0, 10))}` : 'sealed']}
-            amount={`${row.qty_remaining} of ${row.units} ${base}`}
-            expiry={expiry(lot)}
-            actions={row.qty_remaining === 0 ? null : { packId: row.id }}
-            returnable={lot.receipt.supplier_id !== null}
-            onMove={onMove}
-          />
-        ))}
-      </StockCard>
     </>
   );
 }
 
-/** An outlined list of rows, under its heading when it has one. */
-function StockCard({ title, hidden, children }: { title?: string; hidden?: boolean; children: ReactNode }) {
-  const { colors } = useAppTheme();
-  if (hidden) return null;
+function PackMenu({ pack, lot, onMove }: { pack: StockPack; lot: StockLot; onMove: (moving: Moving) => void }) {
+  const [open, setOpen] = useState(false);
+  const pick = (kind: ManualMovementKind) => {
+    setOpen(false);
+    onMove({ packId: pack.id, kind });
+  };
+  if (lot.receipt?.voided_at) return null;
 
   return (
-    <>
-      {title ? <Text variant="titleMedium">{title}</Text> : null}
-      <View style={[styles.card, { borderColor: colors.outlineVariant }]}>{children}</View>
-    </>
+    <Menu
+      visible={open}
+      onDismiss={() => setOpen(false)}
+      anchor={<IconButton icon="more" size={20} onPress={() => setOpen(true)} accessibilityLabel={`Actions for ${pack.code}`} style={styles.menuButton} />}
+    >
+      <Menu.Item title="Adjust count" onPress={() => pick('adjust')} />
+      <Menu.Item title="Write off" disabled={pack.qty_remaining === 0} onPress={() => pick('write_off')} />
+      {/* Stock added in Inventory has no supplier to go back to (receipt_has_no_supplier). */}
+      <Menu.Item title="Return to supplier" disabled={lot.source !== 'stock' || pack.qty_remaining === 0} onPress={() => pick('return_supplier')} />
+    </Menu>
   );
 }
 
@@ -243,11 +257,7 @@ function HistorySection({ productId, base }: { productId: string; base: string }
       <Text variant="titleMedium">History</Text>
       {history.data ? null : (
         <View style={styles.state}>
-          <QueryState
-            query={history}
-            offline="You're offline. History will load when you reconnect."
-            failure="Couldn't load the history. Try again."
-          />
+          <QueryState query={history} offline="You're offline. History will load when you reconnect." failure="Couldn't load the history. Try again." />
         </View>
       )}
       {history.data?.length === 0 ? (
@@ -255,102 +265,35 @@ function HistorySection({ productId, base }: { productId: string; base: string }
           Nothing has moved yet.
         </Text>
       ) : null}
-      <StockCard hidden={!history.data?.length}>
-        {history.data?.map((row) => (
-          <HistoryRow key={row.id} row={row} base={base} />
-        ))}
-      </StockCard>
+      {history.data?.length ? (
+        <Card>
+          {history.data.map((row) => (
+            <HistoryRow key={row.id} row={row} base={base} />
+          ))}
+        </Card>
+      ) : null}
     </>
   );
 }
 
-/** "R-0012 · received 3 Sep 2026 · expires 1 Oct 2026" */
-function lotDetail(lot: Lot) {
-  return [
-    lot.receipt.supplier_id ? lot.receipt.code : `${lot.receipt.code} · opening stock`,
-    `received ${displayDate(lot.receipt.received_on)}`,
-    lot.expires_on ? `expires ${displayDate(lot.expires_on)}` : null,
-  ];
-}
-
-/** What a lot holds outside its cases and loose packs — the part a movement on the lot itself can take. */
-const unassigned = (lot: Lot) =>
-  lot.qty_remaining -
-  lot.cases.reduce((sum, row) => sum + row.qty_remaining, 0) -
-  lot.packs.filter((row) => row.case_id === null).reduce((sum, row) => sum + row.qty_remaining, 0);
-
-/** A lot, case or pack, with the three movements in a menu. `actions` null: nothing left to move here. */
-function StockRow({
-  title,
-  detail,
-  amount,
-  expiry,
-  actions,
-  returnable,
-  onMove,
-}: {
-  title: string;
-  detail: (string | null)[];
-  amount: string;
-  expiry: ReturnType<typeof expiryState>;
-  actions: MovementTarget | null;
-  returnable: boolean;
-  onMove: (moving: Moving) => void;
-}) {
+function Card({ children }: { children: ReactNode }) {
   const { colors } = useAppTheme();
-  const [open, setOpen] = useState(false);
-  const pick = (kind: ManualMovementKind) => {
-    setOpen(false);
-    if (actions) onMove({ target: actions, kind });
-  };
-
-  return (
-    <View style={[styles.row, { borderBottomColor: colors.surfaceVariant }]}>
-      <View style={styles.fill}>
-        <View style={styles.rowTitle}>
-          <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
-            {title}
-          </Text>
-          <ExpiryBadge state={expiry} />
-        </View>
-        <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-          {detail.filter(Boolean).join(' · ')}
-        </Text>
-      </View>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
-        {amount}
-      </Text>
-      {actions ? (
-        <Menu
-          visible={open}
-          onDismiss={() => setOpen(false)}
-          anchor={<IconButton icon="more" size={20} onPress={() => setOpen(true)} accessibilityLabel={`Actions for ${title}`} />}
-        >
-          <Menu.Item title="Adjust count" onPress={() => pick('adjust')} />
-          <Menu.Item title="Write off" onPress={() => pick('write_off')} />
-          {/* Opening stock has no supplier to go back to (receipt_has_no_supplier). */}
-          <Menu.Item title="Return to supplier" disabled={!returnable} onPress={() => pick('return_supplier')} />
-        </Menu>
-      ) : (
-        <View style={styles.menuSpace} />
-      )}
-    </View>
-  );
+  return <View style={[styles.card, { borderColor: colors.outlineVariant }]}>{children}</View>;
 }
 
 function HistoryRow({ row, base }: { row: MovementRow; base: string }) {
   const { colors } = useAppTheme();
-  const where = row.pack ? (row.pack.serial ? `${row.pack.code} · ${row.pack.serial}` : row.pack.code) : (row.case?.code ?? row.lot?.code);
+  const where = row.pack ? (row.pack.serial ? `${row.pack.code} · ${row.pack.serial}` : row.pack.code) : row.lot?.code;
   const when = new Date(row.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
   return (
     <View style={[styles.row, { borderBottomColor: colors.surfaceVariant }]}>
       <View style={styles.fill}>
         <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
-          {row.override ? `${MOVEMENT_KIND_LABEL[row.kind]} · override` : MOVEMENT_KIND_LABEL[row.kind]}
+          {MOVEMENT_KIND_LABEL[row.kind]}
         </Text>
         <Text variant="bodySmall" numberOfLines={3} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-          {[when, where, row.ref, row.reason, row.note].filter(Boolean).join(' · ')}
+          {[when, where, row.lot?.location, row.ref, row.reason, row.note].filter(Boolean).join(' · ')}
         </Text>
       </View>
       <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={{ color: row.qty < 0 ? colors.error : colors.onSurface }}>
@@ -362,7 +305,9 @@ function HistoryRow({ row, base }: { row: MovementRow; base: string }) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  // IconButton ships a 6dp margin of its own; zeroed so the header's gap is the only spacing.
   headerIcon: { margin: 0 },
+  menuButton: { margin: 0 },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
   badges: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   state: { gap: spacing.ms, alignItems: 'flex-start' },
@@ -373,11 +318,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     borderBottomWidth: 1,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  rowTitle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
-  // The width of the 20dp IconButton a row without actions leaves out, so amounts stay aligned.
-  menuSpace: { width: 44 },
 });

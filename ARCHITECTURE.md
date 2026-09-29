@@ -45,7 +45,8 @@ src/screens/<screen>/      UI by screen — home, profile, sign-in, product-list
                            destination's panes), receipt-wizard, receipt-detail
 src/components/            one re-export per Paper primitive, plus what more than one screen or a
                            sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
-                           category-picker, the confirm/create dialogs (void-receipt and
+                           category-picker, lot-drill and pack-row (an item's stock, lot by lot and
+                           pack by pack), add-from-inventory-dialog, the confirm/create dialogs (void-receipt and
                            stock-movement among them, all on confirm-dialog), discard-dialog (the
                            unsaved-changes prompt the three forms share), form-footer, step-header
                            (the product form and receipt wizard's narrow stepper), query-state
@@ -57,7 +58,8 @@ src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-syst
                            routes (native formSheet) beside them, anchored on tabs
 src/app/(app)/(tabs)/      home, notifications, settings, account + the NativeTabs bar
 src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer), Home, products/,
-                           inventory/, stock/ (suppliers and receipts), rentables/, the stubs
+                           inventory/, stock/ (suppliers and receipts), rentables/ (off the rail
+                           for now), the stubs
 src/app/(app)/profile.tsx  Profile pushed from inside a system, with Back to your systems
 app.config.ts              derives the Google iOS URL scheme from .env
 supabase/migrations/       profiles, merchants, the product catalogue and the stock ledger with their
@@ -388,40 +390,52 @@ attributes, variants, components and custom fields. Every one has a `not null me
   draft.
 - **`merchants.currency`** — ISO 4217, default `PHP`. Prices render through `src/lib/money.ts`.
 
-### Suppliers, inventory items and receipts — `20260928100000` to `20260928100300`
+### Suppliers, inventory items and the stock ledger — `20260928100000`, `20260928100300`, `20260929100000`, `20260929100100`
 
-The design these follow is `.claude/inventory-stock/design.md`.
+What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.html`,
+`Stock_Receiving.html`), the tier list and `instructions.txt`.
 
 - **Codes.** `private.merchant_counters` holds one counter per merchant and kind, and
   `private.issue_code()` turns the next value into a padded code, skipping any code a merchant has
   already typed. Suppliers (`SUP-0001`) and stock SKUs (`SKU-00001`) get theirs from the
-  `private.assign_code()` trigger when the column is left blank or empty (`20260928100300` gives
-  `suppliers.code` a `''` default, so the generated Insert type does not demand one). Receipts, lots, cases and packs
-  (`RC-`, `LOT-YYYYMMDD-`, `CS-`, `PK-`) get theirs inside `save_receipt`. A committed code is never
-  issued again.
-- **`suppliers`** gains a profile, terms, `supplier_types` (a per-merchant lookup) and `active`.
-  `contact` is renamed to `contact_person`. A supplier with receipts can only be deactivated.
-- **Inventory items** are `products` rows with `type = 'stock'`. They gain pack and base unit names,
-  `sell_by`, `stock_role`, `serial_tracked`, a `product_groups` parent and `attributes`.
-  `conversion_factor` means base units per pack. `public.save_stock_item()` (security invoker) is the
-  form's writer. It also keeps one draft register product per Sell By unit, linked through
-  `source_item_id` and a one-unit `product_components` row. It archives a draft instead of deleting
-  it. `category_id` is optional for drafts and stock items.
-- **The ledger.** `stock_receipts` → `stock_lots` (a receipt line and its balance, one row) →
-  `stock_cases` → `stock_packs` (only serial-tracked or opened packs), with `stock_movements` as the
-  append-only history. Clients can only read these five tables: they have a select policy and no
-  write policy. Every write goes through `save_receipt`, `void_receipt` or `record_stock_movement`.
-  Each is security definer, granted to `authenticated`, opens with `private.assert_member()` and
-  filters every query by merchant, because it bypasses RLS.
+  `private.assign_code()` trigger when the column is left blank or empty. Receipts, lots, cases and
+  packs (`RC-`, `LOT-YYYYMMDD-`, `CS-`, `PK-`) get theirs inside the ledger's writers. A committed code
+  is never issued again.
+- **`suppliers`** gains a profile, terms, `supplier_types` (a per-merchant lookup) and `active`. A
+  supplier with receipts can only be deactivated, and only an active one can be picked on a receipt.
+- **Three layers for one sellable thing.** An **Inventory item** is a `products` row with
+  `type = 'stock'`: the master record — name, SKU (required), pack and base unit names, `sell_by`,
+  `stock_role` (Sellable / Component / Both), a `product_groups` parent and `attributes`, category.
+  `conversion_factor` means base units per pack and `perishable` means "has expiry". Its **Products
+  faces** are `flat` drafts, one per Sell By unit, linked through `source_item_id` and a one-unit
+  `product_components` row; they carry price, tax and recipe, because a pack and a tablet are priced
+  apart. The **packs** are the physical stock (below).
+- **Faces follow the item.** `private.sync_register_faces` runs after an item's role, Sell By or status
+  changes and calls `public.ensure_register_faces()`: a wanted unit without a face gets a draft; an
+  unwanted draft is deleted, an unwanted published face archived, and a wanted archived face restored
+  as a draft. So the Inventory list's inline Type menu is a plain `update`. Products → **Add from
+  Inventory** calls the same function to bring back a face someone deleted.
+- **`save_stock_item()`** (security invoker) is the Inventory form's writer: the item, a new group,
+  and optional stock on hand, in one transaction.
+- **The ledger.** `stock_receipts` (supplier required) → `stock_lots` (one per receipt line, or per
+  Inventory add with `source = 'inventory'` and no receipt; the Unit Load, Pallet and Case tiers it
+  came in; lot number, expiry, landed `unit_cost`) → `stock_cases` → `stock_packs`, **one row per
+  physical pack**, each with its own `qty_remaining` and optional manufacturer serial. Sealed, open and
+  empty are derived. Loose units received are one partial pack. `stock_movements` is the append-only
+  history, one row per pack touched. Clients can only read these five tables; every write goes through
+  `save_receipt`, `add_inventory_stock`, `draw_stock`, `record_stock_movement` or `void_receipt`, each
+  security definer, granted to `authenticated`, opening with `private.assert_member()`.
+- **The pick order** lives in one place, the `stock_pick_queue` view: open packs first, then closest
+  expiry, fewest left, oldest lot, pack code; expired packs are never picked. `pick_rank` orders a
+  loose-unit draw and `whole_rank` a sale by the pack. The Inventory screens mark its first row
+  **Next pick**, and `draw_stock(product_id, qty, mode, kind)` — for the Register (`sale`) and recipes
+  (`consume`) — walks it, opening sealed packs and spilling across packs and cases, or refuses the whole
+  draw with `insufficient_stock`.
 - **`qty_on_hand` and `cost_price` on a stock item are derived.** `private.recompute_stock()` sets them
-  from the lots: the quantity sums the lots, and the cost is their weighted landed cost per base unit.
-  The `products_guard_stock` trigger keeps a client role from writing either. It tells the two apart
-  by `current_user`, which is the owner inside the definer functions and `authenticated` for a
-  PostgREST request. The trigger also refuses to archive an item, or change its units or serial
-  switch, while stock is on hand. `stock_lots` and `stock_movements` reference the item with no
-  cascade, so an item with any stock history cannot be deleted, only archived once it is empty.
-- **Opening stock.** The migration moved each stock item's existing quantity onto one lot, on a
-  per-merchant "Opening stock" receipt with no supplier.
+  from the packs: the quantity sums them in base units, and the cost is their weighted landed cost.
+  The `products_guard_stock` trigger keeps a client role from writing either, and refuses archiving or
+  a new units-per-pack while stock is on hand. An item with stock history cannot be deleted.
+- **`stock_lot_lines`** is a lot with what it has left (from its packs): the Stock screen's rows.
 
 ---
 
@@ -449,14 +463,19 @@ the rail asks before switching destination, because a drawer switch removes noth
 
 ### Stock and Inventory
 
-**Stock** (`systems/[id]/stock/`) holds Suppliers and Receipts. A receipt is written once by the
-`receipt-wizard` and read back by `receipt-detail`, where it can be voided while nothing has been
-drawn from it. **Inventory** is `product-list` in the `inventory` scope: rows from `inventory-rows.tsx`
-show packs and loose units, gather variants under their group, and filter by source and type. On a
-tablet the list and `inventory-detail` sit side by side; on a phone the detail is its own route. The
-detail's lot, case and pack rows adjust, write off and return through `record_stock_movement` — a
-dialog when wide, the `sheets/stock-movement` formSheet when narrow, the same split as every other
-confirm. The server's refusals come back as snake_case messages, which `stockFailure()`
+**Stock** (`systems/[id]/stock/`) holds Suppliers and Receipts. The Receipts pane lists one row per
+receipt line — remaining against received — opening onto its cases and packs. A receipt is written once
+by the seven-step `receipt-wizard` (General, Unit Load, Pallet, Case, Pack, Base Unit, Review; the tiers
+can be skipped, and Base Unit only shows while something sells by the base unit) and read back by
+`receipt-detail`, where it can be voided while nothing has been drawn from it. **Inventory** is
+`product-list` in the `inventory` scope: rows from `inventory-rows.tsx` show the count in base units,
+packs and open packs, cost and value, an inline Type menu, and open onto a lot-and-pack drill
+(`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
+tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows
+adjust, write off and return through `record_stock_movement` — a dialog when wide, the
+`sheets/stock-movement` formSheet when narrow. **Products** gains **Add from Inventory**
+(`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`). Rentables is off the rail for now; its
+routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
 (`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.
 
 ### The data layer

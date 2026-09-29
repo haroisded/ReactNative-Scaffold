@@ -4,7 +4,6 @@ import * as z from 'zod';
 
 import { useProductQuery } from '../features/products/queries';
 import { useItemStockQuery, useRecordMovementMutation } from '../features/stock-movements/queries';
-import type { MovementTarget } from '../features/stock-movements/queries';
 import { WRITE_OFF_REASON_LABEL, movementKind, movementSchema, writeOffReason } from '../features/stock-movements/schema';
 import type { ManualMovementKind, MovementValues, WriteOffReason } from '../features/stock-movements/schema';
 import { stockFailure } from '../features/stock-receipts/queries';
@@ -21,7 +20,7 @@ import { TextInput } from './text-input';
 
 type Props = {
   productId: string;
-  target: MovementTarget;
+  packId: string;
   /** The action the row's menu picked; the dialog can still switch between the three. */
   kind: ManualMovementKind;
   /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/stock-movement.tsx). */
@@ -29,7 +28,6 @@ type Props = {
   onDismiss: () => void;
 };
 
-type Lot = NonNullable<ReturnType<typeof useItemStockQuery>['data']>[number];
 type FieldErrors = Partial<Record<keyof MovementValues, string[]>>;
 
 const KIND_TITLE = {
@@ -41,28 +39,27 @@ const KIND_TITLE = {
 // Keyed by the exception record_stock_movement raises; stockFailure() hands back any snake_case message.
 const FAILURE_COPY = new Map([
   ['insufficient_stock', 'That is more than is left here. Enter a smaller amount.'],
-  ['stock_target_too_high', 'Those units sit inside a case or an open pack. Choose the case or pack instead.'],
-  ['stock_target_pack_required', 'This item is tracked by serial, so it moves one pack at a time. Choose the pack.'],
-  ['receipt_has_no_supplier', 'This stock arrived with no supplier, so there is no one to return it to.'],
+  ['receipt_has_no_supplier', 'This stock was added in Inventory, with no supplier to return it to.'],
   ['receipt_voided', 'The receipt this stock came on has been voided.'],
   ['pack_over_capacity', 'A pack cannot hold more than its size.'],
 ]);
 
 /**
- * Adjust, write off or return part of one lot, case or pack (design.md §6). record_stock_movement
- * (20260928100200_stock_receipts.sql §4) does the counting under a lock; this only states the change.
- * Finds its own lot in the item's stock query, so both callers — the Inventory detail and the sheet
- * route — pass ids alone.
+ * Adjust, write off or return part of one pack. record_stock_movement (20260929100100_stock_ledger.sql §5)
+ * does the counting under a lock; this only states the change. Finds its own pack in the item's stock
+ * query, so both callers — the Inventory detail and the sheet route — pass ids alone.
  */
-export function StockMovementDialog({ productId, target, kind: initialKind, inSheet, onDismiss }: Props) {
+export function StockMovementDialog({ productId, packId, kind: initialKind, inSheet, onDismiss }: Props) {
   const wide = useShellWide();
   const record = useRecordMovementMutation();
   const inFlight = record.isPending && !record.isPaused;
-  const lots = useItemStockQuery({ productId }).data ?? [];
+  const lots = useItemStockQuery({ productId }).data?.lots ?? [];
   const unit = useProductQuery({ id: productId }).data?.base_unit_name ?? 'units';
 
-  const { lot, where } = findTarget(lots, target);
-  const canReturn = lot?.receipt.supplier_id != null;
+  const lot = lots.find((row) => row.packs.some((entry) => entry.id === packId));
+  const where = lot?.packs.find((entry) => entry.id === packId);
+  // Only stock that came on a receipt has a supplier to go back to.
+  const canReturn = lot?.source === 'stock';
 
   const [values, setValues] = useState<MovementValues>({ kind: initialKind, qty: '', reason: '', note: '' });
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -77,7 +74,7 @@ export function StockMovementDialog({ productId, target, kind: initialKind, inSh
       return;
     }
     setErrors({});
-    record.mutate({ target, values: parsed.data }, { onSuccess: onDismiss });
+    record.mutate({ packId, values: parsed.data }, { onSuccess: onDismiss });
   };
 
   return (
@@ -198,20 +195,6 @@ function ReasonChips({ value, error, onChange }: { value: string; error?: string
 function movementFailure(error: Error | null) {
   const failure = stockFailure(error);
   return (failure && FAILURE_COPY.get(failure)) ?? failureMessage("Couldn't record this. Try again.");
-}
-
-/** The lot the target sits in, and the lot, case or pack it names. */
-function findTarget(lots: Lot[], target: MovementTarget) {
-  if ('caseId' in target) {
-    const lot = lots.find((row) => row.cases.some((entry) => entry.id === target.caseId));
-    return { lot, where: lot?.cases.find((entry) => entry.id === target.caseId) };
-  }
-  if ('packId' in target) {
-    const lot = lots.find((row) => row.packs.some((entry) => entry.id === target.packId));
-    return { lot, where: lot?.packs.find((entry) => entry.id === target.packId) };
-  }
-  const lot = lots.find((row) => row.id === target.lotId);
-  return { lot, where: lot };
 }
 
 const styles = StyleSheet.create({
