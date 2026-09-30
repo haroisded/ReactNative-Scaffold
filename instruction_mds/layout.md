@@ -113,7 +113,7 @@ The two mockup frames are different anatomies, not one anatomy at two widths:
 | Drawer, off-canvas | Rail, permanent, collapsible to icons | the shell |
 | Card list | `DataTable` with bulk select | Products, Discounts lists |
 | Stepper: "Step n of N", Next, progress bar | Section list beside the field grid | Products, Discounts forms |
-| Items / Cart tabs, Charge bar, payment sheet | Items pane, cart and payment side by side | Register |
+| Items / Cart tabs, payment at the foot of the Cart tab | Items pane, cart and payment side by side | Register |
 | Native `formSheet` | Paper `Dialog` | confirms and pickers only; create and edit forms are full pages at both widths (`visual-language.md` §5) |
 
 All five must agree, so the decision is made **once** on the shell's root container and handed down.
@@ -133,6 +133,7 @@ export const RAIL_COLLAPSED = 72;  // icons only
 export const DRAWER_WIDTH = 300;   // narrow shell's off-canvas drawer
 export const SECTION_LIST = 210;   // a form's section list, wide only
 export const ITEM_PANE = 430;      // register's items, wide only
+export const TILE_MIN = 140;       // narrowest Register item tile; the grid's columns come from it
 ```
 
 840 is where the wide Register fits: 116 rail + 430 items + a usable cart. Portrait tablets below it

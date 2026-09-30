@@ -332,7 +332,8 @@ ledger (`stock_receipts`, `stock_lots`, `stock_cases`, a row per pack in `stock_
 writers `save_stock_item`, `save_receipt`, `add_inventory_stock`, `draw_stock`, `void_receipt` and
 `record_stock_movement` — with a receipt's supplier and a lot's number optional, expected and
 received packs kept apart, and shipping cost recorded but spread into no cost
-(`20260930100000_receipt_inputs.sql`). The catalogue's
+(`20260930100000_receipt_inputs.sql`) — and the Register's `sales` and `sale_lines`, select-only for
+clients, written by `record_sale` and voided by `void_sale` (`20260930110000_sales.sql`). The catalogue's
 policies are the first callers of `current_merchant_ids()`, which is why `authenticated` holds
 `usage` on `private` and `execute` on that function (`instruction_mds/tenancy.md` §3). Each migration has a
 revert in `supabase/reverts/` (§6.6).

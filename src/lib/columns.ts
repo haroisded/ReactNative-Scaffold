@@ -20,6 +20,11 @@ export const RAIL_COLLAPSED = 72; // icons only, after the menu action
 export const DRAWER_WIDTH = 300; // the narrow shell's off-canvas drawer
 export const SECTION_LIST = 210; // a form's section list, wide only
 export const REVIEW_SIDEBAR = 340; // a wizard's review column, wide only
+export const ITEM_PANE = 430; // the Register's items beside its cart, wide only
+
+// ponytail: one number, tune it on a real tablet. The Register's product tile — MIN_CARD's rule at a
+// size where a phone gets two tiles across and the wide items pane three.
+export const TILE_MIN = 140;
 
 /**
  * The shell's one width decision, handed to the screens under it (instruction_mds/layout.md §9).

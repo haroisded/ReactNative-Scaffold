@@ -27,6 +27,7 @@ const SHEETS = [
   'sheets/delete-tax-class',
   'sheets/remove-system',
   'sheets/void-receipt',
+  'sheets/void-sale',
 ];
 
 // The root layout declares <Stack.Screen name="(app)" />, and that group needs its own layout to

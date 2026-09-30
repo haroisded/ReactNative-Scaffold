@@ -186,7 +186,7 @@ on Android.
 | Mode, order type, payment method | `SegmentedButtons`; payment methods wrap on narrow |
 | Totals block | `bodyMedium` rows, discount rows in `accent`, a 1px rule, `amount` grand total |
 | Complete Sale / Charge | contained full-width `Button`, label left and amount right |
-| Items / Cart (narrow) | `SegmentedButtons` across the top; cart count in an `accent` badge |
+| Items / Cart (narrow) | `SegmentedButtons` across the top; cart count in an `accent` badge; payment sits at the foot of the Cart tab, never a sheet |
 | Held-sale and discount pickers | the picker dialog or sheet, with `Pressable` rows |
 
 ### Home
@@ -230,6 +230,7 @@ prop, so rule 3 allows it.
 | Discounts, Employees, Features, Audit | `percent`, `person.2`, `switch.2`, `list.clipboard` | `percent`, `group`, `toggle_on`, `assignment` |
 | Search, filter, add, remove | `magnifyingglass`, `slider.horizontal.3`, `plus`, `xmark` | `search`, `tune`, `add`, `close` |
 | Quantity, edit, delete | `minus` / `plus`, `pencil`, `trash` | `remove` / `add`, `edit`, `delete` |
+| Receipts (sales history) | `doc.plaintext` (`receipt` needs iOS 17) | `receipt_long` |
 | Back, next, dropdown | `chevron.left`, `chevron.right`, `chevron.down` | `chevron_left`, `chevron_right`, `expand_more` |
 | Image placeholder, warning, lock | `photo`, `exclamationmark.circle`, `lock` | `image`, `error`, `lock` |
 | Register calculator, barcode scan | `plus.forwardslash.minus`, `barcode.viewfinder` | `calculate`, `barcode_scanner` |

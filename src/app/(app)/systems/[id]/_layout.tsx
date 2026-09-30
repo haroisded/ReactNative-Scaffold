@@ -50,6 +50,8 @@ const RESOURCES: Destination[] = [
 const DESTINATIONS: (Destination | { group: 'resources'; label: string; icon: IconName })[] = [
   { name: 'index', label: 'Home', icon: 'home' },
   { name: 'register', label: 'Register', icon: 'calculator' },
+  // What the Register sold: every sale's receipt, and the way to void one.
+  { name: 'receipts', label: 'Receipts', icon: 'receipt' },
   { name: 'dashboard', label: 'Dashboard', icon: 'bar-chart' },
   { group: 'resources', label: 'Resources', icon: 'layers' },
   { name: 'discounts', label: 'Discounts', icon: 'percent' },

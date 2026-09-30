@@ -1,11 +1,6 @@
-import { useState } from 'react';
-
 import { stockFailure, useVoidReceiptMutation } from '../features/stock-receipts/queries';
-import { failureMessage, mutationNotice } from '../lib/errors';
-import { ConfirmDialog } from './confirm-dialog';
-import { HelperText } from './helper-text';
-import { Text } from './text';
-import { TextInput } from './text-input';
+import { failureMessage } from '../lib/errors';
+import { VoidDialog } from './void-dialog';
 
 type Props = {
   receipt: { id: string; code: string };
@@ -21,46 +16,18 @@ type Props = {
  */
 export function VoidReceiptDialog({ receipt, inSheet, onDismiss }: Props) {
   const voidReceipt = useVoidReceiptMutation();
-  const [reason, setReason] = useState('');
-  const [tried, setTried] = useState(false);
-  const trimmed = reason.trim();
-  const reasonError = trimmed === '' ? 'Say why this receipt is being voided.' : null;
-
-  const submit = () => {
-    setTried(true);
-    if (reasonError) return;
-    voidReceipt.mutate({ id: receipt.id, reason: trimmed }, { onSuccess: onDismiss });
-  };
 
   return (
-    <ConfirmDialog
+    <VoidDialog
+      noun="receipt"
+      code={receipt.code}
+      body="Every item on it goes back to what it was before this delivery. The receipt stays in the list, marked Void."
       inSheet={inSheet}
       onDismiss={onDismiss}
-      kicker="Void receipt"
-      title={`Void ${receipt.code}?`}
-      confirmLabel="Void receipt"
-      onConfirm={submit}
       mutation={voidReceipt}
-      notice={mutationNotice(voidReceipt, refusalText(stockFailure(voidReceipt.error)))}
-    >
-      <Text variant="bodyMedium">
-        Every item on it goes back to what it was before this delivery. The receipt stays in the list, marked Void.
-      </Text>
-      <TextInput
-        mode="outlined"
-        dense
-        label="Reason"
-        value={reason}
-        onChangeText={setReason}
-        maxLength={500}
-        multiline
-        error={tried && reasonError !== null}
-        accessibilityLabel="Reason for voiding"
-      />
-      <HelperText type="error" visible={tried && reasonError !== null} padding="none">
-        {reasonError}
-      </HelperText>
-    </ConfirmDialog>
+      errorText={refusalText(stockFailure(voidReceipt.error))}
+      onVoid={(reason) => voidReceipt.mutate({ id: receipt.id, reason }, { onSuccess: onDismiss })}
+    />
   );
 }
 

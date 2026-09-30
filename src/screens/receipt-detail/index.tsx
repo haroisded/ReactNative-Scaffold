@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/page-header';
 import { QueryState } from '../../components/query-state';
 import { Text } from '../../components/text';
 import { VoidReceiptDialog } from '../../components/void-receipt-dialog';
+import { VoidedNotice } from '../../components/voided-notice';
 import { lotBalance } from '../../features/stock-movements/queries';
 import { RECEIPT_STATUS_LABEL, receiptStatus, receiptTotal, useStockReceiptQuery } from '../../features/stock-receipts/queries';
 import type { ReceiptDetail } from '../../features/stock-receipts/queries';
@@ -84,14 +85,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {receipt.voided_at ? (
-          <View style={[styles.voided, { borderColor: colors.error }]}>
-            <Text variant="titleMedium" style={{ color: colors.error }}>
-              {`Voided ${displayDate(receipt.voided_at.slice(0, 10))}`}
-            </Text>
-            {receipt.void_reason ? <Text variant="bodyMedium">{receipt.void_reason}</Text> : null}
-          </View>
-        ) : null}
+        {receipt.voided_at ? <VoidedNotice when={displayDate(receipt.voided_at.slice(0, 10))} reason={receipt.void_reason} /> : null}
 
         <FactGrid facts={facts} />
         {receipt.notes ? (
@@ -249,7 +243,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   state: { gap: spacing.ms, alignItems: 'flex-start', padding: spacing.md },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
-  voided: { gap: spacing.xs, padding: spacing.md, borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous' },
   card: { borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous', overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.ms, padding: spacing.md },
   money: { alignItems: 'flex-end', gap: spacing.xs },

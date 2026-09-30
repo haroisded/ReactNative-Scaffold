@@ -38,16 +38,18 @@ src/themes.js              MD3 light/dark palettes + Merchant keys, roundness, s
                            scales, the type scale
 src/features/<resource>/   data only — queries.ts and schema.ts for merchants, profiles, products
                            (plus stock-item.ts, the Inventory item form), categories, tax-classes,
-                           suppliers, supplier-types, product-groups, stock-receipts, stock-movements
+                           suppliers, supplier-types, product-groups, stock-receipts, stock-movements,
+                           sales (plus cart.ts, the Register's cart reducer)
 src/screens/<screen>/      UI by screen — home, profile, sign-in, product-list (inventory-rows for
                            the Inventory scope), product-form (sections/, fields), product-detail,
                            product-setup, stock-item-form, inventory-detail, stock (the Stock
-                           destination's panes), receipt-wizard, receipt-detail
+                           destination's panes), receipt-wizard, receipt-detail, register (items and
+                           cart panes), sales (the Receipts list), sale-detail
 src/components/            one re-export per Paper primitive, plus what more than one screen or a
                            sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
                            category-picker, lot-drill and pack-row (an item's stock, lot by lot and
-                           pack by pack), add-from-inventory-dialog, the confirm/create dialogs (void-receipt and
-                           stock-movement among them, all on confirm-dialog), discard-dialog (the
+                           pack by pack), add-from-inventory-dialog, the confirm/create dialogs (void-receipt,
+                           void-sale — both on void-dialog — and stock-movement among them, all on confirm-dialog), discard-dialog (the
                            unsaved-changes prompt the three forms share), form-footer, step-header
                            (the product form and receipt wizard's narrow stepper), section-stepper
                            (section list wide, one step at a time narrow: the product form and the
@@ -487,6 +489,23 @@ settings, Base unit, Stock on hand (new items only), Variant setup, Extra, Revie
 (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`). Rentables is off the rail for now; its
 routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
 (`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.
+
+### Register and Receipts
+
+**Register** (`systems/[id]/register.tsx`, `src/screens/register/`) sells what the Products screen
+publishes — flat, active, sold directly — and nothing from Inventory or Rentables. Cash only; prices
+include tax. Wide shows the items pane (`ITEM_PANE`) beside the cart; narrow switches Items | Cart,
+with the payment at the foot of the Cart tab. The cart, the cash typed and the idempotency key live in
+`Register` above both panes. One `record_sale` call (`20260930110000_sales.sql`) writes the sale, its
+lines and every stock draw — a face draws its item through `draw_stock` (`sale`), a recipe draws its
+components (`consume`), a plain product draws nothing — or refuses the lot; every movement carries the
+sale's `SL-` code as `ref`. A retried `client_key` returns the sale already made.
+
+**Receipts** (`systems/[id]/receipts/`, a rail destination, not Stock's Receipts pane) lists sales
+newest first (`src/screens/sales/`); `sale-detail` shows the lines, the payment, and **Stock drawn** —
+the movements with the sale's code. `void_sale` puts every unit back on the pack it came from as a
+`void` movement and marks the sale Void; it refuses a sale already void, and a pack that cannot take
+its units back. Sales and their lines are select-only for clients.
 
 ### The data layer
 

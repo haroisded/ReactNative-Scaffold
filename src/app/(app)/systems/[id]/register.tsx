@@ -1,6 +1,9 @@
-import { PlaceholderScreen } from '../../../../components/placeholder-screen';
+import { useShellMerchant } from '../../../../features/merchants/queries';
+import { Register } from '../../../../screens/register';
 
-// A stub. Register has no screen yet, but its rail item needs somewhere to land.
-export default function Register() {
-  return <PlaceholderScreen />;
+export default function RegisterScreen() {
+  // From the shell, not from this route's params: the rail navigates here with none.
+  const merchant = useShellMerchant();
+
+  return <Register merchantId={merchant.id} merchantName={merchant.name} currency={merchant.currency} />;
 }

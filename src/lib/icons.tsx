@@ -25,6 +25,7 @@ export const ICONS = {
   edit: { ios: 'pencil', android: 'edit' },
   filter: { ios: 'slider.horizontal.3', android: 'tune' },
   logout: { ios: 'rectangle.portrait.and.arrow.right', android: 'logout' },
+  minus: { ios: 'minus', android: 'remove' },
   more: { ios: 'ellipsis', android: 'more_vert' },
   restore: { ios: 'arrow.uturn.backward', android: 'unarchive' },
   search: { ios: 'magnifyingglass', android: 'search' },
@@ -56,6 +57,8 @@ export const ICONS = {
   truck: { ios: 'truck.box', android: 'local_shipping' },
   menu: { ios: 'line.3.horizontal', android: 'menu' },
   percent: { ios: 'percent', android: 'percent' },
+  // The Register's sales. SF Symbols' own `receipt` needs iOS 17; a plain document reads the same.
+  receipt: { ios: 'doc.plaintext', android: 'receipt_long' },
   settings: { ios: 'gearshape', android: 'settings' },
   tag: { ios: 'tag', android: 'sell' },
   toggle: { ios: 'switch.2', android: 'toggle_on' },

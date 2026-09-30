@@ -640,6 +640,120 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_lines: {
+        Row: {
+          id: string
+          line_total: number | null
+          merchant_id: string
+          name: string
+          position: number
+          product_id: string | null
+          qty: number
+          sale_id: string
+          tax_rate: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          line_total?: number | null
+          merchant_id: string
+          name: string
+          position?: number
+          product_id?: string | null
+          qty: number
+          sale_id: string
+          tax_rate?: number
+          unit_price: number
+        }
+        Update: {
+          id?: string
+          line_total?: number | null
+          merchant_id?: string
+          name?: string
+          position?: number
+          product_id?: string | null
+          qty?: number
+          sale_id?: string
+          tax_rate?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_lines_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_lines_product_fk"
+            columns: ["product_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "merchant_id"]
+          },
+          {
+            foreignKeyName: "sale_lines_sale_fk"
+            columns: ["sale_id", "merchant_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id", "merchant_id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          change_due: number | null
+          client_key: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          merchant_id: string
+          tax_total: number
+          tendered: number
+          total: number
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          change_due?: number | null
+          client_key: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merchant_id: string
+          tax_total: number
+          tendered: number
+          total: number
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          change_due?: number | null
+          client_key?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merchant_id?: string
+          tax_total?: number
+          tendered?: number
+          total?: number
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_cases: {
         Row: {
           code: string
@@ -1295,12 +1409,17 @@ export type Database = {
       delete_current_user: { Args: never; Returns: undefined }
       draw_stock: { Args: { payload: Json }; Returns: Json }
       ensure_register_faces: { Args: { p_item: string }; Returns: undefined }
+      record_sale: { Args: { payload: Json }; Returns: Json }
       record_stock_movement: { Args: { payload: Json }; Returns: undefined }
       save_product: { Args: { payload: Json }; Returns: string }
       save_receipt: { Args: { payload: Json }; Returns: string }
       save_stock_item: { Args: { payload: Json }; Returns: string }
       void_receipt: {
         Args: { p_reason: string; p_receipt: string }
+        Returns: undefined
+      }
+      void_sale: {
+        Args: { p_reason: string; p_sale: string }
         Returns: undefined
       }
     }
