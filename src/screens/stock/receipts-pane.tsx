@@ -72,7 +72,7 @@ export function ReceiptsPane({ merchantId, currency }: Props) {
             icon="add"
             onPress={() => router.push({ pathname: '/systems/[id]/stock/receipts/new', params: { id: merchantId } })}
           >
-            New stock receipt
+            Stock receipt
           </Button>
         </>
       )}
@@ -211,7 +211,7 @@ function WideCells({ item, unit, currency, open }: CellsProps & { currency: stri
         {itemLabel(item)}
       </Text>
       <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.lotCell}>
-        {item.code}
+        {item.code ?? '—'}
       </Text>
       <View style={styles.remainingCell}>
         <RemainingBar item={item} unit={unit} />
@@ -293,7 +293,7 @@ function LineDrill({ lotId, unit, currency, unitCost, expiresOn, onOpenReceipt }
       )}
       <View style={styles.drillFoot}>
         <Text variant="bodySmall" style={[styles.note, { color: colors.onSurfaceMuted }]}>
-          Receipt data is fixed as history; remaining counts update as units sell or are used. Unit cost is set per pack at receipt (pack cost + freight share).
+          Receipt data is fixed as history; remaining counts update as units sell or are used. Unit cost is set per pack at receipt: as typed, or pack cost ÷ units per pack.
         </Text>
         <Button mode="outlined" compact onPress={onOpenReceipt}>
           Open receipt

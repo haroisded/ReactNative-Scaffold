@@ -64,7 +64,7 @@ export function ReceiptDetailScreen({ currency, id }: Props) {
     ['Invoice / DR', receipt.invoice_no],
     ['Received by', receipt.received_by],
     ['Location', receipt.location],
-    ['Freight', receipt.freight > 0 ? formatMoney(receipt.freight, currency) : null],
+    ['Shipping cost', receipt.freight > 0 ? formatMoney(receipt.freight, currency) : null],
     ['Total', formatMoney(receiptTotal(receipt), currency)],
   ];
 
@@ -130,7 +130,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
         android_ripple={{ color: colors.ripple }}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${lot.product?.name ?? 'Item'}, lot ${lot.code}`}
+        accessibilityLabel={`${lot.product?.name ?? 'Item'}, lot ${lot.code ?? 'none'}`}
         style={styles.cardHead}
       >
         {hasChildren ? <Icon source={open ? 'chevron-down' : 'chevron-right'} size={20} color={colors.onSurfaceMuted} /> : null}
@@ -139,7 +139,7 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
             {lot.product?.name ?? 'Item no longer available'}
           </Text>
           <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={muted}>
-            {`${lot.code} · ${summary}`}
+            {`${lot.code ?? '—'} · ${summary}`}
           </Text>
           <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
             {`${lotBalance(lot).remaining} of ${lot.qty_received ?? 0} ${base} left`}
@@ -174,7 +174,7 @@ function lotSummary(lot: Lot, pack: string, base: string) {
     .join(' · ');
 }
 
-/** The line's value, its freight share, and the landed cost per base unit. */
+/** The line's value, any freight share it was received with (before 20260930100000_receipt_inputs.sql), and the landed cost per base unit. */
 function LotMoney({ lot, currency, base }: { lot: Lot; currency: string; base: string }) {
   const { colors } = useAppTheme();
   const muted = { color: colors.onSurfaceMuted };
@@ -186,7 +186,7 @@ function LotMoney({ lot, currency, base }: { lot: Lot; currency: string; base: s
       </Text>
       {lot.freight_share ? (
         <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
-          {`+ ${formatMoney(lot.freight_share, currency)} freight`}
+          {`+ ${formatMoney(lot.freight_share, currency)} shipping`}
         </Text>
       ) : null}
       <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>

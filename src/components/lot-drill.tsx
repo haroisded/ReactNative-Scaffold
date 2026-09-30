@@ -62,7 +62,7 @@ export function LotDrill({ lots, nextPick, unit, currency, expiryAlertDays, show
             <View style={styles.lotHead}>
               <View style={styles.lotTitle}>
                 <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
-                  {lot.code}
+                  {lot.code ?? '—'}
                 </Text>
                 <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
                   {lot.expires_on ? `exp ${displayDate(lot.expires_on)}` : 'no expiry'}

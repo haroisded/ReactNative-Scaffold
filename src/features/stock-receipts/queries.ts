@@ -94,7 +94,7 @@ export function receiptStatus(receipt: DetailSource): ReceiptStatus {
   });
 }
 
-/** The landed total: every line's value plus freight. */
+/** The landed total: every line's value plus shipping. */
 export function receiptTotal(receipt: DetailSource) {
   return receipt.lots.reduce((sum, lot) => sum + (lot.line_cost ?? 0), 0) + receipt.freight;
 }
@@ -157,7 +157,7 @@ export function useSaveReceiptMutation({ merchantId }: { merchantId: string }) {
   return useMutation({
     mutationFn: async (receipt: ReceiptValues) => {
       // One RPC, one transaction: the header, any new item, every lot, case and pack, the receive
-      // movements and the freight split land together or not at all.
+      // movements land together or not at all.
       const { data } = await supabase
         .rpc('save_receipt', { payload: toReceiptPayload(merchantId, receipt) })
         .throwOnError();

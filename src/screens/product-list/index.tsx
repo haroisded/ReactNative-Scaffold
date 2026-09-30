@@ -438,7 +438,7 @@ function InventoryChips({ visible, filters, onChange, showEmpty, onShowEmpty }: 
         </View>
       </View>
       <Text variant="bodySmall" style={[styles.pickOrder, { color: colors.onSurfaceMuted }]}>
-        Pick order: open before sealed → closest expiry → fewest left → oldest first → pack ID. Unit cost = (pack cost + freight share) ÷ units per pack, fixed per pack at receipt.
+        Pick order: open before sealed → closest expiry → fewest left → oldest first → pack ID. Unit cost = as typed at receipt, or pack cost ÷ units per pack, fixed per pack.
       </Text>
     </View>
   );

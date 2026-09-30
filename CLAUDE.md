@@ -2,6 +2,15 @@
 
 # Project guide — Expo SDK 57 + Supabase auth scaffold
 
+# Expected AI Response
+When Reporting information to me,
+be extremely concise and sacrifice
+grammar for the sake of concision
+
+# Tool Calling
+For tool calling, always use context mode 
+
+
 **Contents**
 
 1. [What this is](#1-what-this-is)
@@ -321,7 +330,9 @@ child tables, `public.save_product()`, and `private.assert_no_bundle_cycle()` �
 ledger (`stock_receipts`, `stock_lots`, `stock_cases`, a row per pack in `stock_packs`,
 `stock_movements`, select-only for clients; the `stock_pick_queue` and `stock_lot_lines` views), and its
 writers `save_stock_item`, `save_receipt`, `add_inventory_stock`, `draw_stock`, `void_receipt` and
-`record_stock_movement`. The catalogue's
+`record_stock_movement` — with a receipt's supplier and a lot's number optional, expected and
+received packs kept apart, and shipping cost recorded but spread into no cost
+(`20260930100000_receipt_inputs.sql`). The catalogue's
 policies are the first callers of `current_merchant_ids()`, which is why `authenticated` holds
 `usage` on `private` and `execute` on that function (`instruction_mds/tenancy.md` §3). Each migration has a
 revert in `supabase/reverts/` (§6.6).

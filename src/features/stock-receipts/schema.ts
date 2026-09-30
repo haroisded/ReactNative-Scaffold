@@ -3,10 +3,10 @@ import * as z from 'zod';
 import { Constants } from '../../lib/database.types';
 import type { StockItemOption } from '../products/queries';
 
-// The New Stock Receipt wizard (src/screens/receipt-wizard/): General → Unit Load → Pallet → Case → Pack
+// The New Stock Receipt wizard (src/screens/receipt-wizard/): Supplier → Unit Load → Pallet → Case → Pack
 // → Base Unit → Review (.claude/inventory-stock/Stock_Receiving.html). Every field is the text the
 // merchant typed; toReceiptPayload turns it into save_receipt's payload
-// (20260929100100_stock_ledger.sql §5) at the mutation boundary. Limits are stock_receipts_text_length and
+// (20260929100100_stock_ledger.sql §5, reshaped by 20260930100000_receipt_inputs.sql) at the mutation boundary. Limits are stock_receipts_text_length and
 // stock_lots_text_length's, reported before a round trip; save_receipt checks everything again.
 
 const optional = (max: number, label: string) =>
@@ -41,14 +41,20 @@ const packLineFields = z.object({
   serials: optional(4000, 'Serial numbers'),
   lotCode: optional(64, 'Lot / batch number'),
   location: optional(120, 'Storage location'),
+  /** Pack quantity: the packs this delivery should hold. The Case tier's total stands in for it. */
+  packsExpected: count('Pack quantity'),
+  /** Received packs: what actually arrived. Blank, the expected count is taken as received. */
   packs: count('Received packs'),
   costPerPack: amount('Cost per pack'),
   reorderAt: amount('Re-order at'),
   expiresOn: isoDate,
   baseUnit: optional(20, 'Base unit type'),
-  unitsPerPack: amount('Base units per pack'),
-  /** Units that arrived outside a full pack — one partial pack. */
-  looseUnits: amount('Extra loose units'),
+  /** Base units qty: base units in one pack (products.conversion_factor). */
+  unitsPerPack: amount('Base units qty'),
+  /** Base units qty received: what was counted in one pack. A record only; stock uses unitsPerPack. */
+  unitsPerPackReceived: amount('Base units qty received'),
+  /** Cost per base unit, final when typed. Blank, it is the pack cost ÷ base units qty. */
+  unitCost: amount('Cost per base unit'),
 });
 
 export type PackLineValues = z.infer<typeof packLineFields>;
@@ -64,21 +70,23 @@ function identityIssues(line: PackLineValues): Issue[] {
   return issues;
 }
 
-/** What arrived and at what cost — unless the Case tier already says (`fromCase`). */
+/** What should arrive and at what cost — unless the Case tier already says (`fromCase`) — and what did. */
 function receivedIssues(line: PackLineValues, fromCase: boolean): Issue[] {
-  if (fromCase) return [];
   const issues: Issue[] = [];
-  if (!(Number(line.packs) > 0) && !(Number(line.looseUnits) > 0)) issues.push(['packs', 'Enter how many packs arrived.']);
-  if (line.costPerPack === '') issues.push(['costPerPack', 'Enter the cost of one pack.']);
+  if (!fromCase && !(Number(line.packsExpected) > 0)) issues.push(['packsExpected', 'Enter how many packs this delivery holds.']);
+  if (!fromCase && line.costPerPack === '') issues.push(['costPerPack', 'Enter the cost of one pack.']);
+  if (line.packs !== '' && !(Number(line.packs) > 0)) issues.push(['packs', 'Enter the packs that arrived, or leave it blank.']);
   return issues;
 }
 
 /** The Base Unit step's fields, while something is sold by the base unit. */
 function baseUnitIssues(line: PackLineValues): Issue[] {
   if (line.sellBy === 'pack') return [];
-  const upp = Number(line.unitsPerPack);
-  if (!(upp > 0)) return [['unitsPerPack', 'Enter how many base units one pack holds.']];
-  return Number(line.looseUnits || 0) >= upp ? [['looseUnits', 'Loose units must be fewer than one full pack.']] : [];
+  const issues: Issue[] = [];
+  if (!(Number(line.unitsPerPack) > 0)) issues.push(['unitsPerPack', 'Enter how many base units one pack holds.']);
+  if (line.unitsPerPackReceived !== '' && !(Number(line.unitsPerPackReceived) > 0))
+    issues.push(['unitsPerPackReceived', 'Enter the base units counted, or leave it blank.']);
+  return issues;
 }
 
 /** A line's own rules. `fromCase`: the Case tier already says how many packs arrived and what they cost. */
@@ -120,10 +128,15 @@ function lineRules(receipt: ReceiptValues, fromCase: boolean, add: AddIssue) {
     add(['line', 'serials'], 'More serial numbers than packs.');
 }
 
+/** Both or neither: a supplier's delivery has a date, and a dated delivery came from someone. */
+function supplierRules(receipt: ReceiptValues, add: AddIssue) {
+  if (receipt.supplierId === '' && receipt.receivedOn !== '') add(['supplierId'], 'Choose the supplier, or clear the date.');
+  if (receipt.receivedOn === '' && receipt.supplierId !== '') add(['receivedOn'], 'Enter the date the stock arrived.');
+}
+
 export const receiptSchema = receiptFields.superRefine((receipt, ctx) => {
   const add: AddIssue = (path, message) => ctx.addIssue({ code: 'custom', path, message });
-  if (receipt.supplierId === '') add(['supplierId'], 'Choose the supplier.');
-  if (receipt.receivedOn === '') add(['receivedOn'], 'Enter the date the stock arrived.');
+  supplierRules(receipt, add);
   const c = receipt.caseTier;
   const caseUsed = c.received !== '' || c.per !== '' || c.cost !== '';
   if (caseUsed && !receipt.multi) {
@@ -160,13 +173,15 @@ export const emptyPackLine: PackLineValues = {
   serials: '',
   lotCode: '',
   location: '',
+  packsExpected: '',
   packs: '',
   costPerPack: '',
   reorderAt: '',
   expiresOn: '',
   baseUnit: 'pc',
   unitsPerPack: '1',
-  looseUnits: '',
+  unitsPerPackReceived: '',
+  unitCost: '',
 };
 
 /** Today on the device's calendar. `current_date` on the server is UTC, which is yesterday or tomorrow near midnight. */
@@ -180,7 +195,8 @@ export function emptyReceipt(): ReceiptValues {
   return {
     supplierId: '',
     invoiceNo: '',
-    receivedOn: localToday(),
+    // Blank: a date is asked for with a supplier, never assumed (receiptSchema).
+    receivedOn: '',
     receivedBy: '',
     location: '',
     freight: '',
@@ -225,11 +241,15 @@ export function caseTotals(receipt: Pick<ReceiptValues, 'caseTier'>) {
 /** Base units in one pack. Sold by the pack only, a pack is one unit. */
 export const unitsPerPack = (line: PackLineValues) => (line.sellBy === 'pack' ? 1 : Number(line.unitsPerPack) || 1);
 
-/** Whole packs a line receives: the Case tier's total on a single-product receipt, else what was typed. */
-export function linePacks(line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) {
+/** Packs a line should hold: the Case tier's total on a single-product receipt, else the Pack quantity. */
+export function lineExpected(line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) {
   const fromCase = receipt && !receipt.multi ? caseTotals(receipt) : null;
-  return fromCase ? fromCase.packs : Number(line.packs || 0);
+  return fromCase ? fromCase.packs : Number(line.packsExpected || 0);
 }
+
+/** Packs a line stocks: Received packs, or the expected count when that is blank (as create_lot does). */
+export const linePacks = (line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) =>
+  line.packs === '' ? lineExpected(line, receipt) : Number(line.packs);
 
 /** Cost of one pack: the Case tier's cost ÷ packs per case, or what was typed. */
 export function lineCostPerPack(line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) {
@@ -237,38 +257,19 @@ export function lineCostPerPack(line: PackLineValues, receipt: Pick<ReceiptValue
   return fromCase ? fromCase.costPerPack : Number(line.costPerPack || 0);
 }
 
-/** Loose units the line takes, which exist only when something is sold by the base unit. */
-const lineLoose = (line: PackLineValues) => (line.sellBy === 'pack' ? 0 : Number(line.looseUnits || 0));
+/** A line's value: the sum stock_lots.line_cost stores. */
+export const lineCost = (line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) =>
+  linePacks(line, receipt) * lineCostPerPack(line, receipt);
 
-/** A line's value before freight: the sum stock_lots.line_cost stores. */
-export function lineCost(line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) {
-  const perPack = lineCostPerPack(line, receipt);
-  return linePacks(line, receipt) * perPack + (lineLoose(line) * perPack) / unitsPerPack(line);
-}
+/** The typed cost per base unit, or null for create_lot's pack cost ÷ units. Sold by the pack, there is none to type. */
+const typedUnitCost = (line: PackLineValues) => (line.sellBy === 'pack' || line.unitCost === '' ? null : Number(line.unitCost));
 
-/** Base units a line receives. */
-const lineUnits = (line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) =>
-  linePacks(line, receipt) * unitsPerPack(line) + lineLoose(line);
+/** Cost per base unit as create_lot stores it: the typed one, else the pack cost ÷ base units qty. */
+export const lineUnitCost = (line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) =>
+  typedUnitCost(line) ?? lineCostPerPack(line, receipt) / unitsPerPack(line);
 
 /** The lines a receipt saves: the list on a multi-product receipt, else the one line. */
 export const receiptLines = (receipt: ReceiptValues) => (receipt.multi ? receipt.lines : [receipt.line]);
-
-/**
- * Each line's freight share and landed cost per base unit, split the way save_receipt splits it: by value,
- * or by quantity when every line cost nothing. A preview; the server's numbers are what is stored.
- */
-export function landedCosts(receipt: ReceiptValues) {
-  const lines = receiptLines(receipt);
-  const freight = Number(receipt.freight || 0);
-  const values = lines.map((line) => lineCost(line, receipt));
-  const units = lines.map((line) => lineUnits(line, receipt));
-  const valueTotal = values.reduce((sum, value) => sum + value, 0);
-  const unitTotal = units.reduce((sum, value) => sum + value, 0);
-  return lines.map((line, index) => {
-    const share = freight === 0 ? 0 : valueTotal > 0 ? (freight * values[index]) / valueTotal : unitTotal > 0 ? (freight * units[index]) / unitTotal : 0;
-    return { value: values[index], share, units: units[index], unitCost: units[index] > 0 ? (values[index] + share) / units[index] : 0 };
-  });
-}
 
 const serialList = (serials: string) =>
   serials
@@ -318,8 +319,10 @@ function linePayload(line: PackLineValues, receipt: ReceiptValues) {
           cases_per_pallet: numberOrNull(receipt.pallet.per),
           pallet_sscc: orNull(receipt.pallet.sscc),
         }
-      : { packs: Number(line.packs || 0), cost_per_pack: Number(line.costPerPack) }),
-    loose_units: lineLoose(line),
+      : { packs_expected: Number(line.packsExpected), cost_per_pack: Number(line.costPerPack) }),
+    packs: numberOrNull(line.packs),
+    units_per_pack_received: byPack ? null : numberOrNull(line.unitsPerPackReceived),
+    unit_cost: typedUnitCost(line),
     lot_code: orNull(line.lotCode),
     expires_on: line.hasExpiry ? orNull(line.expiresOn) : null,
     location: orNull(line.location),
@@ -330,9 +333,10 @@ function linePayload(line: PackLineValues, receipt: ReceiptValues) {
 export function toReceiptPayload(merchantId: string, receipt: ReceiptValues) {
   return {
     merchant_id: merchantId,
-    supplier_id: receipt.supplierId,
+    supplier_id: orNull(receipt.supplierId),
     invoice_no: orNull(receipt.invoiceNo),
-    received_on: receipt.receivedOn,
+    // No date (and so no supplier): the delivery is today's, on the device's calendar rather than UTC.
+    received_on: receipt.receivedOn || localToday(),
     received_by: orNull(receipt.receivedBy),
     location: orNull(receipt.location),
     freight: Number(receipt.freight || 0),

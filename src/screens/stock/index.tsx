@@ -5,7 +5,6 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../../components/button';
 import { PageHeader } from '../../components/page-header';
 import { SegmentedButtons } from '../../components/segmented-buttons';
-import { useShellWide } from '../../lib/columns';
 import { spacing } from '../../themes';
 import { ReceiptsPane } from './receipts-pane';
 import { SuppliersPane } from './suppliers-pane';
@@ -25,16 +24,8 @@ type Pane = 'receipts' | 'suppliers';
  */
 export function Stock({ merchantId, merchantName, currency }: Props) {
   const [pane, setPane] = useState<Pane>('receipts');
-  // Held here so the header's "Add supplier" and the pane's empty state open the same dialog.
-  const [creatingSupplier, setCreatingSupplier] = useState(false);
-
-  const wide = useShellWide();
-
-  const addSupplier = () => {
-    // Narrow, an inline-create dialog is a formSheet route (instruction_mds/visual-language.md §5).
-    if (wide) setCreatingSupplier(true);
-    else router.push({ pathname: '/sheets/supplier', params: { merchantId } });
-  };
+  // The header's "Add supplier" and the pane's empty state open the same full-page form.
+  const addSupplier = () => router.push({ pathname: '/forms/supplier', params: { merchantId } });
 
   return (
     <View style={styles.fill}>
@@ -49,7 +40,7 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
               icon="add"
               onPress={() => router.push({ pathname: '/systems/[id]/stock/receipts/new', params: { id: merchantId } })}
             >
-              New stock receipt
+              Stock receipt
             </Button>
           ) : (
             <Button mode="contained" icon="add" onPress={addSupplier}>
@@ -72,12 +63,7 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
       {pane === 'receipts' ? (
         <ReceiptsPane merchantId={merchantId} currency={currency} />
       ) : (
-        <SuppliersPane
-          merchantId={merchantId}
-          creating={creatingSupplier}
-          onCreate={addSupplier}
-          onCreateDone={() => setCreatingSupplier(false)}
-        />
+        <SuppliersPane merchantId={merchantId} onCreate={addSupplier} />
       )}
     </View>
   );

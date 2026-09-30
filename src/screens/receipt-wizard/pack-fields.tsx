@@ -16,7 +16,7 @@ import { Text } from '../../components/text';
 import type { StockItemOption } from '../../features/products/queries';
 import { generateSku } from '../../features/products/schema';
 import { SELL_BY_LABEL, STOCK_ROLE_LABEL } from '../../features/products/stock-item';
-import { emptyPackLine, generatedCode, lineForItem, unitsPerPack } from '../../features/stock-receipts/schema';
+import { emptyPackLine, generatedCode, lineForItem, linePacks, lineUnitCost, unitsPerPack } from '../../features/stock-receipts/schema';
 import type { ReceiptValues } from '../../features/stock-receipts/schema';
 import { currencySymbol, formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
@@ -35,7 +35,7 @@ type PackFieldsProps = {
   form: Form;
   items: StockItemOption[];
   currency: string;
-  /** The Case tier's pack count and cost, which the single product takes instead of its own. */
+  /** The Case tier's pack count and cost, which the single product expects instead of its own. */
   fromCase: { packs: number; costPerPack: number } | null;
   /** The receipt's date, for generated lot and serial numbers. */
   receivedOn: string;
@@ -49,7 +49,7 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
   const line = useWatch({ control, name: 'line' }) as ReceiptValues['line'];
   const existing = line.productId !== '';
   const money = currencySymbol(currency);
-  const packs = fromCase ? fromCase.packs : Number(line.packs || 0);
+  const packs = line.packs === '' ? (fromCase ? fromCase.packs : Number(line.packsExpected || 0)) : Number(line.packs);
   const costPerPack = fromCase ? fromCase.costPerPack : Number(line.costPerPack || 0);
 
   const pickItem = (id: string) => {
@@ -68,7 +68,11 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
     <>
       <GroupHeading title="Product details" />
       <FieldGrid>
-        <Field label="Item" span="full" hint={existing ? 'Details come from the item' : 'A new item is made on save'}>
+        <Field
+          label="Restock item"
+          span="full"
+          hint={existing ? 'Restocking this item: its details come from it' : 'Pick an item to restock, or fill in a new one below'}
+        >
           <ItemSelect form={form} items={items} onPick={pickItem} />
         </Field>
         <ControlledText control={control} name="line.name" label="Pack name" required disabled={existing} maxLength={120} />
@@ -94,7 +98,7 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
           control={control}
           name="line.lotCode"
           label="Lot / batch number"
-          placeholder="Blank makes one"
+          placeholder="Leave blank for none"
           maxLength={64}
           action={{ label: 'Auto-generate', onPress: () => fill('line.lotCode', generatedCode('LOT', receivedOn)) }}
         />
@@ -106,11 +110,19 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
       <FieldGrid>
         <ControlledText
           control={control}
-          name="line.packs"
-          label="Received packs"
+          name="line.packsExpected"
+          label="Pack quantity"
+          hint="Packs this delivery should hold"
           required={!fromCase}
           disabled={fromCase !== null}
           placeholder={fromCase ? `From Case tier: ${fromCase.packs}` : undefined}
+          keyboardType="number-pad"
+        />
+        <ControlledText
+          control={control}
+          name="line.packs"
+          label="Received packs"
+          hint="Packs that arrived; blank means all of them"
           keyboardType="number-pad"
         />
         <ControlledText
@@ -144,31 +156,29 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
 function ItemSelect({ form, items, onPick }: { form: Form; items: StockItemOption[]; onPick: (id: string) => void }) {
   const productId = useWatch({ control: form.control, name: 'line.productId' });
   const options = [
-    { value: '', label: 'New item' },
+    { value: '', label: '+ New item' },
     ...items.map((row) => ({ value: row.id, label: row.sku ? `${row.name} · ${row.sku}` : row.name })),
   ];
-  return <MenuSelect value={productId} options={options} onChange={onPick} placeholder="Choose an item" accessibilityLabel="Item" />;
+  return <MenuSelect value={productId} options={options} onChange={onPick} placeholder="Choose an item" accessibilityLabel="Restock item" />;
 }
 
 type BaseUnitFieldsProps = {
   form: Form;
   currency: string;
-  /** Landed cost per base unit (pack cost + freight share ÷ units per pack), for the read-only line. */
-  unitCost: number;
-  /** The single product's pack count from the Case tier, when it has one. */
-  fromCase: { packs: number; costPerPack: number } | null;
+  /** The receipt's tiers, so the Case tier's pack count and cost reach the single product. Null in the list editor. */
+  receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null;
 };
 
 /** Base Unit step: what is inside a pack, and what one of them cost. Only when something sells by the base unit. */
-export function BaseUnitFields({ form, currency, unitCost, fromCase }: BaseUnitFieldsProps) {
+export function BaseUnitFields({ form, currency, receipt }: BaseUnitFieldsProps) {
   const { control } = form;
   // SAFETY: as in PackFields.
   const line = useWatch({ control, name: 'line' }) as ReceiptValues['line'];
   const existing = line.productId !== '';
   const unit = line.baseUnit || 'unit';
-  const packs = fromCase ? fromCase.packs : Number(line.packs || 0);
-  const perPack = fromCase ? fromCase.costPerPack : Number(line.costPerPack || 0);
-  const units = packs * unitsPerPack(line) + Number(line.looseUnits || 0);
+  const units = linePacks(line, receipt) * unitsPerPack(line);
+  // What a blank Cost per unit saves as, shown as its placeholder.
+  const derived = lineUnitCost({ ...line, unitCost: '' }, receipt);
 
   return (
     <>
@@ -178,21 +188,29 @@ export function BaseUnitFields({ form, currency, unitCost, fromCase }: BaseUnitF
         <ControlledText
           control={control}
           name="line.unitsPerPack"
-          label={`${unit} per pack`}
+          label="Base units qty"
+          hint={`${unit} in one pack`}
           required
           disabled={existing}
           keyboardType="decimal-pad"
         />
         <ControlledText
           control={control}
-          name="line.looseUnits"
-          label={`Extra loose ${unit}`}
-          hint="Outside a full pack"
+          name="line.unitsPerPackReceived"
+          label="Base units qty received"
+          hint={`${unit} counted in one pack, for the record`}
           keyboardType="decimal-pad"
         />
-        <ReadOnly label={`Cost per ${unit}`} value={unitCost > 0 ? formatMoney(unitCost, currency) : '—'} />
-        <ReadOnly label={`Total ${unit}`} value={units > 0 ? String(units) : '—'} />
-        <ReadOnly label="Total base units cost" value={units > 0 ? formatMoney((perPack / unitsPerPack(line)) * units, currency) : '—'} />
+        <ControlledText
+          control={control}
+          name="line.unitCost"
+          label={`Cost per ${unit}`}
+          hint="Blank uses the pack cost ÷ base units qty"
+          placeholder={derived > 0 ? formatMoney(derived, currency) : undefined}
+          keyboardType="decimal-pad"
+          prefix={currencySymbol(currency)}
+        />
+        <ReadOnly label={`Total ${unit} from packs`} value={units > 0 ? String(units) : '—'} />
       </FieldGrid>
     </>
   );

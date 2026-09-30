@@ -14,7 +14,6 @@ import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
 import { StepHeader } from '../../components/step-header';
-import { SupplierDialog } from '../../components/supplier-dialog';
 import { Text } from '../../components/text';
 import { useStockItemOptionsQuery } from '../../features/products/queries';
 import { stockFailure, useSaveReceiptMutation } from '../../features/stock-receipts/queries';
@@ -22,8 +21,8 @@ import {
   caseTotals,
   emptyPackLine,
   emptyReceipt,
-  landedCosts,
   lineCost,
+  linePacks,
   packLineFormSchema,
   receiptSchema,
 } from '../../features/stock-receipts/schema';
@@ -49,7 +48,7 @@ type Props = { merchantId: string; currency: string };
 type Step = 'general' | 'unitLoad' | 'pallet' | 'case' | 'pack' | 'base' | 'review';
 const STEPS: Step[] = ['general', 'unitLoad', 'pallet', 'case', 'pack', 'base', 'review'];
 const STEP_TITLE = {
-  general: 'General',
+  general: 'Supplier',
   unitLoad: 'Unit Load',
   pallet: 'Pallet',
   case: 'Case',
@@ -70,14 +69,14 @@ const STEP_FIELDS = {
   review: ['notes'],
 } satisfies Record<Step, FieldPath<ReceiptValues>[]>;
 
-// Keyed by the exception save_receipt raises (20260929100100_stock_ledger.sql §5); stockFailure() hands
+// Keyed by the exception save_receipt raises (20260930100000_receipt_inputs.sql); stockFailure() hands
 // back any snake_case message.
 const FAILURE_COPY = new Map([
   ['supplier_not_available', 'This supplier has been deactivated. Choose another, or reactivate it under Suppliers.'],
   ['receipt_has_no_lines', 'Add at least one product.'],
   ['stock_item_not_found', 'One of the items was archived or deleted. Pick the item again.'],
   ['receipt_line_case_tier', 'The Case step needs cases, packs per case and the cost of one case.'],
-  ['receipt_line_quantity', 'Every product needs packs received, and loose units fewer than one full pack.'],
+  ['receipt_line_quantity', 'Every product needs a pack quantity.'],
   ['receipt_line_expiry_required', 'Every product that expires needs its expiration date.'],
   ['receipt_line_serial_count', 'There are more serial numbers than packs.'],
 ]);
@@ -110,7 +109,7 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
   const { step, setStep, steps, move, next, skip } = useStepper(form, receipt, editing !== null);
 
   const pickSupplier = (id: string) => form.setValue('supplierId', id, { shouldDirty: true, shouldValidate: true });
-  const { createSupplier, supplierDialog } = useNewSupplier(merchantId, wide, pickSupplier);
+  const createSupplier = useNewSupplier(merchantId, pickSupplier);
 
   const guard = useReceiptGuard(merchantId, isDirty || editing !== null);
 
@@ -143,8 +142,6 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
         />
       )}
 
-      {supplierDialog}
-
       <DiscardDialog
         guard={guard}
         wide={wide}
@@ -171,14 +168,13 @@ type PagesArgs = {
 /** Each step's page. The Case tier feeds the single product's pack count and cost. */
 function wizardPages({ form, receipt, items, currency, suppliers, suppliersLoading, createSupplier, editing, setEditing }: PagesArgs) {
   const fromCase = receipt.multi ? null : caseTotals(receipt);
-  const unitCost = landedCosts(receipt)[0]?.unitCost ?? 0;
   return {
     general: <GeneralFields form={form} currency={currency} suppliers={suppliers} loading={suppliersLoading} onCreateSupplier={createSupplier} />,
     unitLoad: <TierFields form={form} name="unitLoad" note="Unit Load (tier 5): skip if the delivery did not come in one." per="Pallets per unit load" total="Total pallets" />,
     pallet: <TierFields form={form} name="pallet" note="Pallet (tier 4): skip if the delivery did not come on pallets." per="Cases per pallet" total="Total cases" />,
     case: <CaseFields form={form} currency={currency} />,
     pack: <PackStep form={form} items={items ?? []} currency={currency} fromCase={fromCase} editing={editing} onEdit={setEditing} />,
-    base: <BaseUnitFields form={form} currency={currency} unitCost={unitCost} fromCase={fromCase} />,
+    base: <BaseUnitFields form={form} currency={currency} receipt={receipt} />,
     review: (
       <>
         <ReceiptReview receipt={receipt} supplierName={supplierName(suppliers, receipt.supplierId)} currency={currency} />
@@ -279,18 +275,10 @@ function NarrowSteps({ step, steps, pages, notice, actions, onBack, onNext, onSk
 /** The Base Unit step exists while the single product sells by the base unit. A list of products carries it per product. */
 const baseUnitNeeded = (receipt: ReceiptValues) => !receipt.multi && receipt.line.sellBy !== 'pack';
 
-/** A new supplier from the Supplier field: a dialog on a tablet, the sheet route on a phone. */
-function useNewSupplier(merchantId: string, wide: boolean, onCreated: (id: string) => void) {
+/** A new supplier from the Supplier field: the full-page form at every width, whose row comes back selected. */
+function useNewSupplier(merchantId: string, onCreated: (id: string) => void) {
   useSheetResult(SHEET_KEY, onCreated);
-  const [creatingSupplier, setCreatingSupplier] = useState(false);
-  const createSupplier = () => {
-    if (wide) setCreatingSupplier(true);
-    else router.push({ pathname: '/sheets/supplier', params: { merchantId, resultKey: SHEET_KEY } });
-  };
-  const supplierDialog = creatingSupplier ? (
-    <SupplierDialog merchantId={merchantId} onDismiss={() => setCreatingSupplier(false)} onCreated={(row) => onCreated(row.id)} />
-  ) : null;
-  return { createSupplier, supplierDialog };
+  return () => router.push({ pathname: '/forms/supplier', params: { merchantId, resultKey: SHEET_KEY } });
 }
 
 type Form = UseFormReturn<ReceiptValues>;
@@ -313,7 +301,6 @@ function GeneralFields({ form, currency, suppliers, loading, onCreateSupplier }:
         control={form.control}
         name="supplierId"
         label="Supplier"
-        required
         span="full"
         options={supplierOptions}
         placeholder={loading ? 'Loading…' : 'Select supplier'}
@@ -321,14 +308,14 @@ function GeneralFields({ form, currency, suppliers, loading, onCreateSupplier }:
         onCreate={onCreateSupplier}
       />
       <ControlledText control={form.control} name="invoiceNo" label="Invoice / DR No." placeholder="e.g. DR-4471" maxLength={64} />
-      <ControlledDate control={form.control} name="receivedOn" label="Date received" required />
+      <ControlledDate control={form.control} name="receivedOn" label="Date received" />
       <ControlledText control={form.control} name="receivedBy" label="Received by" placeholder="Staff name" maxLength={80} />
       <ControlledText control={form.control} name="location" label="Receiving location" placeholder="e.g. Main Warehouse" maxLength={120} />
       <ControlledText
         control={form.control}
         name="freight"
-        label="Freight / other charges"
-        hint="Spread by value into cost per base unit"
+        label="Shipping cost"
+        hint="Recorded on the receipt; not added to any cost"
         keyboardType="decimal-pad"
         prefix={currencySymbol(currency)}
         span="full"
@@ -348,7 +335,7 @@ function TierFields({ form, name, note, per, total }: TierFieldsProps) {
     <>
       <OptionalNote text={note} />
       <FieldGrid>
-        <ControlledText control={form.control} name={`${name}.sscc`} label="Container ID / SSCC" placeholder="Optional" span="full" maxLength={64} />
+        <ControlledText control={form.control} name={`${name}.sscc`} label="Container ID / SSCC" span="full" maxLength={64} />
         <ControlledText control={form.control} name={`${name}.received`} label={`Received ${STEP_TITLE[name].toLowerCase()}s`} keyboardType="number-pad" />
         <ControlledText control={form.control} name={`${name}.per`} label={per} keyboardType="number-pad" />
         <ReadOnly label={total} value={count > 0 ? String(count) : '—'} />
@@ -366,7 +353,7 @@ function CaseFields({ form, currency }: { form: Form; currency: string }) {
     <>
       <OptionalNote text="Case (tier 3): skip if the packs did not come in cases. Each case gets its own ID (CS-####) on save." />
       <FieldGrid>
-        <ControlledText control={form.control} name="caseTier.sscc" label="Container ID / SSCC" placeholder="Optional" span="full" maxLength={64} />
+        <ControlledText control={form.control} name="caseTier.sscc" label="Container ID / SSCC" span="full" maxLength={64} />
         <ControlledText control={form.control} name="caseTier.received" label="Received cases" keyboardType="number-pad" />
         <ControlledText control={form.control} name="caseTier.per" label="Packs per case" keyboardType="number-pad" />
         <ControlledText control={form.control} name="caseTier.cost" label="Cost per case" keyboardType="decimal-pad" prefix={currencySymbol(currency)} />
@@ -476,13 +463,11 @@ function PackLineEditor({ items, currency, initial, receivedOn, onSave, onCancel
     mode: 'onTouched',
   });
   const sellBy = useWatch({ control: form.control, name: 'line.sellBy' });
-  // SAFETY: as in ReceiptWizard.
-  const values = useWatch({ control: form.control }) as ReceiptValues;
 
   return (
     <View style={[styles.editor, { borderColor: colors.outlineVariant, backgroundColor: colors.surface }]}>
       <PackFields form={form} items={items} currency={currency} fromCase={null} receivedOn={receivedOn} />
-      {sellBy !== 'pack' ? <BaseUnitFields form={form} currency={currency} unitCost={landedCosts(values)[0]?.unitCost ?? 0} fromCase={null} /> : null}
+      {sellBy !== 'pack' ? <BaseUnitFields form={form} currency={currency} receipt={null} /> : null}
       <View style={styles.editorActions}>
         <Button mode="contained" icon="check" onPress={() => void form.handleSubmit((receipt) => onSave(receipt.line))()}>
           Save to list
@@ -515,7 +500,7 @@ function LineRow({ line, currency, disabled, onEdit, onRemove }: LineRowProps) {
           {line.name || 'New item'}
         </Text>
         <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-          {[line.sku, `${line.packs || 0} packs`, `${formatMoney(Number(line.costPerPack || 0), currency)}/pack`, line.productId === '' ? 'New item' : '']
+          {[line.sku, `${linePacks(line, null)} packs`, `${formatMoney(Number(line.costPerPack || 0), currency)}/pack`, line.productId === '' ? 'New item' : '']
             .filter(Boolean)
             .join(' · ')}
         </Text>
@@ -581,7 +566,7 @@ function receiptNotice(save: { isPaused: boolean; isError: boolean; error: Error
       ? error.message.includes('products_sku_unique')
         ? SKU_TAKEN
         : error.message.includes('stock_lots_code_unique')
-          ? 'Another delivery already uses this lot number. Change it, or leave it blank for a new one.'
+          ? 'Another delivery already uses this lot number. Change it, or leave it blank.'
           : error.message.includes('stock_packs_serial_unique')
             ? 'One of these serial numbers is already on another pack.'
             : null

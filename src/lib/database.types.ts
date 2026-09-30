@@ -694,7 +694,7 @@ export type Database = {
           case_sscc: string | null
           cases: number | null
           cases_per_pallet: number | null
-          code: string
+          code: string | null
           cost_per_case: number | null
           cost_per_pack: number
           created_at: string
@@ -706,6 +706,7 @@ export type Database = {
           loose_units: number
           merchant_id: string
           notes: string | null
+          packs_expected: number | null
           packs_per_case: number | null
           packs_received: number
           pallet_sscc: string | null
@@ -720,12 +721,13 @@ export type Database = {
           unit_load_sscc: string | null
           unit_loads: number | null
           units_per_pack: number
+          units_per_pack_received: number | null
         }
         Insert: {
           case_sscc?: string | null
           cases?: number | null
           cases_per_pallet?: number | null
-          code: string
+          code?: string | null
           cost_per_case?: number | null
           cost_per_pack?: number
           created_at?: string
@@ -737,6 +739,7 @@ export type Database = {
           loose_units?: number
           merchant_id: string
           notes?: string | null
+          packs_expected?: number | null
           packs_per_case?: number | null
           packs_received?: number
           pallet_sscc?: string | null
@@ -751,12 +754,13 @@ export type Database = {
           unit_load_sscc?: string | null
           unit_loads?: number | null
           units_per_pack: number
+          units_per_pack_received?: number | null
         }
         Update: {
           case_sscc?: string | null
           cases?: number | null
           cases_per_pallet?: number | null
-          code?: string
+          code?: string | null
           cost_per_case?: number | null
           cost_per_pack?: number
           created_at?: string
@@ -768,6 +772,7 @@ export type Database = {
           loose_units?: number
           merchant_id?: string
           notes?: string | null
+          packs_expected?: number | null
           packs_per_case?: number | null
           packs_received?: number
           pallet_sscc?: string | null
@@ -782,6 +787,7 @@ export type Database = {
           unit_load_sscc?: string | null
           unit_loads?: number | null
           units_per_pack?: number
+          units_per_pack_received?: number | null
         }
         Relationships: [
           {
@@ -986,7 +992,7 @@ export type Database = {
           notes: string | null
           received_by: string | null
           received_on: string
-          supplier_id: string
+          supplier_id: string | null
           void_reason: string | null
           voided_at: string | null
         }
@@ -1002,7 +1008,7 @@ export type Database = {
           notes?: string | null
           received_by?: string | null
           received_on?: string
-          supplier_id: string
+          supplier_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
         }
@@ -1018,7 +1024,7 @@ export type Database = {
           notes?: string | null
           received_by?: string | null
           received_on?: string
-          supplier_id?: string
+          supplier_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
         }
