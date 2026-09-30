@@ -13,7 +13,6 @@ import { Menu } from '../../components/menu';
 import { PageHeader } from '../../components/page-header';
 import { LowStockBadge, StatusText, StockRoleBadge } from '../../components/product-badges';
 import { QueryState } from '../../components/query-state';
-import { StockMovementDialog } from '../../components/stock-movement-dialog';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
 import { useItemFacesQuery } from '../../features/products/queries';
@@ -49,16 +48,13 @@ type Moving = { packId: string; kind: ManualMovementKind };
 export function InventoryDetail({ merchantId, product, currency, embedded, onClose }: Props) {
   const wide = useShellWide();
   const { toggle, snackbar } = useArchiveUndo();
-  const [moving, setMoving] = useState<Moving | null>(null);
 
   const base = product.base_unit_name ?? product.pack_unit_name ?? 'units';
   const perPack = product.conversion_factor ?? 1;
   const edit = () => router.push({ pathname: RESOURCE_ROUTE.inventory.edit, params: { id: merchantId, productId: product.id } });
-  const move = (next: Moving) => {
-    // Narrow, a confirm is a formSheet route (instruction_mds/visual-language.md §4).
-    if (wide) setMoving(next);
-    else router.push({ pathname: '/sheets/stock-movement', params: { productId: product.id, kind: next.kind, packId: next.packId } });
-  };
+  // A full-page form at every width (instruction_mds/visual-language.md §5).
+  const move = (next: Moving) =>
+    router.push({ pathname: '/forms/stock-movement', params: { productId: product.id, kind: next.kind, packId: next.packId } });
 
   return (
     <View style={styles.fill}>
@@ -82,7 +78,6 @@ export function InventoryDetail({ merchantId, product, currency, embedded, onClo
         <HistorySection productId={product.id} base={base} />
       </ScrollView>
 
-      {moving ? <StockMovementDialog productId={product.id} packId={moving.packId} kind={moving.kind} onDismiss={() => setMoving(null)} /> : null}
       {snackbar}
     </View>
   );

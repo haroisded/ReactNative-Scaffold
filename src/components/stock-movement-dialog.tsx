@@ -4,10 +4,9 @@ import * as z from 'zod';
 
 import { useProductQuery } from '../features/products/queries';
 import { useItemStockQuery, useRecordMovementMutation } from '../features/stock-movements/queries';
-import { WRITE_OFF_REASON_LABEL, movementKind, movementSchema, writeOffReason } from '../features/stock-movements/schema';
+import { WRITE_OFF_REASON_LABEL, movementKind, movementSchema, noteRequired, writeOffReason } from '../features/stock-movements/schema';
 import type { ManualMovementKind, MovementValues, WriteOffReason } from '../features/stock-movements/schema';
 import { stockFailure } from '../features/stock-receipts/queries';
-import { useShellWide } from '../lib/columns';
 import { failureMessage, mutationNotice } from '../lib/errors';
 import { spacing } from '../themes';
 import { AdaptiveDialog } from './adaptive-dialog';
@@ -23,8 +22,6 @@ type Props = {
   packId: string;
   /** The action the row's menu picked; the dialog can still switch between the three. */
   kind: ManualMovementKind;
-  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/stock-movement.tsx). */
-  inSheet?: boolean;
   onDismiss: () => void;
 };
 
@@ -47,10 +44,9 @@ const FAILURE_COPY = new Map([
 /**
  * Adjust, write off or return part of one pack. record_stock_movement (20260929100100_stock_ledger.sql §5)
  * does the counting under a lock; this only states the change. Finds its own pack in the item's stock
- * query, so both callers — the Inventory detail and the sheet route — pass ids alone.
+ * query, so its route (src/app/(app)/forms/stock-movement.tsx) passes ids alone.
  */
-export function StockMovementDialog({ productId, packId, kind: initialKind, inSheet, onDismiss }: Props) {
-  const wide = useShellWide();
+export function StockMovementDialog({ productId, packId, kind: initialKind, onDismiss }: Props) {
   const record = useRecordMovementMutation();
   const inFlight = record.isPending && !record.isPaused;
   const lots = useItemStockQuery({ productId }).data?.lots ?? [];
@@ -79,8 +75,7 @@ export function StockMovementDialog({ productId, packId, kind: initialKind, inSh
 
   return (
     <AdaptiveDialog
-      wide={wide}
-      inSheet={inSheet}
+      asPage
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker={where ? `${where.code} · ${where.qty_remaining} ${unit} left` : 'Stock'}
@@ -138,7 +133,7 @@ function MovementFields({
   return (
     <>
       <Text variant="labelMedium">
-        {values.kind === 'adjust' ? `Change, in ${unit} (use − to remove)` : `How many ${unit} leave`}
+        {values.kind === 'adjust' ? `Change in ${unit}, use − to remove (required)` : `How many ${unit} leave (required)`}
       </Text>
       <TextInput
         mode="outlined"
@@ -156,7 +151,7 @@ function MovementFields({
 
       {values.kind === 'write_off' ? <ReasonChips value={values.reason} error={errors.reason?.[0]} onChange={(reason) => set({ reason })} /> : null}
 
-      <Text variant="labelMedium">{values.kind === 'return_supplier' ? 'Note (optional)' : 'Note'}</Text>
+      <Text variant="labelMedium">{noteRequired(values) ? 'Note (required)' : 'Note'}</Text>
       <TextInput
         mode="outlined"
         dense
@@ -177,7 +172,7 @@ function MovementFields({
 function ReasonChips({ value, error, onChange }: { value: string; error?: string; onChange: (reason: WriteOffReason) => void }) {
   return (
     <>
-      <Text variant="labelMedium">Reason</Text>
+      <Text variant="labelMedium">Reason (required)</Text>
       <View style={styles.chips}>
         {writeOffReason.options.map((reason) => (
           <Chip key={reason} compact selected={value === reason} onPress={() => onChange(reason)}>

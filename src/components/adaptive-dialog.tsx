@@ -12,13 +12,18 @@ import { Portal } from './portal';
 import { Text } from './text';
 
 type Props = {
-  /** The shell's width decision (useShellWide), never measured here. Ignored when `inSheet`. */
-  wide: boolean;
+  /** The shell's width decision (useShellWide), never measured here. Ignored when `inSheet` or `asPage`. */
+  wide?: boolean;
   /**
    * The content of a native formSheet route (src/app/(app)/sheets/). The OS draws the sheet's frame,
    * so this draws only what goes inside it.
    */
   inSheet?: boolean;
+  /**
+   * The content of a full-page form route (src/app/(app)/forms/): a screen of its own at every width,
+   * pushed on the stack (instruction_mds/visual-language.md §5).
+   */
+  asPage?: boolean;
   onDismiss: () => void;
   /** False while a request is genuinely in flight, so the backdrop and back button cannot close it. */
   dismissable?: boolean;
@@ -32,11 +37,12 @@ type Props = {
 };
 
 /**
- * A confirm or picker — the fifth pair in instruction_mds/layout.md §9, in three presentations:
+ * A confirm, picker or small form — the fifth pair in instruction_mds/layout.md §9, in four presentations:
  *
  * - **wide:** a Paper Dialog with a maximum width.
- * - **inSheet:** the body of a native formSheet route. Narrow confirms and inline-create dialogs open
- *   that way (instruction_mds/visual-language.md §5).
+ * - **asPage:** the body of a full-page form route. The create/edit forms (category, supplier, tax
+ *   class, stock movement) open that way at every width (instruction_mds/visual-language.md §5).
+ * - **inSheet:** the body of a native formSheet route. Narrow confirms open that way.
  * - **narrow, not in a sheet:** a Paper Modal on the bottom edge. Kept for the two exceptions that
  *   cannot be a route: the unsaved-changes prompt, which holds a navigation action the form blocked,
  *   and the iOS date/time picker.
@@ -46,6 +52,7 @@ type Props = {
 export function AdaptiveDialog({
   wide,
   inSheet,
+  asPage,
   onDismiss,
   dismissable = true,
   kicker,
@@ -57,9 +64,9 @@ export function AdaptiveDialog({
   const { colors } = useAppTheme();
   const kickerColor = kickerTone === 'error' ? colors.error : colors.accent;
 
-  if (inSheet) {
+  if (inSheet || asPage) {
     return (
-      <SheetBody dismissable={dismissable} kicker={kicker} kickerColor={kickerColor} title={title} actions={actions}>
+      <SheetBody page={!!asPage} dismissable={dismissable} kicker={kicker} kickerColor={kickerColor} title={title} actions={actions}>
         {children}
       </SheetBody>
     );
@@ -151,7 +158,9 @@ function SheetContent({ kicker, kickerColor, title, children, actions }: SheetPr
 }
 
 /**
- * The formSheet route's body. Its own component because it needs hooks the other presentations do not.
+ * The body of a formSheet or full-page route. Its own component because it needs hooks the other
+ * presentations do not. A page fills the screen under the status bar, its content held to the dialog's
+ * width so a tablet does not stretch four fields across the screen.
  *
  * While a request is in flight the sheet should stay put, as `dismissable={false}` keeps a Dialog.
  * `gestureEnabled` stops the iOS swipe and the BackHandler listener stops Android's back button. What
@@ -162,9 +171,10 @@ function SheetContent({ kicker, kickerColor, title, children, actions }: SheetPr
  *
  * `Portal.Host` scopes any Portal inside to the sheet: the root host sits behind a native sheet.
  */
-function SheetBody({ dismissable, ...content }: SheetProps & { dismissable: boolean }) {
+function SheetBody({ page, dismissable, ...content }: SheetProps & { page: boolean; dismissable: boolean }) {
   const { colors } = useAppTheme();
   const navigation = useNavigation();
+  const { top } = useSafeAreaInsets();
 
   useEffect(() => {
     navigation.setOptions({ gestureEnabled: dismissable });
@@ -175,9 +185,17 @@ function SheetBody({ dismissable, ...content }: SheetProps & { dismissable: bool
 
   return (
     <Portal.Host>
-      <View style={[styles.routeSheet, { backgroundColor: colors.surface, borderTopColor: colors.primary }]}>
-        <SheetContent {...content} />
-      </View>
+      {page ? (
+        <View style={[styles.page, { backgroundColor: colors.surface, paddingTop: top }]}>
+          <View style={styles.pageColumn}>
+            <SheetContent {...content} />
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.routeSheet, { backgroundColor: colors.surface, borderTopColor: colors.primary }]}>
+          <SheetContent {...content} />
+        </View>
+      )}
     </Portal.Host>
   );
 }
@@ -195,6 +213,8 @@ const styles = StyleSheet.create({
   // The 2px primary rule on the sheet's top edge (instruction_mds/visual-language.md §5, confirm or picker narrow).
   modalSheet: { borderTopWidth: 2, maxHeight: '90%' },
   routeSheet: { borderTopWidth: 2 },
+  page: { flex: 1 },
+  pageColumn: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center' },
   sheetHeader: { gap: spacing.xs, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   sheetActions: { gap: spacing.sm, padding: spacing.md, borderTopWidth: 1 },
 });

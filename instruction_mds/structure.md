@@ -99,7 +99,8 @@ Rail destinations with no design yet (Dashboard, Employees, Features, Audit) sta
 files. A stub becomes a directory when its screens are built, the way `products.tsx` became
 `products/`.
 
-Sheet routes live in `src/app/(app)/sheets/` as leaf screens of the `(app)` Stack.
+Sheet routes (confirms) live in `src/app/(app)/sheets/`, full-page create and edit forms in
+`src/app/(app)/forms/`, both as leaf screens of the `(app)` Stack.
 
 ## 6. Build order for a new feature
 

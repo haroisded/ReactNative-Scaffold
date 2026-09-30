@@ -10,7 +10,6 @@ import { HeaderTitle } from '../../components/header-title';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
 import { QueryState } from '../../components/query-state';
-import { SupplierDialog } from '../../components/supplier-dialog';
 import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
 import { useSetSupplierActiveMutation, useSuppliersQuery } from '../../features/suppliers/queries';
@@ -22,25 +21,22 @@ import { spacing } from '../../themes';
 
 type Props = {
   merchantId: string;
-  /** The header's "Add supplier" on a wide shell; narrow opens the sheet route instead. */
-  creating: boolean;
+  /** Opens the full-page supplier form, the same as the header's "Add supplier". */
   onCreate: () => void;
-  onCreateDone: () => void;
 };
 
-export function SuppliersPane({ merchantId, creating, onCreate, onCreateDone }: Props) {
+export function SuppliersPane({ merchantId, onCreate }: Props) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
   const suppliers = useSuppliersQuery({ merchantId });
   const setActive = useSetSupplierActiveMutation();
   const rows = suppliers.data ?? [];
-  // The supplier a wide dialog is open on, held here and not in a row: FlashList recycles its cells.
-  const [editing, setEditing] = useState<Supplier | null>(null);
+  // The supplier a wide confirm is open on, held here and not in a row: FlashList recycles its cells.
   const [deleting, setDeleting] = useState<Supplier | null>(null);
 
-  // Narrow, edit and delete are formSheet routes (instruction_mds/visual-language.md §5).
-  const edit = (supplier: Supplier) =>
-    wide ? setEditing(supplier) : router.push({ pathname: '/sheets/supplier', params: { merchantId, supplierId: supplier.id } });
+  // Edit is a full-page form at every width; narrow, delete is a formSheet route
+  // (instruction_mds/visual-language.md §5).
+  const edit = (supplier: Supplier) => router.push({ pathname: '/forms/supplier', params: { merchantId, supplierId: supplier.id } });
   const remove = (supplier: Supplier) =>
     wide
       ? setDeleting(supplier)
@@ -102,8 +98,6 @@ export function SuppliersPane({ merchantId, creating, onCreate, onCreateDone }: 
         />
       )}
 
-      {creating ? <SupplierDialog merchantId={merchantId} onDismiss={onCreateDone} /> : null}
-      {editing ? <SupplierDialog merchantId={merchantId} supplier={editing} onDismiss={() => setEditing(null)} /> : null}
       {deleting ? <DeleteSupplierDialog supplier={deleting} onDismiss={() => setDeleting(null)} /> : null}
     </View>
   );

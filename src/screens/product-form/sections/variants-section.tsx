@@ -87,8 +87,8 @@ function VariantEditor({ currency }: { currency: string }) {
               <View key={variant.label} style={[styles.variant, { borderColor: colors.outlineVariant }]}>
                 <Text variant="labelLarge">{variant.label}</Text>
                 <FieldGrid>
-                  <TextField name={`variants.${index}.sku`} label="SKU" autoCapitalize="characters" placeholder="Optional" />
-                  <TextField name={`variants.${index}.barcode`} label="Barcode" keyboardType="number-pad" placeholder="Optional" />
+                  <TextField name={`variants.${index}.sku`} label="SKU" autoCapitalize="characters" />
+                  <TextField name={`variants.${index}.barcode`} label="Barcode" keyboardType="number-pad" />
                   <TextField
                     name={`variants.${index}.priceDelta`}
                     label="Price difference"

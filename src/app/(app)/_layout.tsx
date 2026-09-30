@@ -9,7 +9,7 @@ import { radius } from '../../themes';
 // expo-router at getRoutesCore.js:655.
 export const unstable_settings = { anchor: '(tabs)' };
 
-// Every narrow confirm and inline-create dialog, as a native sheet (instruction_mds/visual-language.md §5).
+// Every narrow confirm and picker, as a native sheet (instruction_mds/visual-language.md §5).
 // Declared here, as leaf routes of this stack, because an Android formSheet cannot host a nested
 // stack (react-native-screens types.d.ts:470) — and one set then serves Home, Profile and every stack
 // under the shell. The route files are in ./sheets/.
@@ -20,16 +20,12 @@ export const unstable_settings = { anchor: '(tabs)' };
 // top-aligned white screen (tests/test-report/resources-test-report.md, Test 7).
 const SHEETS = [
   'sheets/add-from-inventory',
-  'sheets/category',
   'sheets/delete-account',
   'sheets/delete-category',
   'sheets/delete-product',
   'sheets/delete-supplier',
   'sheets/delete-tax-class',
   'sheets/remove-system',
-  'sheets/supplier',
-  'sheets/stock-movement',
-  'sheets/tax-class',
   'sheets/void-receipt',
 ];
 
@@ -42,7 +38,9 @@ const SHEETS = [
 //   a fifth tab. It is the merchant shell: a header plus a rail or drawer of its own.
 // - `profile` is Profile opened from inside a system. It is pushed over the shell so back returns to
 //   the same system; the Account tab cannot do that from here (see profile.tsx).
-// - `create-system` is the narrow create wizard, pushed full screen over Home.
+// - `create-system` is the create wizard, pushed full screen over Home at every width.
+// - `forms/*` are the create/edit forms (category, supplier, tax class, stock movement): full pages at
+//   every width, so an ordinary push with no options.
 // - `sheets/*` are the native sheets above.
 export default function AppLayout() {
   const { colors } = useAppTheme();
@@ -53,6 +51,10 @@ export default function AppLayout() {
       <Stack.Screen name="systems/[id]" />
       <Stack.Screen name="profile" />
       <Stack.Screen name="create-system" />
+      <Stack.Screen name="forms/category" />
+      <Stack.Screen name="forms/supplier" />
+      <Stack.Screen name="forms/stock-movement" />
+      <Stack.Screen name="forms/tax-class" />
       {SHEETS.map((name) => (
         <Stack.Screen
           key={name}

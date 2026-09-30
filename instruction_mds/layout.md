@@ -114,7 +114,7 @@ The two mockup frames are different anatomies, not one anatomy at two widths:
 | Card list | `DataTable` with bulk select | Products, Discounts lists |
 | Stepper: "Step n of N", Next, progress bar | Section list beside the field grid | Products, Discounts forms |
 | Items / Cart tabs, Charge bar, payment sheet | Items pane, cart and payment side by side | Register |
-| Native `formSheet` | Paper `Dialog` | confirms and pickers |
+| Native `formSheet` | Paper `Dialog` | confirms and pickers only; create and edit forms are full pages at both widths (`visual-language.md` §5) |
 
 All five must agree, so the decision is made **once** on the shell's root container and handed down.
 A screen's own pane is narrower than the shell by the rail's width and would flip at a different

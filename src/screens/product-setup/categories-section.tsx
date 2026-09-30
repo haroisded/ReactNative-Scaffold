@@ -4,7 +4,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { ActivityIndicator } from '../../components/activity-indicator';
 import { Button } from '../../components/button';
-import { CategoryDialog } from '../../components/category-dialog';
 import { DeleteCategoryDialog } from '../../components/delete-category-dialog';
 import { IconButton } from '../../components/icon-button';
 import { Text } from '../../components/text';
@@ -23,29 +22,20 @@ import { spacing } from '../../themes';
  * `scope` is which screen's list this is — Products, Rentables and Inventory each keep their own
  * (src/features/products/resources.ts).
  *
- * Each dialog mounts here on a wide shell and opens as a formSheet route on a narrow one
- * (instruction_mds/visual-language.md §5).
+ * Create and rename open the full-page category form at every width; delete mounts its confirm here on
+ * a wide shell and opens as a formSheet route on a narrow one (instruction_mds/visual-language.md §5).
  */
 export function CategoriesSection({ merchantId, scope }: { merchantId: string; scope: ResourceScope }) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
   const categories = useCategoriesQuery({ merchantId, scope });
-  const [editing, setEditing] = useState<{ parent: Category | null; category?: Category } | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
 
   const all = categories.data ?? [];
   const parents = topLevel(all);
 
-  const edit = (parent: Category | null, category?: Category) => {
-    if (wide) {
-      setEditing({ parent, category });
-      return;
-    }
-    router.push({
-      pathname: '/sheets/category',
-      params: { merchantId, scope, parentId: parent?.id, categoryId: category?.id },
-    });
-  };
+  const edit = (parent: Category | null, category?: Category) =>
+    router.push({ pathname: '/forms/category', params: { merchantId, scope, parentId: parent?.id, categoryId: category?.id } });
 
   const remove = (category: Category) => {
     if (wide) {
@@ -66,7 +56,40 @@ export function CategoriesSection({ merchantId, scope }: { merchantId: string; s
         </Button>
       </View>
 
-      {categories.isPaused && !categories.data ? (
+      <CategoryGroups categories={categories} parents={parents} all={all} edit={edit} remove={remove} />
+
+      {deleting ? (
+        <DeleteCategoryDialog
+          category={deleting}
+          subcategories={childrenOf(all, deleting.id).length}
+          onDismiss={() => setDeleting(null)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+type RowProps = {
+  category: Category;
+  nested?: boolean;
+  onAdd?: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+};
+
+type CategoryGroupsProps = {
+  categories: ReturnType<typeof useCategoriesQuery>;
+  parents: Category[];
+  all: Category[];
+  edit: (parent: Category | null, category?: Category) => void;
+  remove: (category: Category) => void;
+};
+
+/** The list itself, or what stands in for it: offline, loading, failed, or empty. */
+function CategoryGroups({ categories, parents, all, edit, remove }: CategoryGroupsProps) {
+  const { colors } = useAppTheme();
+
+  return categories.isPaused && !categories.data ? (
         <Text variant="bodyMedium">You&apos;re offline. Categories will load when you reconnect.</Text>
       ) : categories.isPending ? (
         <ActivityIndicator style={styles.start} />
@@ -97,35 +120,8 @@ export function CategoriesSection({ merchantId, scope }: { merchantId: string; s
             ))}
           </View>
         ))
-      )}
-
-      {editing ? (
-        <CategoryDialog
-          merchantId={merchantId}
-          scope={scope}
-          parent={editing.parent}
-          category={editing.category}
-          onDismiss={() => setEditing(null)}
-        />
-      ) : null}
-      {deleting ? (
-        <DeleteCategoryDialog
-          category={deleting}
-          subcategories={childrenOf(all, deleting.id).length}
-          onDismiss={() => setDeleting(null)}
-        />
-      ) : null}
-    </View>
-  );
+      );
 }
-
-type RowProps = {
-  category: Category;
-  nested?: boolean;
-  onAdd?: () => void;
-  onRename: () => void;
-  onDelete: () => void;
-};
 
 function CategoryRow({ category, nested, onAdd, onRename, onDelete }: RowProps) {
   const { colors } = useAppTheme();

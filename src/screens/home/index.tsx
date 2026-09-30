@@ -17,13 +17,11 @@ import type { Merchant } from '../../features/merchants/queries';
 import { useColumns } from '../../lib/columns';
 import { failureMessage } from '../../lib/errors';
 import { spacing } from '../../themes';
-import { CreateSystemModal } from './create-system';
 import { SystemCard } from './system-card';
 
 export function HomeScreen() {
   const { columns, onLayout } = useColumns();
   const merchants = useMerchantsQuery();
-  const [creating, setCreating] = useState(false);
   // The row awaiting confirmation, held here rather than in the card that opens it — a FlashList
   // cell is recycled, and this state must outlive neither the row nor the scroll position.
   const [removing, setRemoving] = useState<Merchant | null>(null);
@@ -34,12 +32,9 @@ export function HomeScreen() {
 
   const openAccount = () => router.navigate('/account');
 
-  // Narrow, creating is a full-screen route and removing is a formSheet route
-  // (instruction_mds/visual-language.md §5); wide, both mount over this screen.
-  const create = () => {
-    if (narrow) router.push('/create-system');
-    else setCreating(true);
-  };
+  // Creating is a full-screen route at every width. Removing is a formSheet route narrow and a dialog
+  // over this screen wide (instruction_mds/visual-language.md §5).
+  const create = () => router.push('/create-system');
   const remove = (merchant: Merchant) => {
     if (narrow) router.push({ pathname: '/sheets/remove-system', params: { merchantId: merchant.id } });
     else setRemoving(merchant);
@@ -166,7 +161,6 @@ export function HomeScreen() {
 
       {/* Mounted only while open, which is what makes the form fresh on every open with no reset
           logic. Wide only: narrow opens the same form as a route. */}
-      {creating ? <CreateSystemModal onDismiss={() => setCreating(false)} /> : null}
 
       {/* Mounted only while a row is awaiting confirmation, which is what makes the typed-
           confirmation field empty again on every open with no reset logic — the same reason the

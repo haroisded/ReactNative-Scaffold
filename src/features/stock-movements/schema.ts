@@ -31,12 +31,18 @@ export const movementSchema = z
     if (!pattern.test(values.qty) || Number(values.qty) === 0) {
       need('qty', values.kind === 'adjust' ? 'Enter the change, like 5 or -3.' : 'Enter how many units leave.');
     }
-    if (values.kind === 'adjust' && values.note === '') need('note', 'Say why the count changed.');
     if (values.kind === 'write_off' && values.reason === '') need('reason', 'Choose a reason.');
-    if (values.kind === 'write_off' && values.reason === 'other' && values.note === '') need('note', 'Describe what happened.');
+    if (noteRequired(values) && values.note === '') {
+      need('note', values.kind === 'adjust' ? 'Say why the count changed.' : 'Describe what happened.');
+    }
   });
 
 export type MovementValues = z.infer<typeof movementSchema>;
+
+/** An adjust, and a write-off for "Other", must say why. Also marks the Note label "(required)". */
+export function noteRequired(values: Pick<MovementValues, 'kind' | 'reason'>) {
+  return values.kind === 'adjust' || (values.kind === 'write_off' && values.reason === 'other');
+}
 
 export function toMovementPayload(packId: string, values: MovementValues) {
   return {

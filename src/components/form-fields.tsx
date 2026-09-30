@@ -50,11 +50,8 @@ export function Field({ label, required, hint, action, span = 'half', error, chi
   return (
     <View style={wide && span === 'half' ? styles.half : styles.full}>
       <View style={styles.labelRow}>
-        <Text variant="labelMedium">
-          {label}
-          {/* The required mark is one of the accent's places (instruction_mds/visual-language.md §4). */}
-          {required ? <Text variant="labelMedium" style={{ color: colors.accent }}> *</Text> : null}
-        </Text>
+        {/* A required field says so in words; an unmarked field is optional, so nothing says "optional". */}
+        <Text variant="labelMedium">{required ? `${label} (required)` : label}</Text>
         {action ? (
           <Button
             compact

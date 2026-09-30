@@ -3,8 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { TAX_CLASS_PRESETS, useCreateTaxClassMutation } from '../features/tax-classes/queries';
 import type { TaxClass } from '../features/tax-classes/queries';
-import { useShellWide } from '../lib/columns';
-import { failureMessage, postgrestError } from '../lib/errors';
+import { failureMessage, mutationNotice, postgrestError } from '../lib/errors';
 import { spacing } from '../themes';
 import { AdaptiveDialog } from './adaptive-dialog';
 import { Button } from './button';
@@ -15,19 +14,16 @@ import { TextInput } from './text-input';
 
 type Props = {
   merchantId: string;
-  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/tax-class.tsx). */
-  inSheet?: boolean;
   onDismiss: () => void;
   onCreated: (taxClass: TaxClass) => void;
 };
 
 /**
  * Create a tax class. Two fields and presets that fill both — still small enough for plain state.
- * In src/components/ because two hosts render it: the product form's picker on a wide shell and the
- * sheet route on a narrow one.
+ * The body of the full-page route src/app/(app)/forms/tax-class.tsx, pushed by the product form's
+ * picker at every width.
  */
-export function TaxClassDialog({ merchantId, inSheet, onDismiss, onCreated }: Props) {
-  const wide = useShellWide();
+export function TaxClassDialog({ merchantId, onDismiss, onCreated }: Props) {
   const create = useCreateTaxClassMutation({ merchantId });
   const [name, setName] = useState('');
   const [rate, setRate] = useState('');
@@ -39,17 +35,12 @@ export function TaxClassDialog({ merchantId, inSheet, onDismiss, onCreated }: Pr
   const rateInvalid = rate.trim() === '' || !Number.isFinite(rateNumber) || rateNumber < 0 || rateNumber > 100;
   const inFlight = create.isPending && !create.isPaused;
 
-  const notice = create.isPaused
-    ? { type: 'info' as const, text: 'Waiting for a connection. This finishes on its own when you reconnect.' }
-    : create.isError
-      ? {
-          type: 'error' as const,
-          text:
-            postgrestError(create.error)?.code === '23505'
-              ? 'There is already a tax class with this name.'
-              : failureMessage("Couldn't create this tax class. Try again."),
-        }
-      : null;
+  const notice = mutationNotice(
+    create,
+    postgrestError(create.error)?.code === '23505'
+      ? 'There is already a tax class with this name.'
+      : failureMessage("Couldn't create this tax class. Try again.")
+  );
 
   const save = () => {
     setSubmitted(true);
@@ -67,8 +58,7 @@ export function TaxClassDialog({ merchantId, inSheet, onDismiss, onCreated }: Pr
 
   return (
     <AdaptiveDialog
-      wide={wide}
-      inSheet={inSheet}
+      asPage
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker="Pricing"
@@ -107,7 +97,7 @@ export function TaxClassDialog({ merchantId, inSheet, onDismiss, onCreated }: Pr
         ))}
       </View>
 
-      <Text variant="labelMedium">Name</Text>
+      <Text variant="labelMedium">Name (required)</Text>
       <TextInput
         mode="outlined"
         dense
@@ -124,7 +114,7 @@ export function TaxClassDialog({ merchantId, inSheet, onDismiss, onCreated }: Pr
         </HelperText>
       ) : null}
 
-      <Text variant="labelMedium">Rate</Text>
+      <Text variant="labelMedium">Rate (required)</Text>
       <TextInput
         mode="outlined"
         dense

@@ -81,7 +81,7 @@ Only here:
 - Register's tile on Home — the one filled tile.
 - The active rail or drawer item's 4px bar.
 - Kickers — the small uppercase line above a screen or dialog title.
-- The required-field `*` and inline field actions ("Auto-generate", "Scan", "+ Add rate").
+- Inline field actions ("Auto-generate", "Scan", "+ Add rate").
 - A toggle that is on, and the stepper's progress bar.
 - Discount state on a cart — applied discount lines, "Eligible" and "Apply" tags, the eligible strip.
 - The left rule of a note callout, and the Cart count badge on the selected mobile tab.
@@ -148,7 +148,7 @@ on Android.
 | Product or Discount type selector | `SegmentedButtons` (wrap to two per row on narrow) |
 | Section list (wide) | `Pressable` rows; active row on `surfaceMuted` with a 3px `accent` bar |
 | Stepper (narrow) | "Step n of N" in `labelMedium`, `IconButton` back, contained Next `Button`, `ProgressBar` in `accent`. An optional step (the receipt's Unit Load, Pallet, Case) reads "· Optional" and adds a text `Button` "Skip tier" under Next |
-| Field label | `labelMedium` above the control, `*` in `accent`, hint in `bodySmall` on the right |
+| Field label | `labelMedium` above the control; a required field's label ends ` (required)` in the same variant, an optional field carries no marker; hint in `bodySmall` on the right. Rejected: the accent `*` — testers read it as decoration, and the words need no legend |
 | Text field | outlined dense `TextInput`, no floating `label`; `left` / `right` affixes carry `$` and units |
 | Select | outlined non-editable `TextInput` anchoring a `Menu` — `src/components/menu-select.tsx` |
 | Inline-create select | the Select with a last `Menu.Item` "+ New …" in `accent`, opening the confirm-or-picker; what is created comes back selected |
@@ -171,11 +171,12 @@ on Android.
 | Detail card | `Card mode="outlined"`; header strip is a `View` on `primary` holding `labelMedium` in `onPrimary`; key and value rows in `bodySmall` and `bodyMedium` |
 | Confirm or picker (wide) | `Portal` + `Dialog` with `maxWidth`; kicker in `accent`, or `error` for a delete |
 | Confirm or picker (narrow) | an expo-router route with `presentation: 'formSheet'`, `sheetAllowedDetents: 'fitToContents'`, `sheetCornerRadius: radius.xl`, living in `src/app/(app)/sheets/` as a leaf of the `(app)` Stack (an Android formSheet cannot host a nested stack). The frame and scrim belong to the OS, so content carries the theme: 2px `primary` top rule, then the same kicker, title and actions as the dialog, padded above the gesture bar. React Native's own `Modal presentationStyle="formSheet"` is iOS-only |
-| Either of the two | `src/components/adaptive-dialog.tsx`: `wide` renders the `Dialog`, `inSheet` renders a sheet route's body. The opener decides — wide mounts the dialog, narrow pushes `/sheets/<name>` with ids as params. A sheet that creates something hands the row back through `src/Store/sheet-result.ts` |
+| Either of the two | `src/components/adaptive-dialog.tsx`: `wide` renders the `Dialog`, `inSheet` renders a sheet route's body. The opener decides — wide mounts the dialog, narrow pushes `/sheets/<name>` with ids as params |
+| A create or edit form (category, supplier, tax class, stock movement) | A full-page route in `src/app/(app)/forms/` at every width: `adaptive-dialog.tsx` with `asPage`, pushed with ids as params. A form that creates something hands the row back through `src/Store/sheet-result.ts`. Rejected: a Dialog wide and a sheet narrow — the fields outgrew both, and a sheet's keyboard covers its own save buttons |
 | Narrow exceptions that stay a Paper bottom sheet | The unsaved-changes prompt (holds the navigation action the form blocked) and the iOS date/time picker |
 | A destructive confirm (delete, void) | `src/components/confirm-dialog.tsx` on top of `adaptive-dialog.tsx`: Cancel, a red confirm, the write's notice under the body. The unsaved-changes prompt is `src/components/discard-dialog.tsx`, driven by `src/lib/unsaved-guard.ts` |
-| Multi-step flow opened from a list | Narrow: a full-screen pushed route. Wide: a Paper `Modal` with `radius.xl` corners. Not a sheet — it holds a `Menu`, which positions from window coordinates and lands offset in a partial-height native sheet |
-| While a request is in flight | Dialog is `dismissable={false}`. A sheet route turns off `gestureEnabled` and swallows Android back; Android's swipe-down and scrim tap still close it natively. The request finishes regardless, and TanStack Query drops the unmounted sheet's `onSuccess` |
+| Multi-step flow opened from a list | A full-screen pushed route at every width (Create System, the receipt wizard). Not a sheet — it holds a `Menu`, which positions from window coordinates and lands offset in a partial-height native sheet. Rejected: a wide Paper `Modal` — two shapes of one flow to test, for no gain on a tablet |
+| While a request is in flight | Dialog is `dismissable={false}`, and so is a full-page form's back. A sheet route turns off `gestureEnabled` and swallows Android back; Android's swipe-down and scrim tap still close it natively. The request finishes regardless, and TanStack Query drops the unmounted sheet's `onSuccess` |
 
 ### Register
 

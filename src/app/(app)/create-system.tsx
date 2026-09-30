@@ -4,13 +4,12 @@ import { StyleSheet } from 'react-native';
 import { Surface } from '../../components/surface';
 import { CreateSystem } from '../../screens/home/create-system';
 
-// The stepped create-system wizard on a narrow container: a full-screen route, not a sheet. It is a
-// three-step form, not a confirm or a picker (instruction_mds/visual-language.md §5); wide, Home opens the same
-// form in a modal.
+// The stepped create-system wizard: a full-screen route at every width, not a sheet or a modal. It is a
+// three-step form, not a confirm or a picker (instruction_mds/visual-language.md §5).
 export default function CreateSystemScreen() {
   return (
     <Surface style={styles.screen}>
-      <CreateSystem stepped onDismiss={() => router.back()} />
+      <CreateSystem onDismiss={() => router.back()} />
     </Surface>
   );
 }

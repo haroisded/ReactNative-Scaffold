@@ -14,7 +14,6 @@ import { isDuplicateCode, useSaveSupplierMutation } from '../features/suppliers/
 import type { Supplier } from '../features/suppliers/queries';
 import { supplierSchema } from '../features/suppliers/schema';
 import type { SupplierFormValues } from '../features/suppliers/schema';
-import { useShellWide } from '../lib/columns';
 import { failureMessage, mutationNotice } from '../lib/errors';
 import { useAppTheme } from '../lib/theme';
 import { spacing } from '../themes';
@@ -30,8 +29,6 @@ type Props = {
   merchantId: string;
   /** Edit this supplier instead of creating one. */
   supplier?: Supplier;
-  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/supplier.tsx). */
-  inSheet?: boolean;
   onDismiss: () => void;
   /** The created row, so an inline picker can select what was just made. */
   onCreated?: (supplier: { id: string; name: string }) => void;
@@ -42,13 +39,13 @@ type FieldName = Exclude<keyof SupplierFormValues, 'supplierTypeId' | 'active'>;
 /**
  * Create or edit a supplier: Profile, Terms and Extra (.claude/inventory-stock/design.md §6). Supplier
  * types are managed from the Type field itself — a new one is typed in place, and the selected one can
- * be deleted — because a sheet cannot open a second sheet over itself.
+ * be deleted — so the page never has to open a second form over itself.
  *
- * In src/components/ because three hosts render it: Stock → Suppliers and the product form's picker on
- * a wide shell, and the sheet route on a narrow one. Mounted only while open, so the form starts fresh.
+ * The body of the full-page route src/app/(app)/forms/supplier.tsx, which Stock → Suppliers, the
+ * receipt wizard and the product form's picker push at every width. Mounted only while open, so the
+ * form starts fresh.
  */
-export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCreated }: Props) {
-  const wide = useShellWide();
+export function SupplierDialog({ merchantId, supplier, onDismiss, onCreated }: Props) {
   const { colors } = useAppTheme();
   const save = useSaveSupplierMutation({ merchantId });
   const { control, handleSubmit, setValue, watch } = useForm<SupplierFormValues>({
@@ -79,8 +76,7 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
 
   return (
     <AdaptiveDialog
-      wide={wide}
-      inSheet={inSheet}
+      asPage
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker={supplier ? supplier.code : 'Stock'}
@@ -99,7 +95,7 @@ export function SupplierDialog({ merchantId, supplier, inSheet, onDismiss, onCre
       <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
         Profile
       </Text>
-      <Field control={control} name="name" label="Supplier name" placeholder="e.g. Metro Wholesale" autoFocus={!supplier} />
+      <Field control={control} name="name" label="Supplier name (required)" placeholder="e.g. Metro Wholesale" autoFocus={!supplier} />
       <Field control={control} name="code" label="Code" placeholder="Issued when left blank" autoCapitalize="characters" />
       <Field control={control} name="contactPerson" label="Contact person" />
       <Field control={control} name="phone" label="Phone" keyboardType="phone-pad" />
