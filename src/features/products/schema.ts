@@ -738,6 +738,23 @@ export function generateSku(type: ProductType, categoryName: string) {
   return `${TYPE_META[type].skuPrefix}-${letters}-${random}`;
 }
 
+/** The EAN-13 check digit of twelve digits: weights 1, 3, 1, 3… from the left, up to the next ten. */
+const ean13CheckDigit = (twelve: string) =>
+  (10 - ([...twelve].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10)) % 10;
+
+// The one published example (4006381333931): a wrong check digit fails here in development, not at a scanner.
+if (__DEV__ && ean13CheckDigit('400638133393') !== 1) throw new Error('ean13CheckDigit is wrong');
+
+/**
+ * An in-store EAN-13: prefix 2 (GS1's range for numbers a store assigns itself, never a manufacturer's),
+ * eleven random digits and the check digit. Rejected: a server sequence — a collision is as rare as a
+ * SKU's, and nothing requires a barcode to be unique.
+ */
+export function generateBarcode() {
+  const twelve = `2${Array.from({ length: 11 }, () => Math.floor(Math.random() * 10)).join('')}`;
+  return `${twelve}${ean13CheckDigit(twelve)}`;
+}
+
 type VariantRow = ProductFormValues['variants'][number];
 
 // ponytail: a product with five attributes of five values is 3125 rows. The cap stops the form from

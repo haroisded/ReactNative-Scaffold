@@ -49,13 +49,16 @@ src/components/            one re-export per Paper primitive, plus what more tha
                            pack by pack), add-from-inventory-dialog, the confirm/create dialogs (void-receipt and
                            stock-movement among them, all on confirm-dialog), discard-dialog (the
                            unsaved-changes prompt the three forms share), form-footer, step-header
-                           (the product form and receipt wizard's narrow stepper), query-state
+                           (the product form and receipt wizard's narrow stepper), section-stepper
+                           (section list wide, one step at a time narrow: the product form and the
+                           Inventory item form), query-state
                            (loading / error / retry), fact-grid, archive-undo, product-badges,
                            note-callout, placeholder-screen
 src/app/_layout.tsx        PaperProvider + QueryProvider + the two-state route guard
 src/app/sign-in.tsx        renders the sign-in screen
-src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-system and the sheets/
-                           routes (native formSheet) beside them, anchored on tabs
+src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-system, the forms/ routes
+                           (full-page create and edit forms) and the sheets/ routes (native formSheet,
+                           confirms) beside them, anchored on tabs
 src/app/(app)/(tabs)/      home, notifications, settings, account + the NativeTabs bar
 src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer), Home, products/,
                            inventory/, stock/ (suppliers and receipts), rentables/ (off the rail
@@ -390,7 +393,7 @@ attributes, variants, components and custom fields. Every one has a `not null me
   draft.
 - **`merchants.currency`** — ISO 4217, default `PHP`. Prices render through `src/lib/money.ts`.
 
-### Suppliers, inventory items and the stock ledger — `20260928100000`, `20260928100300`, `20260929100000`, `20260929100100`
+### Suppliers, inventory items and the stock ledger — `20260928100000`, `20260928100300`, `20260929100000`, `20260929100100`, `20260930100000`
 
 What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.html`,
 `Stock_Receiving.html`), the tier list and `instructions.txt`.
@@ -417,9 +420,11 @@ What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.
   Inventory** calls the same function to bring back a face someone deleted.
 - **`save_stock_item()`** (security invoker) is the Inventory form's writer: the item, a new group,
   and optional stock on hand, in one transaction.
-- **The ledger.** `stock_receipts` (supplier required) → `stock_lots` (one per receipt line, or per
-  Inventory add with `source = 'inventory'` and no receipt; the Unit Load, Pallet and Case tiers it
-  came in; lot number, expiry, landed `unit_cost`) → `stock_cases` → `stock_packs`, **one row per
+- **The ledger.** `stock_receipts` (supplier optional; `received_on` falls back to today) →
+  `stock_lots` (one per receipt line, or per Inventory add with `source = 'inventory'` and no receipt;
+  the Unit Load, Pallet and Case tiers it came in; lot number, null when left blank; expiry;
+  `packs_expected` beside `packs_received`, and `units_per_pack_received`, which is recorded only;
+  `unit_cost` as typed, else line cost ÷ base units) → `stock_cases` → `stock_packs`, **one row per
   physical pack**, each with its own `qty_remaining` and optional manufacturer serial. Sealed, open and
   empty are derived. Loose units received are one partial pack. `stock_movements` is the append-only
   history, one row per pack touched. Clients can only read these five tables; every write goes through
@@ -431,6 +436,9 @@ What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.
   **Next pick**, and `draw_stock(product_id, qty, mode, kind)` — for the Register (`sale`) and recipes
   (`consume`) — walks it, opening sealed packs and spilling across packs and cases, or refuses the whole
   draw with `insufficient_stock`.
+- **Shipping cost is not spread.** `save_receipt` keeps `stock_receipts.freight` on the receipt and
+  writes `freight_share = 0` on every lot since `20260930100000_receipt_inputs.sql`; a lot saved before
+  it keeps its share. Rejected: spreading by line value — a typed cost per base unit is final.
 - **`qty_on_hand` and `cost_price` on a stock item are derived.** `private.recompute_stock()` sets them
   from the packs: the quantity sums them in base units, and the cost is their weighted landed cost.
   The `products_guard_stock` trigger keeps a client role from writing either, and refuses archiving or
@@ -465,15 +473,17 @@ the rail asks before switching destination, because a drawer switch removes noth
 
 **Stock** (`systems/[id]/stock/`) holds Suppliers and Receipts. The Receipts pane lists one row per
 receipt line — remaining against received — opening onto its cases and packs. A receipt is written once
-by the seven-step `receipt-wizard` (General, Unit Load, Pallet, Case, Pack, Base Unit, Review; the tiers
-can be skipped, and Base Unit only shows while something sells by the base unit) and read back by
+by the seven-step `receipt-wizard` (Supplier, Unit Load, Pallet, Case, Pack, Base Unit, Review; the tiers
+can be skipped, and Base Unit only shows while something sells by the base unit). A line's stock is its
+received packs, or its expected packs when received is left blank and read back by
 `receipt-detail`, where it can be voided while nothing has been drawn from it. **Inventory** is
 `product-list` in the `inventory` scope: rows from `inventory-rows.tsx` show the count in base units,
 packs and open packs, cost and value, an inline Type menu, and open onto a lot-and-pack drill
 (`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
 tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows
-adjust, write off and return through `record_stock_movement` — a dialog when wide, the
-`sheets/stock-movement` formSheet when narrow. **Products** gains **Add from Inventory**
+adjust, write off and return through `record_stock_movement` — the full-page `forms/stock-movement`
+at every width. The Inventory item form (`stock-item-form`) is a `section-stepper`: Pack info, Stock
+settings, Base unit, Stock on hand (new items only), Variant setup, Extra, Review. **Products** gains **Add from Inventory**
 (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`). Rentables is off the rail for now; its
 routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
 (`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.

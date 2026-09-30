@@ -1,19 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import type { ReactElement } from 'react';
 import { FormProvider, useForm, useFormState, useWatch } from 'react-hook-form';
 import type { UseFormReturn } from 'react-hook-form';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../components/button';
 import { DiscardDialog } from '../../components/discard-dialog';
-import { FormFooter, FormNoticeText } from '../../components/form-footer';
 import { SectionHeading } from '../../components/form-fields';
 import { PageHeader } from '../../components/page-header';
+import { NarrowSteps, WideSections } from '../../components/section-stepper';
+import type { StepSection } from '../../components/section-stepper';
 import { Snackbar } from '../../components/snackbar';
-import { StepHeader } from '../../components/step-header';
-import { Text } from '../../components/text';
 import { saveFailure, useSaveProductMutation } from '../../features/products/queries';
 import type { ProductDetail } from '../../features/products/queries';
 import { RESOURCE_META, RESOURCE_ROUTE } from '../../features/products/resources';
@@ -28,12 +26,10 @@ import {
   productFormSchema,
 } from '../../features/products/schema';
 import type { ProductFormValues, ProductType, SectionId } from '../../features/products/schema';
-import { SECTION_LIST, useShellWide } from '../../lib/columns';
+import { useShellWide } from '../../lib/columns';
 import { INVALID_FORM, SKU_TAKEN, failureMessage, mutationNotice } from '../../lib/errors';
 import type { Notice } from '../../lib/errors';
-import { useAppTheme } from '../../lib/theme';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
-import { spacing } from '../../themes';
 import { ReviewSection } from './review-section';
 import { AdvancedSection } from './sections/advanced-section';
 import { AvailabilitySection } from './sections/availability-section';
@@ -112,7 +108,7 @@ export function ProductForm({ merchantId, currency, scope, type: newType, produc
       />
     </>
   );
-  const steps = { sections, current, index, failedSections, notice, body, onOpen: setSectionId };
+  const steps = { sections, current, index, names: SECTION_META, failedSections, notice, body, onOpen: setSectionId };
   const layout = wide ? <WideSections {...steps} /> : <NarrowSteps {...steps} saveActions={saveActions} />;
 
   return (
@@ -137,7 +133,7 @@ export function ProductForm({ merchantId, currency, scope, type: newType, produc
   );
 }
 
-type Section = { id: SectionId; optional: boolean };
+type Section = StepSection<SectionId>;
 
 /** What differs between adding a product and editing one. */
 function formCopy(product: ProductDetail | null, newType: ProductType, item: string) {
@@ -249,115 +245,6 @@ function SectionBody({ id, merchantId, currency, scope, productId, sections, onO
   }
 }
 
-type StepsProps = {
-  sections: Section[];
-  current: Section;
-  index: number;
-  failedSections: ReadonlySet<SectionId>;
-  notice: Notice | null;
-  body: ReactElement;
-  onOpen: (id: SectionId) => void;
-};
-
-/** Wide, every section is a row in a list beside the one open. */
-function WideSections({ sections, current, failedSections, notice, body, onOpen }: StepsProps) {
-  const { colors } = useAppTheme();
-
-  return (
-    <View style={[styles.split, { borderTopColor: colors.outlineVariant }]}>
-      <ScrollView style={[styles.sectionList, { borderRightColor: colors.outlineVariant }]}>
-        {sections.map((entry, position) => (
-          <SectionRow
-            key={entry.id}
-            section={entry}
-            position={position}
-            active={entry.id === current.id}
-            failed={failedSections.has(entry.id)}
-            onPress={() => onOpen(entry.id)}
-          />
-        ))}
-      </ScrollView>
-      <ScrollView key={current.id} style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <FormNoticeText notice={notice} />
-        {body}
-      </ScrollView>
-    </View>
-  );
-}
-
-type SectionRowProps = { section: Section; position: number; active: boolean; failed: boolean; onPress: () => void };
-
-function SectionRow({ section, position, active, failed, onPress }: SectionRowProps) {
-  const { colors } = useAppTheme();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
-      android_ripple={{ color: colors.ripple }}
-      accessibilityRole="button"
-      accessibilityLabel={SECTION_META[section.id].name}
-      accessibilityState={{ selected: active }}
-      // The 3px bar is a border on every row, transparent when inactive, so selecting a
-      // row never shifts its text (the rail item does the same).
-      style={[styles.sectionRow, active && { backgroundColor: colors.surfaceMuted, borderLeftColor: colors.accent }]}
-    >
-      <View style={styles.sectionRowInner}>
-        <Text variant="labelMedium" style={{ color: colors.onSurfaceFaint }}>
-          {String(position + 1).padStart(2, '0')}
-        </Text>
-        <Text variant={active ? 'titleMedium' : 'bodyMedium'} style={[styles.fill, failed && { color: colors.error }]} numberOfLines={1}>
-          {SECTION_META[section.id].name}
-        </Text>
-        {section.optional ? (
-          <Text variant="labelMedium" style={{ color: colors.onSurfaceFaint }}>
-            Opt
-          </Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}
-
-/** Narrow, one section at a time: Next until Review, which ends in the save buttons. */
-function NarrowSteps({ sections, current, index, failedSections, notice, body, onOpen, saveActions }: StepsProps & { saveActions: ReactElement }) {
-  const reviewing = current.id === 'review';
-
-  return (
-    <>
-      <StepHeader
-        index={index}
-        count={sections.length}
-        title={SECTION_META[current.id].name}
-        optional={current.optional}
-        failed={failedSections.has(current.id)}
-        backLabel="Previous section"
-        onBack={() => onOpen(sections[index - 1]?.id ?? 'general')}
-      />
-      <ScrollView key={current.id} style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {body}
-      </ScrollView>
-      <FormFooter notice={notice}>
-        <View style={reviewing ? styles.footerStack : styles.footerRow}>
-          {reviewing ? (
-            saveActions
-          ) : (
-            <Button
-              mode="contained"
-              icon="chevron-right"
-              contentStyle={styles.trailingIcon}
-              onPress={() => onOpen(sections[index + 1]?.id ?? current.id)}
-              style={styles.fill}
-            >
-              Next
-            </Button>
-          )}
-        </View>
-      </FormFooter>
-    </>
-  );
-}
-
 type SaveActionsProps = {
   wide: boolean;
   saving: boolean;
@@ -445,23 +332,5 @@ function productNotice(save: { isPaused: boolean; isError: boolean; error: Error
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  split: { flex: 1, flexDirection: 'row', borderTopWidth: 1 },
-  sectionList: { width: SECTION_LIST, flexGrow: 0, borderRightWidth: 1 },
-  sectionRow: { borderLeftWidth: 3, borderLeftColor: 'transparent' },
-  sectionRowInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.ms,
-    paddingVertical: spacing.ms,
-    paddingLeft: spacing.ms,
-    paddingRight: spacing.ms,
-  },
-  content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
-  footerRow: { flexDirection: 'row', gap: spacing.sm },
-  // Three full-width buttons on the Review step do not fit a phone-width row, so they stack.
-  footerStack: { gap: spacing.sm },
   stretch: { alignSelf: 'stretch' },
-  // row-reverse turns Paper's leading icon slot into a trailing one; flex-end is the LEFT edge on a
-  // reversed main axis, so a full-width button's label still starts there (instruction_mds/visual-language.md §5).
-  trailingIcon: { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
 });

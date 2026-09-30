@@ -45,6 +45,9 @@ export const stockItemSchema = z
     sku: text(64, 'SKU').min(1, 'Enter a SKU, or tap Auto-generate.'),
     barcode: text(64, 'Barcode'),
     stockRole,
+    /** Base unit step's switch: off, the item is sold and counted by the pack alone (sell_by 'pack'). */
+    byBase: z.boolean(),
+    /** Base unit or Both, read only while byBase is on. */
     sellBy: stockSellBy,
     categoryId: z.string(),
     subcategoryId: z.string(),
@@ -57,18 +60,20 @@ export const stockItemSchema = z
     reorderAt: amount('Reorder at'),
     expiryAlertDays: z.string().trim().regex(/^\d{0,4}$/, 'Days is a whole number.'),
     description: text(2000, 'Description'),
-    notes: text(2000, 'Notes'),
     /** Stock on hand, create only: written as Inventory-added stock with no receipt or supplier. */
+    addStock: z.boolean(),
     openingPacks: z.string().trim().regex(/^\d{0,6}$/, 'Packs is a whole number.'),
     openingLoose: amount('Loose units'),
     openingCost: amount('Cost per pack'),
   })
   .superRefine((item, ctx) => {
-    // The Base unit section only shows when something is sold or counted by the base unit.
-    if (item.sellBy !== 'pack') {
-      if (!(Number(item.unitsPerPack) > 0))
-        ctx.addIssue({ code: 'custom', path: ['unitsPerPack'], message: 'Enter how many base units one pack holds.' });
-      if (item.openingLoose !== '' && Number(item.openingLoose) >= Number(item.unitsPerPack))
+    // The base unit fields only show while the Base unit switch is on.
+    if (item.byBase && !(Number(item.unitsPerPack) > 0))
+      ctx.addIssue({ code: 'custom', path: ['unitsPerPack'], message: 'Enter how many base units one pack holds.' });
+    if (item.addStock) {
+      if (!(Number(item.openingPacks) > 0) && !(item.byBase && Number(item.openingLoose) > 0))
+        ctx.addIssue({ code: 'custom', path: ['openingPacks'], message: 'Enter the packs on hand, or turn Add opening stock off.' });
+      if (item.byBase && item.openingLoose !== '' && Number(item.openingLoose) >= Number(item.unitsPerPack))
         ctx.addIssue({ code: 'custom', path: ['openingLoose'], message: 'Loose units must be fewer than one full pack.' });
     }
     if (!item.isVariant) return;
@@ -80,6 +85,58 @@ export const stockItemSchema = z
 
 export type StockItemValues = z.infer<typeof stockItemSchema>;
 
+export type StockSectionId = 'pack' | 'settings' | 'base' | 'opening' | 'variant' | 'extra' | 'review';
+
+export const STOCK_SECTION_META = {
+  pack: { name: 'Pack info', hint: 'What it is and how it is used' },
+  settings: { name: 'Stock settings', hint: 'Where it is kept and when to warn' },
+  base: { name: 'Base unit', hint: 'Whether it is sold or used by something inside the pack' },
+  opening: { name: 'Stock on hand', hint: 'Stock already here, not tied to a supplier' },
+  variant: { name: 'Variant setup', hint: 'Whether it is one version of another item' },
+  extra: { name: 'Extra', hint: 'Anything else worth writing down' },
+  review: { name: 'Review', hint: 'Check it, then save' },
+} satisfies Record<StockSectionId, { name: string; hint: string }>;
+
+/** The steps in order. Stock on hand is a new item's only: an edit changes stock through a movement. */
+export const stockSections = (creating: boolean): { id: StockSectionId; optional: boolean }[] => [
+  { id: 'pack', optional: false },
+  { id: 'settings', optional: false },
+  { id: 'base', optional: false },
+  ...(creating ? [{ id: 'opening' as const, optional: true }] : []),
+  { id: 'variant', optional: true },
+  { id: 'extra', optional: true },
+  { id: 'review', optional: false },
+];
+
+/** The step each field is on, so a failed save opens the first step holding an error. */
+export const STOCK_FIELD_SECTION = {
+  name: 'pack',
+  sku: 'pack',
+  barcode: 'pack',
+  stockRole: 'pack',
+  categoryId: 'pack',
+  subcategoryId: 'pack',
+  packUnit: 'settings',
+  storageLocation: 'settings',
+  reorderAt: 'settings',
+  hasExpiry: 'settings',
+  expiryAlertDays: 'settings',
+  byBase: 'base',
+  sellBy: 'base',
+  baseUnit: 'base',
+  unitsPerPack: 'base',
+  addStock: 'opening',
+  openingPacks: 'opening',
+  openingLoose: 'opening',
+  openingCost: 'opening',
+  isVariant: 'variant',
+  groupId: 'variant',
+  newGroup: 'variant',
+  newGroupName: 'variant',
+  attributes: 'variant',
+  description: 'extra',
+} satisfies Record<keyof StockItemValues, StockSectionId>;
+
 export const emptyStockItem: StockItemValues = {
   isVariant: false,
   groupId: '',
@@ -90,7 +147,8 @@ export const emptyStockItem: StockItemValues = {
   sku: '',
   barcode: '',
   stockRole: 'sellable',
-  sellBy: 'pack',
+  byBase: false,
+  sellBy: 'base',
   categoryId: '',
   subcategoryId: '',
   packUnit: '',
@@ -101,7 +159,7 @@ export const emptyStockItem: StockItemValues = {
   reorderAt: '',
   expiryAlertDays: '',
   description: '',
-  notes: '',
+  addStock: false,
   openingPacks: '',
   openingLoose: '',
   openingCost: '',
@@ -120,7 +178,8 @@ export function fromStockItem(product: ProductDetail): StockItemValues {
     sku: product.sku ?? '',
     barcode: product.barcode ?? '',
     stockRole: product.stock_role ?? 'component',
-    sellBy: product.sell_by ?? 'pack',
+    byBase: (product.sell_by ?? 'pack') !== 'pack',
+    sellBy: product.sell_by === 'both' ? 'both' : 'base',
     categoryId: product.category_id ?? '',
     subcategoryId: product.subcategory_id ?? '',
     packUnit: product.pack_unit_name ?? '',
@@ -131,7 +190,7 @@ export function fromStockItem(product: ProductDetail): StockItemValues {
     reorderAt: str(product.reorder_threshold),
     expiryAlertDays: str(product.expiry_alert_days),
     description: product.description ?? '',
-    notes: product.internal_notes ?? '',
+    addStock: false,
     openingPacks: '',
     openingLoose: '',
     openingCost: '',
@@ -147,8 +206,6 @@ const numberOrNull = (value: string) => (value === '' ? null : Number(value));
  * and an edit keeps what it had (Archive and Restore on the detail change it).
  */
 export function toStockItemPayload(values: StockItemValues, target: { merchantId: string; product: ProductDetail | null }) {
-  const variant = values.isVariant;
-  const byPack = values.sellBy === 'pack';
   return {
     item: {
       id: target.product?.id ?? null,
@@ -165,33 +222,42 @@ export function toStockItemPayload(values: StockItemValues, target: { merchantId
       storage_location: orNull(values.storageLocation),
       reorder_threshold: numberOrNull(values.reorderAt),
       expiry_alert_days: numberOrNull(values.expiryAlertDays),
-      // Sold by the pack only: no base unit, so one pack is one unit.
-      conversion_factor: byPack ? 1 : Number(values.unitsPerPack),
       pack_unit_name: orNull(values.packUnit),
-      base_unit_name: byPack ? null : orNull(values.baseUnit),
-      sell_by: values.sellBy,
+      ...unitColumns(values),
       stock_role: values.stockRole,
       perishable: values.hasExpiry,
-      group_id: variant && !values.newGroup ? orNull(values.groupId) : null,
-      attributes: variant
-        ? values.attributes
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean)
-        : [],
-      internal_notes: orNull(values.notes),
+      ...variantColumns(values),
+      // Not on this form; the product form writes it, so an edit here passes it through.
+      internal_notes: target.product?.internal_notes ?? null,
     },
-    group_name: variant && values.newGroup ? values.newGroupName : null,
-    opening:
-      target.product === null
-        ? {
-            packs: Number(values.openingPacks || 0),
-            loose_units: byPack ? 0 : Number(values.openingLoose || 0),
-            cost_per_pack: numberOrNull(values.openingCost),
-          }
-        : null,
+    group_name: values.isVariant && values.newGroup ? values.newGroupName : null,
+    opening: target.product === null && values.addStock ? openingStock(values) : null,
   };
 }
+
+/** The Base unit switch off is sold by the pack only: no base unit, so one pack is one unit. */
+const unitColumns = (values: StockItemValues) =>
+  values.byBase
+    ? { conversion_factor: Number(values.unitsPerPack), base_unit_name: orNull(values.baseUnit), sell_by: values.sellBy }
+    : { conversion_factor: 1, base_unit_name: null, sell_by: 'pack' as const };
+
+/** "Red, L" is two attributes. Not a variant, the item joins no group. */
+const variantColumns = (values: StockItemValues) =>
+  values.isVariant
+    ? {
+        group_id: values.newGroup ? null : orNull(values.groupId),
+        attributes: values.attributes
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      }
+    : { group_id: null, attributes: [] };
+
+const openingStock = (values: StockItemValues) => ({
+  packs: Number(values.openingPacks || 0),
+  loose_units: values.byBase ? Number(values.openingLoose || 0) : 0,
+  cost_per_pack: numberOrNull(values.openingCost),
+});
 
 /** "3 box + 4 pcs": whole packs and what is left over, from a quantity in base units. */
 export function packsAndLoose(qty: number, unitsPerPack: number, packUnit: string | null, baseUnit: string | null) {
