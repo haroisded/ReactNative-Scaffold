@@ -16,8 +16,9 @@ writing the acceptance tests the human runs ([`acceptance-tests.md`](./acceptanc
    race between two writes, a missing loading state — is fixed in the plan, not handed to a tester.
 3. **After code, run the static checks** (§1). Screen every finding against
    [`false-positives.md`](./false-positives.md) before acting on it. **Never run `fallow fix`.**
-4. **Write or refresh `.claude/tests/<feature>.md`** per [`acceptance-tests.md`](./acceptance-tests.md), in the
-   same pass as the code it tests.
+4. **Write new tests in `.claude/tests/`** per [`acceptance-tests.md`](./acceptance-tests.md) — one file per
+   screen, one per relationship between screens, new tests rather than rewrites — in the same pass as
+   the code they test.
 5. **A reported failure is fixed from the report** (§2). The human names the test number and what
    they saw; the agent reproduces it from the code, not from the device.
 6. **Scope is this pass's diff.** Code predating the pass is backlog — named to the human, not fixed
@@ -47,11 +48,12 @@ Then, and only once all of that is green, prompt for the commit
 
 ## 2. When the human reports a failure
 
-1. Read the test in `.claude/tests/<feature>.md`, and the tester's answer in
-   `.claude/tests/test-report/<feature>-test-report.md` ([`acceptance-tests.md`](./acceptance-tests.md) §4).
+1. Read the test in `.claude/tests/<file>.md`, and the tester's answer in
+   `.claude/tests/test-report/<file>-test-report.md` ([`acceptance-tests.md`](./acceptance-tests.md) §4).
    Trace its steps through the code.
 2. Plan the fix; name the files it touches.
-3. Apply it, re-run §1, and update any test whose steps or expected output changed.
+3. Apply it, re-run §1. Where the fix changes a test's steps or expected output, add a new test and
+   retire the old one ([`acceptance-tests.md`](./acceptance-tests.md) rule 2) — never edit it in place.
 4. Tell the human which test numbers to re-run.
 
 **Circuit breaker.** Same failure (same symptom, same component) still reported after the 4th fix

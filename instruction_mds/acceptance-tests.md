@@ -1,41 +1,60 @@
 # Acceptance tests
 
-How the agent writes `.claude/tests/<feature>.md` — the script a human tester follows on a real phone or
+How the agent writes `.claude/tests/<screen>.md` — the script a human tester follows on a real phone or
 tablet. The testers are people who will use the POS, not developers.
 
 ## Rules
 
-1. **One file per screen, and one per relationship between screens: `.claude/tests/<screen>.md`,
-   kebab-case, committed.** A test that needs only one screen goes in that screen's file
-   (`assets.md`, `side-menu.md`); a test whose point is what passes between two or more screens goes in
-   a file of its own named for them (`inventory-assets.md`). A new change gets new tests rather than a
-   rewrite of tests already handed to a tester — the human asked for this on 2026-10-01 so a report
-   never names a test whose steps changed under it. Rejected: one file per feature, rewritten in place
-   (`resources.md`, `inventory-stock.md` predate this rule).
-2. **Written for a shop owner, not a developer.** No code, file, table, API, query or error-class
+1. **One file per screen, and one per relationship between screens — kebab-case, committed.** A test
+   that needs only one screen goes in `.claude/tests/<screen>.md`; a test whose point is what passes
+   between two or more screens goes in `.claude/tests/<screen-a>-<screen-b>.md`. §0 says how to pick.
+2. **A change gets new tests, never a rewrite of old ones.** Add the new tests to the end of the right
+   file (or a new file), numbered on from its last test. A test whose behaviour the change replaced
+   keeps its steps; it gets one line under its title, `> Retired by <file> Test <n>.`, and nothing
+   else. The human asked for this on 2026-10-01: a tester's report never names a test whose steps
+   changed under it.
+3. **Written for a shop owner, not a developer.** No code, file, table, API, query or error-class
    names. Name what is on the screen, in the words the screen uses ("tap **Save**", "the product list").
-3. **Every test uses the template in §1 exactly**, numbered from 1 within the file. No result or
+4. **Every test uses the template in §1 exactly**, numbered from 1 within the file and never renumbered. No result or
    feedback fields — testers report a failure by its test number.
-4. **Cover every group in §2, in that order.** A group that cannot apply gets one line saying why —
+5. **Cover every group in §2, in that order.** A group that cannot apply gets one line saying why —
    a skipped group with no reason is indistinguishable from a forgotten one.
-5. **Steps are single actions, each one findable.** One tap, one typed value, one thing to look at —
+6. **Steps are single actions, each one findable.** One tap, one typed value, one thing to look at —
    and say where it is on the screen. A step that says "set up a product" is two tests' worth of
    ambiguity. §1.1 says how much to write.
-6. **Expected output is something a person can see, described so a stranger could find it.** Text on
+7. **Expected output is something a person can see, described so a stranger could find it.** Text on
    screen, a screen that opens, an item that appears or disappears — named with where it is and what
    it looks like. Never "the row is written", and never "the dialog closes" without saying which
    dialog. §1.1.
-7. **Test data is made through the app.** Two sample records per feature (§3), created in the test
+8. **Test data is made through the app.** Two sample records per screen that creates them (§3), created in the test
    steps, never assumed to exist.
-8. **Results come back in `.claude/tests/test-report/<feature>-test-report.md`, never in the test file.** The
+9. **Results come back in `.claude/tests/test-report/<file>-test-report.md`, never in the test file.** The
    tester writes it; the agent reads it and fixes from it (§4).
 
 ---
 
+## 0. Which file
+
+| The test is about | File | Example |
+| --- | --- | --- |
+| one screen, or one sheet or dialog opened from it | `<screen>.md`, named for the screen as the side menu names it | `assets.md` |
+| the side menu, or anything else every screen shares | a file named for that piece | `side-menu.md` |
+| something that passes between two or more screens — a link, Back between them, data made on one and shown on another | `<screen-a>-<screen-b>.md`, screens in the order the tester visits them | `inventory-assets.md` |
+
+- A cross-screen file covers only the passing between screens. Its intro names the per-screen files
+  that cover each screen on its own, and it does not repeat their tests.
+- Before adding a file, check `.claude/tests/` for one that already covers that screen or that pair.
+- A screen renamed in the app keeps its file's tests; new tests go in a file under the new name, and
+  the old file's intro says where its screen went.
+- `resources.md` and `inventory-stock.md` predate this rule and cover several screens each. Leave
+  them as they are and put new tests for those screens in per-screen files.
+
 ## 1. Template
 
 ```markdown
-# <Feature> — acceptance tests
+# <Screen> — acceptance tests
+
+Covers <what on this screen>. <For a cross-screen file: each screen on its own is covered in … .>
 
 ## Test 1 - Title: <what a tester would call it>
 
@@ -69,7 +88,7 @@ No background, no history of the feature.
 > means the stock count goes down and the item's **History** records why, so the shop can later see
 > where missing stock went.
 
-**Steps.** Still one action per step (rule 5), but each step says where the thing is and what it
+**Steps.** Still one action per step (rule 6), but each step says where the thing is and what it
 looks like: at the top, at the bottom, in the side menu, the **⋮** button at the right of a row, a
 switch, a field labelled **Pack name**. Use the exact words the screen shows, in bold. Give typed
 values in `code`. When a tap opens a new screen or dialog, say what opens in the same step, so the
@@ -142,11 +161,11 @@ The cap is on records, not on groups — groups 2–4 still apply to the feature
 
 ## 4. The report that comes back
 
-The tester answers in a separate file, one per feature:
+The tester answers in a separate file, one per test file:
 
 ```
-.claude/tests/<feature>.md                              the script — written by the agent
-.claude/tests/test-report/<feature>-test-report.md      the answers — written by the tester
+.claude/tests/<file>.md                                the script — written by the agent
+.claude/tests/test-report/<file>-test-report.md        the answers — written by the tester
 .claude/tests/test-report/images/test-<n>-related.jpg   a screenshot, when one says it faster
 ```
 
@@ -163,4 +182,7 @@ device — it traces the reported steps through the code.
 - **A `Result` / pass-fail field in each test.** Testers report failures by number; a field in a
   committed file turns into stale ticks from an old run.
 - **One `tests.md` for the whole app.** Grows without limit and forces a tester to scroll past every
-  other feature. Replaced by one file per feature.
+  other feature.
+- **One file per feature, rewritten in place when the feature changes** (the rule until 2026-10-01).
+  A feature spans several screens, so its file mixed them, and a rewrite changed tests a tester was
+  already running. Replaced by rules 1 and 2.
