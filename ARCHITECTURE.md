@@ -63,9 +63,9 @@ src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-syst
                            (full-page create and edit forms) and the sheets/ routes (native formSheet,
                            confirms) beside them, anchored on tabs
 src/app/(app)/(tabs)/      home, notifications, settings, account + the NativeTabs bar
-src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer), Home, products/,
-                           inventory/, stock/ (suppliers and receipts), rentables/ (off the rail
-                           for now), the stubs
+src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer), Home, products/
+                           (labelled Assets), inventory/, stock/ (suppliers and receipts), rentables/
+                           (off the rail for now), the stubs
 src/app/(app)/profile.tsx  Profile pushed from inside a system, with Back to your systems
 app.config.ts              derives the Google iOS URL scheme from .env
 supabase/migrations/       profiles, merchants, the product catalogue and the stock ledger with their
@@ -204,7 +204,9 @@ and `systems/[id]` sits beside it rather than inside it, so opening a system pus
 instead of becoming a fifth tab.
 
 `systems/[id]` is the merchant shell: one expo-router `Drawer`, a permanent rail on a wide container
-and an off-canvas drawer on a narrow one, around eight destinations. Back retraces visited
+and an off-canvas drawer on a narrow one, around eight destinations. Two rows are groups, not
+destinations: **Store** (Assets, Register, Receipts) and **Resources** (Inventory, Stock) only open and
+close the screens under them (`NavGroup`). Back retraces visited
 destinations (`backBehavior="history"`), and leaving one pops its stack to its list
 (`popToTopOnBlur`). Every destination stack anchors on its list (`unstable_settings.anchor`), so a
 push from another destination — Inventory's **Selling as**, the Register's **View receipt** — passes
@@ -423,7 +425,7 @@ What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.
 - **Faces follow the item.** `private.sync_register_faces` runs after an item's role, Sell By or status
   changes and calls `public.ensure_register_faces()`: a wanted unit without a face gets a draft; an
   unwanted draft is deleted, an unwanted published face archived, and a wanted archived face restored
-  as a draft. So the Inventory list's inline Type menu is a plain `update`. Products → **Add from
+  as a draft. So the Inventory list's inline Type menu is a plain `update`. Assets → **Add from
   Inventory** calls the same function to bring back a face someone deleted.
 - **`save_stock_item()`** (security invoker) is the Inventory form's writer: the item, a new group,
   and optional stock on hand, in one transaction.
@@ -503,14 +505,16 @@ tablet puts `inventory-detail` beside the list; on a phone it is its own route. 
 adjust, write off and return through `record_stock_movement` — the full-page `forms/stock-movement`
 at every width. The Inventory item form (`stock-item-form`) is a `section-stepper` mirroring the receipt's
 Pack step: Pack (details, stock settings, and a new item's optional quantity on hand), Variant, Base unit (only
-when Sell by is not Pack), Review. A picked group's category shows in Pack, locked. **Products** gains **Add from Inventory**
-(`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`). Rentables is off the rail for now; its
+when Sell by is not Pack), Review. A picked group's category shows in Pack, locked. **Assets** is `product-list` in the `products` scope —
+the route keeps its name, only the label changed — and has no create: `RESOURCE_ROUTE.products` has no
+`new`, and its one add is **Add from Inventory** (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`).
+Flat rows made directly before that still list and stay editable. Rentables is off the rail for now; its
 routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
 (`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.
 
 ### Register and Receipts
 
-**Register** (`systems/[id]/register.tsx`, `src/screens/register/`) sells what the Products screen
+**Register** (`systems/[id]/register.tsx`, `src/screens/register/`) sells what the Assets screen
 publishes — flat, active, sold directly — and nothing from Inventory or Rentables. Cash only; prices
 include tax. Wide shows the items pane (`ITEM_PANE`) beside the cart; narrow switches Items | Cart,
 with the payment at the foot of the Cart tab. The cart, the cash typed and the idempotency key live in

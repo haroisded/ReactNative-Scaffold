@@ -5,8 +5,13 @@ tablet. The testers are people who will use the POS, not developers.
 
 ## Rules
 
-1. **One file per page or feature: `.claude/tests/<feature>.md`, kebab-case, committed.** When the feature
-   changes, rewrite its file in the same pass. Never a second file for the same feature.
+1. **One file per screen, and one per relationship between screens: `.claude/tests/<screen>.md`,
+   kebab-case, committed.** A test that needs only one screen goes in that screen's file
+   (`assets.md`, `side-menu.md`); a test whose point is what passes between two or more screens goes in
+   a file of its own named for them (`inventory-assets.md`). A new change gets new tests rather than a
+   rewrite of tests already handed to a tester — the human asked for this on 2026-10-01 so a report
+   never names a test whose steps changed under it. Rejected: one file per feature, rewritten in place
+   (`resources.md`, `inventory-stock.md` predate this rule).
 2. **Written for a shop owner, not a developer.** No code, file, table, API, query or error-class
    names. Name what is on the screen, in the words the screen uses ("tap **Save**", "the product list").
 3. **Every test uses the template in §1 exactly**, numbered from 1 within the file. No result or

@@ -128,7 +128,9 @@ export function ProductForm({ merchantId, currency, scope, type: newType, produc
 
       {/* The one thing that still happens after a save: another one. The screen is already leaving for
           the detail, so this is the only affordance that needs to survive it. */}
-      <AddAnother created={guard.savedId !== null && !editing} item={meta.item} pathname={route.new} merchantId={merchantId} />
+      {'new' in route ? (
+        <AddAnother created={guard.savedId !== null && !editing} item={meta.item} pathname={route.new} merchantId={merchantId} />
+      ) : null}
     </FormProvider>
   );
 }
@@ -294,7 +296,8 @@ function SaveActions({ wide, saving, publishing, onSubmit }: SaveActionsProps) {
 
 type Route = (typeof RESOURCE_ROUTE)[ResourceScope];
 
-type AddAnotherProps = { created: boolean; item: string; pathname: Route['new']; merchantId: string };
+/** Assets has no create route (resources.ts), so only the screens that create have one to go back to. */
+type AddAnotherProps = { created: boolean; item: string; pathname: Extract<Route, { new: string }>['new']; merchantId: string };
 
 function AddAnother({ created, item, pathname, merchantId }: AddAnotherProps) {
   return (

@@ -5,9 +5,12 @@ import type { MeasureUnit, ProductType } from './schema';
  * The Resources split. One shell destination became three, and each of them owns
  * the product types, categories, units and Setup lists that belong to it:
  *
- *   Products    flat services                     — a delivery fee, an installation
+ *   Assets      what the Register sells           — Inventory items brought in and priced (route `products`)
  *   Rentables   rental assets, bookable services  — a bike, a meeting room
  *   Inventory   stock and consumables             — a shelf item, a kitchen ingredient
+ *
+ * Assets has no create: every row arrives through Add from Inventory, so it has no `new` route below.
+ * Flat rows made directly before that still list and stay editable.
  *
  * `scope` is a column on both products and product_categories, written by the database from the
  * product's type, so a Rentables product cannot point at an Inventory category. This file is the
@@ -21,7 +24,7 @@ export type SetupList = 'categories' | 'taxClasses';
 type ResourceMeta = {
   /** The page header's title, and the drawer label. */
   title: string;
-  /** Singular, for "Add a rentable", "This product is …". */
+  /** Singular, for "Add a rentable", "This asset is …". */
   item: string;
   /** The types this screen creates. More than one means the merchant picks before the form opens. */
   types: ProductType[];
@@ -36,8 +39,8 @@ type ResourceMeta = {
 
 export const RESOURCE_META = {
   products: {
-    title: 'Products',
-    item: 'product',
+    title: 'Assets',
+    item: 'asset',
     types: ['flat'],
     units: ['piece', 'hour', 'session'],
     setup: ['categories', 'taxClasses'],
@@ -74,7 +77,6 @@ export function isResourceScope(raw: string | undefined): raw is ResourceScope {
 export const RESOURCE_ROUTE = {
   products: {
     list: '/systems/[id]/products',
-    new: '/systems/[id]/products/new',
     setup: '/systems/[id]/products/setup',
     detail: '/systems/[id]/products/[productId]',
     edit: '/systems/[id]/products/[productId]/edit',

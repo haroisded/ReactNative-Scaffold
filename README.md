@@ -32,8 +32,10 @@ together and explained inline.
 - **Session handling** in one zustand store — restore, auto-refresh, sign-out
 - **Session stored in the Keychain / Keystore** via `expo-secure-store`, not plaintext AsyncStorage
 - **SQL migrations** for `profiles` and `merchants` with RLS, the tenancy seam, and in-app account deletion
-- **A merchant shell with its first business screens** — Products: list, stepped create / edit form,
-  detail, archive and delete, Setup for categories and tax classes, and Add from Inventory;
+- **A merchant shell with its first business screens**, grouped on the rail as Store (Assets, Register,
+  Receipts) and Resources (Inventory, Stock) — Assets: what the Register sells, brought in through Add
+  from Inventory, with list, stepped edit form, detail, archive and delete, Setup for categories and tax
+  classes;
   Inventory: items with a lot-and-pack drill, the next pick marked; Stock: suppliers and a seven-step
   receipt wizard (Unit Load → Pallet → Case → Pack → Base Unit), one row per physical pack
 - **A stock ledger** with a pick order (open packs first, then closest expiry) and `draw_stock`, ready

@@ -120,6 +120,8 @@ export function ProductDetail({ merchantId, currency, product, scope }: Props) {
       onSuccess: (id) => router.push({ pathname: route.edit, params: { id: merchantId, productId: id } }),
     });
   const notice = mutationNotice(duplicate, failureMessage("Couldn't duplicate this product. Try again."));
+  // Duplicate is a create, and Assets has none: its rows come only from Inventory (resources.ts).
+  const copyable = 'new' in route;
 
   return (
     <View style={styles.fill}>
@@ -130,9 +132,11 @@ export function ProductDetail({ merchantId, currency, product, scope }: Props) {
         actions={
           wide ? (
             <>
-              <Button mode="text" icon="copy" onPress={copy} loading={duplicate.isPending} disabled={duplicate.isPending}>
-                Duplicate
-              </Button>
+              {copyable ? (
+                <Button mode="text" icon="copy" onPress={copy} loading={duplicate.isPending} disabled={duplicate.isPending}>
+                  Duplicate
+                </Button>
+              ) : null}
               <Button mode="text" icon="delete" textColor={colors.error} onPress={remove}>
                 Delete
               </Button>
@@ -143,7 +147,9 @@ export function ProductDetail({ merchantId, currency, product, scope }: Props) {
             </>
           ) : (
             <>
-              <IconButton icon="copy" onPress={copy} disabled={duplicate.isPending} accessibilityLabel="Duplicate" style={styles.headerIcon} />
+              {copyable ? (
+                <IconButton icon="copy" onPress={copy} disabled={duplicate.isPending} accessibilityLabel="Duplicate" style={styles.headerIcon} />
+              ) : null}
               <IconButton icon="delete" iconColor={colors.error} onPress={remove} accessibilityLabel="Delete" style={styles.headerIcon} />
             </>
           )

@@ -499,7 +499,7 @@ only archived once it is empty.
 - After step 2 Rice leaves the list (it is archived).
 - After step 3 a message says the item has stock history and cannot be deleted.
 
-## Test 39 - Title: Browse Inventory by folder
+## Test 40 - Title: Browse Inventory by folder
 
 ### What will be tested?
 A pass means categories and variant groups show as folders you open and back out of, and a search
@@ -530,13 +530,13 @@ ignores them.
 - After step 7 both Gauze items show in one flat list with their full names, with no folders and no
   **Inventory ›** line.
 
-## Test 40 - Title: Filters stay on inside a folder
+## Test 41 - Title: Filters stay on inside a folder
 
 ### What will be tested?
 A pass means a filter set at the top of Inventory still applies inside every folder, and in its sheet.
 
 ### What do you need before starting?
-- Test 39 done.
+- Test 40 done.
 
 ### Steps
 1. On **Inventory**, tap **Filters**, under **Type** tap **Component**, and tap **Done**.
@@ -550,7 +550,7 @@ A pass means a filter set at the top of Inventory still applies inside every fol
 - After step 3 **Type** has **Component** selected.
 - After step 4 the top of Inventory has no chips either.
 
-## Test 41 - Title: Browse Stock receipts by folder
+## Test 42 - Title: Browse Stock receipts by folder
 
 ### What will be tested?
 A pass means Stock's receipt lines sit in the same category and variant group folders as Inventory.

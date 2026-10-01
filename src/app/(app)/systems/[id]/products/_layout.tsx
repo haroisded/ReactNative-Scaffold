@@ -8,7 +8,7 @@ import { useAppTheme } from '../../../../../lib/theme';
 // (getNavigationAction.js:60-80). Every destination stack in the shell carries the same anchor.
 export const unstable_settings = { anchor: 'index' };
 
-// Products is one drawer destination holding five screens — list, detail, create, edit and Setup —
+// Assets is one drawer destination holding four screens — list, detail, edit and Setup —
 // so it is a Stack inside the shell. The shell's header stays above all of them; each screen draws
 // its own page header, so the Stack draws none.
 export default function ProductsLayout() {

@@ -144,7 +144,7 @@ function itemFacts(product: ProductDetail, base: string, perPack: number): Fact[
 }
 
 /**
- * "Selling as": the item's drafts on the Products screen, one per Sell By unit. A draft needs a price
+ * "Selling as": the item's drafts on the Assets screen, one per Sell By unit. A draft needs a price
  * before the Register can sell it.
  */
 function FacesSection({ merchantId, product, currency }: { merchantId: string; product: ProductDetail; currency: string }) {
@@ -157,7 +157,7 @@ function FacesSection({ merchantId, product, currency }: { merchantId: string; p
       <Text variant="titleMedium">Selling as</Text>
       {faces.data.length === 0 ? (
         <Text variant="bodyMedium" style={{ color: colors.onSurfaceMuted }}>
-          No product yet. Use Add from Inventory on the Products screen to make one.
+          No asset yet. Use Add from Inventory on the Assets screen to make one.
         </Text>
       ) : (
         <Card>

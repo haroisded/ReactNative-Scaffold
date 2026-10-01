@@ -22,7 +22,7 @@ type Props = {
 };
 
 /**
- * Products → Add from Inventory: the fallback to the automatic drafts. Lists the Sellable and Both
+ * Assets → Add from Inventory: the one way onto that screen, and the fallback to the automatic drafts. Lists the Sellable and Both
  * Inventory items missing a Products draft for a unit they sell by — one someone deleted, say — and
  * picking one makes the missing drafts and opens the first for pricing.
  */
@@ -52,7 +52,7 @@ export function AddFromInventoryDialog({ merchantId, inSheet, onDismiss }: Props
       inSheet={inSheet}
       onDismiss={onDismiss}
       dismissable={!inFlight}
-      kicker="Products"
+      kicker="Assets"
       title="Add from Inventory"
       actions={
         <Button mode="outlined" onPress={onDismiss} disabled={inFlight}>

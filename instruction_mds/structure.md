@@ -62,8 +62,8 @@ Never create a feature folder named after a page.
 | Merchants read/write, create-system schema | `src/features/merchants/` |
 | Home's SystemCard, CreateSystemModal | `src/screens/home/` |
 | Profile read | `src/features/profiles/`; screen in `src/screens/profile/` |
-| Products queries and schema | `src/features/products/` |
-| Products list, form, detail | `src/screens/product-list/`, `product-form/`, `product-detail/` |
+| Products queries and schema (Assets, Rentables and Inventory all read them) | `src/features/products/` |
+| Assets / Inventory list, form, detail | `src/screens/product-list/`, `product-form/`, `product-detail/` |
 | A dialog that also opens as a sheet route (RemoveSystemDialog, the delete dialogs) | `src/components/` — the route is its second host |
 | Register cart, held sales, payment, receipt | data in `src/features/sales/`; UI in `src/screens/register/` |
 | Column-count hook | `src/lib/columns.ts` |

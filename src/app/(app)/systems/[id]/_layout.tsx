@@ -30,13 +30,23 @@ import { radius, spacing } from '../../../../themes';
 
 type Destination = { name: string; label: string; icon: IconName };
 
-// The Resources screens. One catalogue split by what a merchant is looking at: things sold as a line,
-// things rented or booked, and things counted on a shelf — then Stock, where counted things arrive
-// (receipts) and who sends them (suppliers).
+/** A row that is not a destination: it has no route and navigates nowhere, it only shows and hides its screens. */
+type Group = { group: string; label: string; icon: IconName; children: Destination[] };
+
+// Store: where a sale happens. Assets are what the Register sells — the Inventory items brought in to
+// be priced — then the Register itself, and the receipts of what it sold. The `products` route keeps
+// its name; only its label changed (rejected: renaming the route to `assets`, which moves every
+// RESOURCE_ROUTE.products caller and the typed-route map for no visible gain).
+const STORE: Destination[] = [
+  { name: 'products', label: 'Assets', icon: 'list' },
+  { name: 'register', label: 'Register', icon: 'calculator' },
+  { name: 'receipts', label: 'Receipts', icon: 'receipt' },
+];
+
+// Resources: what is counted on a shelf, then Stock, where counted things arrive (receipts) and who
+// sends them (suppliers). Rentables is switched off for now: its routes and data stay, it is only left
+// off this menu, and the Register never lists its items.
 const RESOURCES: Destination[] = [
-  { name: 'products', label: 'Products', icon: 'list' },
-  // Rentables is switched off for now: its routes and data stay, it is only left off this menu, and
-  // the Register never lists its items.
   { name: 'inventory', label: 'Inventory', icon: 'inventory' },
   { name: 'stock', label: 'Stock', icon: 'truck' },
 ];
@@ -44,28 +54,19 @@ const RESOURCES: Destination[] = [
 // Rail order. `name` is the route file under this directory; icons are the app's own names, drawn as
 // each platform's symbol (src/lib/icons.tsx, instruction_mds/visual-language.md §6). An array rather than a lookup
 // object, so matching the focused route is a plain comparison with no type assertion.
-//
-// Resources is the one row that is not a destination: it has no route and navigates nowhere, it only
-// shows and hides the screens under it.
-const DESTINATIONS: (Destination | { group: 'resources'; label: string; icon: IconName })[] = [
+const DESTINATIONS: (Destination | Group)[] = [
   { name: 'index', label: 'Home', icon: 'home' },
-  { name: 'register', label: 'Register', icon: 'calculator' },
-  // What the Register sold: every sale's receipt, and the way to void one.
-  { name: 'receipts', label: 'Receipts', icon: 'receipt' },
+  { group: 'store', label: 'Store', icon: 'storefront', children: STORE },
   { name: 'dashboard', label: 'Dashboard', icon: 'bar-chart' },
-  { group: 'resources', label: 'Resources', icon: 'layers' },
+  { group: 'resources', label: 'Resources', icon: 'layers', children: RESOURCES },
   { name: 'discounts', label: 'Discounts', icon: 'percent' },
   { name: 'employees', label: 'Employees', icon: 'users' },
   { name: 'features', label: 'Features', icon: 'toggle' },
   { name: 'audit', label: 'Audit', icon: 'clipboard' },
 ];
 
-/** Every route the drawer navigator holds: the rail's own destinations plus the Resources screens. */
-const ROUTES: Destination[] = [
-  // A predicate, not a plain filter: `!('group' in entry)` does not narrow the array's element type.
-  ...DESTINATIONS.filter((entry): entry is Destination => !('group' in entry)),
-  ...RESOURCES,
-];
+/** Every route the drawer navigator holds: the rail's own destinations plus every group's screens. */
+const ROUTES: Destination[] = DESTINATIONS.flatMap((entry) => ('group' in entry ? entry.children : [entry]));
 
 /** "Cafe 67" → "C6": the first letter of up to two words, for the system badge. */
 function initials(name: string) {
@@ -263,9 +264,6 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
   const active = state.routes[state.index]?.name;
   // The drawer always shows labels; the rail shows them only while expanded.
   const labelled = !wide || expanded;
-  // Open when one of them is the screen being shown, so a reload into Inventory does not hide it.
-  // Initial state only: after that the merchant's last tap on the group decides.
-  const [resourcesOpen, setResourcesOpen] = useState(() => RESOURCES.some((entry) => entry.name === active));
 
   // A destination with unsaved changes gets to confirm first. Tapping the destination already open
   // switches nothing, so it is not asked.
@@ -299,38 +297,20 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
       <View style={styles.items}>
         {DESTINATIONS.map((entry) => {
           if ('group' in entry) {
-            // Resources: no route of its own, so it is never "active" — it only opens and closes.
             return (
-              <View key={entry.group}>
-                <NavItem
-                  label={entry.label}
-                  icon={entry.icon}
-                  wide={wide}
-                  labelled={labelled}
-                  trailing={resourcesOpen ? 'chevron-down' : 'chevron-right'}
-                  expandedState={resourcesOpen}
-                  onPress={() => {
-                    // On the icon-only rail the children would be unlabelled icons under an
-                    // unlabelled one, so widening the rail is the first half of opening the group.
-                    if (wide && !expanded) onExpandRail();
-                    setResourcesOpen((open) => !open);
-                  }}
-                />
-                {resourcesOpen
-                  ? RESOURCES.map((child) => (
-                      <NavItem
-                        key={child.name}
-                        label={child.label}
-                        icon={child.icon}
-                        wide={wide}
-                        labelled={labelled}
-                        nested
-                        active={child.name === active}
-                        onPress={() => go(child.name)}
-                      />
-                    ))
-                  : null}
-              </View>
+              <NavGroup
+                key={entry.group}
+                entry={entry}
+                active={active}
+                wide={wide}
+                labelled={labelled}
+                onOpen={() => {
+                  // On the icon-only rail the children would be unlabelled icons under an
+                  // unlabelled one, so widening the rail is the first half of opening the group.
+                  if (wide && !expanded) onExpandRail();
+                }}
+                onGo={go}
+              />
             );
           }
 
@@ -351,13 +331,60 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
   );
 }
 
+type GroupProps = {
+  entry: Group;
+  active: string | undefined;
+  wide: boolean;
+  labelled: boolean;
+  onOpen: () => void;
+  onGo: (target: string) => void;
+};
+
+/** A group row and, while it is open, its screens one step in. Never "active" itself: it only opens and closes. */
+function NavGroup({ entry, active, wide, labelled, onOpen, onGo }: GroupProps) {
+  // Open when one of them is the screen being shown, so a reload into Inventory does not hide it.
+  // Initial state only: after that the merchant's last tap on the group decides.
+  const [open, setOpen] = useState(() => entry.children.some((child) => child.name === active));
+
+  return (
+    <View>
+      <NavItem
+        label={entry.label}
+        icon={entry.icon}
+        wide={wide}
+        labelled={labelled}
+        trailing={open ? 'chevron-down' : 'chevron-right'}
+        expandedState={open}
+        onPress={() => {
+          onOpen();
+          setOpen((was) => !was);
+        }}
+      />
+      {open
+        ? entry.children.map((child) => (
+            <NavItem
+              key={child.name}
+              label={child.label}
+              icon={child.icon}
+              wide={wide}
+              labelled={labelled}
+              nested
+              active={child.name === active}
+              onPress={() => onGo(child.name)}
+            />
+          ))
+        : null}
+    </View>
+  );
+}
+
 type ItemProps = {
   label: string;
   icon: IconName;
   wide: boolean;
   labelled: boolean;
   active?: boolean;
-  /** One of the screens under Resources: indented, and a step smaller. */
+  /** One of the screens under a group: indented, and a step smaller. */
   nested?: boolean;
   /** The group row's chevron. */
   trailing?: IconName;

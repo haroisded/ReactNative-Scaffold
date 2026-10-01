@@ -36,6 +36,7 @@ import type { ProductStatus } from '../../features/products/schema';
 import { localToday } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
 import { failureMessage, mutationNotice, postgrestError } from '../../lib/errors';
+import type { IconName } from '../../lib/icons';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { NO_FILTERS, useListFilters } from '../../Store/list-filters';
@@ -73,7 +74,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
   const search = useDebounced(searchDraft);
   const { filters, patch, chips, named, openPanel, panel } = useFilterPanel(merchantId, scope, wide);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const { addFromInventory, addDialog } = useAddFromInventory(merchantId, wide);
+  const { add, addDialog } = useAddAction(merchantId, scope, wide);
   // Archive writes immediately and offers Undo; only Delete still asks (src/components/archive-undo.tsx).
   const { archive, snackbar } = useArchiveUndo();
   const clearSelection = () => setSelected(new Set());
@@ -100,7 +101,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
     selected,
     onToggle: toggle,
     onOpen: openDetail,
-    empty: <EmptyList query={products} merchantId={merchantId} scope={scope} filtered={filtered} onClear={clearFilters} />,
+    empty: <EmptyList query={products} scope={scope} filtered={filtered} onClear={clearFilters} add={add} />,
   };
 
   return (
@@ -109,7 +110,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         kicker={merchantName}
         title={meta.title}
         meta={products.data ? countLabel(rows.length, meta.item, filtered) : undefined}
-        actions={<ListActions merchantId={merchantId} scope={scope} onAddFromInventory={addFromInventory} />}
+        actions={<ListActions merchantId={merchantId} scope={scope} add={add} />}
       />
 
       <Toolbar
@@ -210,15 +211,29 @@ function useDeleteProducts(wide: boolean, onDone: () => void) {
   return { remove, deleteDialog };
 }
 
-/** Products → Add from Inventory: a dialog on a tablet, the sheet route on a phone. */
-function useAddFromInventory(merchantId: string, wide: boolean) {
+type AddAction = { label: string; icon: IconName; onPress: () => void };
+
+/**
+ * The screen's one way to add, for the header and the empty state alike. Assets has no create route, so
+ * its rows come in through Add from Inventory — a dialog on a tablet, the sheet route on a phone. The
+ * other screens open their form.
+ */
+function useAddAction(merchantId: string, scope: ResourceScope, wide: boolean) {
   const [adding, setAdding] = useState(false);
-  const addFromInventory = () => {
-    if (wide) setAdding(true);
-    else router.push({ pathname: '/sheets/add-from-inventory', params: { merchantId } });
-  };
+  const route = RESOURCE_ROUTE[scope];
+  const add: AddAction =
+    'new' in route
+      ? { label: `Add ${RESOURCE_META[scope].item}`, icon: 'add', onPress: () => router.push({ pathname: route.new, params: { id: merchantId } }) }
+      : {
+          label: 'Add from Inventory',
+          icon: 'inventory',
+          onPress: () => {
+            if (wide) setAdding(true);
+            else router.push({ pathname: '/sheets/add-from-inventory', params: { merchantId } });
+          },
+        };
   const addDialog = adding ? <AddFromInventoryDialog merchantId={merchantId} onDismiss={() => setAdding(false)} /> : null;
-  return { addFromInventory, addDialog };
+  return { add, addDialog };
 }
 
 type ListBodyProps = {
@@ -252,21 +267,15 @@ function ListBody({ scope, wide, list, merchantId, currency, showEmpty, folders,
   );
 }
 
-/** Setup, Add from Inventory (Products only), and Add. */
-function ListActions({ merchantId, scope, onAddFromInventory }: { merchantId: string; scope: ResourceScope; onAddFromInventory: () => void }) {
-  const route = RESOURCE_ROUTE[scope];
+/** Setup, then the screen's one way to add. */
+function ListActions({ merchantId, scope, add }: { merchantId: string; scope: ResourceScope; add: AddAction }) {
   return (
     <>
-      <Button mode="outlined" icon="settings" onPress={() => router.push({ pathname: route.setup, params: { id: merchantId } })}>
+      <Button mode="outlined" icon="settings" onPress={() => router.push({ pathname: RESOURCE_ROUTE[scope].setup, params: { id: merchantId } })}>
         Setup
       </Button>
-      {scope === 'products' ? (
-        <Button mode="outlined" icon="inventory" onPress={onAddFromInventory}>
-          Add from Inventory
-        </Button>
-      ) : null}
-      <Button mode="contained" icon="add" onPress={() => router.push({ pathname: route.new, params: { id: merchantId } })}>
-        {`Add ${RESOURCE_META[scope].item}`}
+      <Button mode="contained" icon={add.icon} onPress={add.onPress}>
+        {add.label}
       </Button>
     </>
   );
@@ -369,16 +378,16 @@ function FilterChips({
 
 function EmptyList({
   query,
-  merchantId,
   scope,
   filtered,
   onClear,
+  add,
 }: {
   query: ReturnType<typeof useProductsQuery>;
-  merchantId: string;
   scope: ResourceScope;
   filtered: boolean;
   onClear: () => void;
+  add: AddAction;
 }) {
   const meta = RESOURCE_META[scope];
 
@@ -397,8 +406,8 @@ function EmptyList({
         ) : (
           <>
             <Text variant="bodyMedium">{`No ${meta.title.toLowerCase()} yet.`}</Text>
-            <Button mode="contained" icon="add" onPress={() => router.push({ pathname: RESOURCE_ROUTE[scope].new, params: { id: merchantId } })}>
-              {`Add ${meta.item}`}
+            <Button mode="contained" icon={add.icon} onPress={add.onPress}>
+              {add.label}
             </Button>
           </>
         )}

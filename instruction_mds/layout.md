@@ -110,9 +110,9 @@ The two mockup frames are different anatomies, not one anatomy at two widths:
 
 | Narrow | Wide | Where |
 | --- | --- | --- |
-| Drawer, off-canvas | Rail, permanent, collapsible to icons | the shell |
-| Card list | `DataTable` with bulk select | Products, Discounts lists |
-| Stepper: "Step n of N", Next, progress bar | Section list beside the field grid | Products, Discounts forms |
+| Drawer, off-canvas | Rail, permanent, collapsible to icons; the Store and Resources group rows open and close their screens at both widths | the shell |
+| Card list | `DataTable` with bulk select | Assets, Discounts lists |
+| Stepper: "Step n of N", Next, progress bar | Section list beside the field grid | Assets, Discounts forms |
 | Items / Cart tabs, payment at the foot of the Cart tab | Items pane, cart and payment side by side | Register |
 | Native `formSheet` | Paper `Dialog` | confirms and pickers only; create and edit forms are full pages at both widths (`visual-language.md` §5) |
 
