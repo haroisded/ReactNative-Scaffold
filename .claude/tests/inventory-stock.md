@@ -302,19 +302,20 @@ draft for it appears on the Products screen, waiting for a price.
 ## Test 9 - Title: Price a draft so it can be sold
 
 ### What will be tested?
-You will give Paracetamol's tablet draft a price and publish it. A pass means it becomes an active
-product — the only kind the Register will sell.
+You will give Paracetamol's tablet draft a price and publish it, with no category. A pass means it
+becomes an active product — the only kind the Register will sell — and Category is not required.
 
 ### What do you need before starting?
-- Test 2 done. At least one category exists under **Products → Setup**.
+- Test 2 done.
 
 ### Steps
 1. On **Products**, tap **Paracetamol 500mg (tablet)**. Its page opens.
 2. Look under the price: a grey line reads **From Inventory: Paracetamol 500mg**.
-3. Tap **Edit**. Pick a **Category**, then type `8` as the selling price.
+3. Tap **Edit**. **Category** has no "(required)" mark; leave it blank. Type `8` as the selling price.
 4. Tap **Save as active**.
 
 ### What's the expected output?
+- It saves with no category error.
 - The product page shows the price 8 and status **Active**; **Needs price** is gone.
 - On the Inventory page of Paracetamol, **Selling as** shows **Active · 8.00**.
 

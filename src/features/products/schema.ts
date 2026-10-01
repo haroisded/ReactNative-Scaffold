@@ -259,7 +259,7 @@ export const productFormSchema = z
     // General
     type: productType,
     name: z.string().trim().min(1, 'Enter a product name.').max(120, 'Keep the name under 120 characters.'),
-    categoryId: z.string().min(1, 'Pick a category.'),
+    categoryId: z.string(),
     subcategoryId: z.string(),
     sku: z.string().trim().max(64, 'Keep the SKU under 64 characters.'),
     barcode: z.string().trim().max(64, 'Keep the barcode under 64 characters.'),
@@ -542,7 +542,7 @@ export function toSavePayload(values: ProductFormValues, target: { merchantId: s
       merchant_id: target.merchantId,
       type: values.type,
       name: values.name.trim(),
-      category_id: values.categoryId,
+      category_id: textOrNull(values.categoryId),
       subcategory_id: textOrNull(values.subcategoryId),
       sku: textOrNull(values.sku),
       barcode: textOrNull(values.barcode),

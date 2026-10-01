@@ -23,7 +23,7 @@ export function GeneralSection({ merchantId, scope }: { merchantId: string; scop
         control={control}
         name="categoryId"
         render={({ field, fieldState }) => (
-          <Field label="Category" required error={fieldState.error?.message}>
+          <Field label="Category" error={fieldState.error?.message}>
             <CategoryPicker
               merchantId={merchantId}
               scope={scope}
@@ -37,6 +37,7 @@ export function GeneralSection({ merchantId, scope }: { merchantId: string; scop
               }}
               accessibilityLabel="Category"
               error={!!fieldState.error}
+              clearable
             />
           </Field>
         )}

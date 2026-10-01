@@ -4,6 +4,18 @@
 -- DESTROYS DATA. Every revert, newest first, which takes the schema back to nothing. A migration
 -- marked `-- no-revert:` has no block here.
 
+-- ===== 20261001100000_category_optional.sql =====
+
+-- Reverts 20261001100000_category_optional.sql.
+--
+-- FAILS while any product that is neither a draft nor a stock item has no category: give those a
+-- category, or set them back to draft, first.
+
+alter table public.products drop constraint if exists products_category_required;
+alter table public.products
+  add constraint products_category_required check (category_id is not null or status = 'draft' or type = 'stock');
+
+
 -- ===== 20260930110000_sales.sql =====
 
 -- Reverts 20260930110000_sales.sql.

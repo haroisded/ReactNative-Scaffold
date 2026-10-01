@@ -108,11 +108,11 @@ pass means the recipe takes its parts out of stock and the service sells without
 
 ### Steps
 1. Open the side menu, tap **Products**, then **Add product**. The product form opens full page.
-2. Type `Fever pack` as the name, pick a category, and type `20` as the selling price.
+2. Type `Fever pack` as the name and type `20` as the selling price.
 3. On the recipe step, turn on **Recipe or bundle**, tap **Add component**, pick
    **Paracetamol 500mg**, and type `2` in **Quantity**.
 4. Save it as active.
-5. Tap **Add product** again. Type `Blood pressure check`, pick a category, type `50`, turn **Track inventory** off, and save it as active.
+5. Tap **Add product** again. Type `Blood pressure check`, type `50`, turn **Track inventory** off, and save it as active.
 6. Open **Register**.
 7. Look at the **Fever pack** and **Blood pressure check** tiles.
 8. Tap **Fever pack** once and **Blood pressure check** once.
