@@ -413,6 +413,8 @@ pass means the app asks before throwing your typing away, instead of silently le
 
 ## Test 16 - Title: A link that opens an item under the wrong screen
 
+> Retired: it needs a Rentables item, and Rentables is set aside for now, and nothing replaces this test.
+
 ### What will be tested?
 You will open a link that points to a **Rentables** item but asks for it under **Products**. A pass
 means the app refuses to show the item in the wrong place, instead of showing it with the wrong
