@@ -120,7 +120,7 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
 
   const notice = receiptNotice(save, editingProblem(editing !== null && step === 'pack'));
   const saving = save.isPending && !save.isPaused;
-  const pages = wizardPages({ form, receipt, items, currency, suppliers: suppliers.data, suppliersLoading: suppliers.isPending, createSupplier, editing, setEditing });
+  const pages = wizardPages({ merchantId, form, receipt, items, currency, suppliers: suppliers.data, suppliersLoading: suppliers.isPending, createSupplier, editing, setEditing });
   const actions = <SaveActions saving={saving} onSave={submit} />;
 
   return (
@@ -154,6 +154,7 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
 }
 
 type PagesArgs = {
+  merchantId: string;
   form: UseFormReturn<ReceiptValues>;
   receipt: ReceiptValues;
   items: PackStepProps['items'] | undefined;
@@ -166,14 +167,14 @@ type PagesArgs = {
 };
 
 /** Each step's page. The Case tier feeds the single product's pack count and cost. */
-function wizardPages({ form, receipt, items, currency, suppliers, suppliersLoading, createSupplier, editing, setEditing }: PagesArgs) {
+function wizardPages({ merchantId, form, receipt, items, currency, suppliers, suppliersLoading, createSupplier, editing, setEditing }: PagesArgs) {
   const fromCase = receipt.multi ? null : caseTotals(receipt);
   return {
     general: <GeneralFields form={form} currency={currency} suppliers={suppliers} loading={suppliersLoading} onCreateSupplier={createSupplier} />,
     unitLoad: <TierFields form={form} name="unitLoad" note="Unit Load (tier 5): skip if the delivery did not come in one." per="Pallets per unit load" total="Total pallets" />,
     pallet: <TierFields form={form} name="pallet" note="Pallet (tier 4): skip if the delivery did not come on pallets." per="Cases per pallet" total="Total cases" />,
     case: <CaseFields form={form} currency={currency} />,
-    pack: <PackStep form={form} items={items ?? []} currency={currency} fromCase={fromCase} editing={editing} onEdit={setEditing} />,
+    pack: <PackStep merchantId={merchantId} form={form} items={items ?? []} currency={currency} fromCase={fromCase} editing={editing} onEdit={setEditing} />,
     base: <BaseUnitFields form={form} currency={currency} receipt={receipt} />,
     review: (
       <>
@@ -292,8 +293,12 @@ type GeneralFieldsProps = {
 };
 
 function GeneralFields({ form, currency, suppliers, loading, onCreateSupplier }: GeneralFieldsProps) {
-  // Only active suppliers can be picked when receiving; save_receipt refuses the rest anyway.
-  const supplierOptions = (suppliers ?? []).filter((row) => row.active).map((row) => ({ value: row.id, label: row.name }));
+  // Only active suppliers can be picked when receiving; save_receipt refuses the rest anyway. "No supplier"
+  // clears a pick; supplierRules then asks for the date to be cleared too.
+  const supplierOptions = [
+    { value: '', label: 'No supplier' },
+    ...(suppliers ?? []).filter((row) => row.active).map((row) => ({ value: row.id, label: row.name })),
+  ];
 
   return (
     <FieldGrid>
@@ -308,7 +313,7 @@ function GeneralFields({ form, currency, suppliers, loading, onCreateSupplier }:
         onCreate={onCreateSupplier}
       />
       <ControlledText control={form.control} name="invoiceNo" label="Invoice / DR No." placeholder="e.g. DR-4471" maxLength={64} />
-      <ControlledDate control={form.control} name="receivedOn" label="Date received" />
+      <ControlledDate control={form.control} name="receivedOn" label="Date received" clearable />
       <ControlledText control={form.control} name="receivedBy" label="Received by" placeholder="Staff name" maxLength={80} />
       <ControlledText control={form.control} name="location" label="Receiving location" placeholder="e.g. Main Warehouse" maxLength={120} />
       <ControlledText
@@ -374,6 +379,7 @@ function OptionalNote({ text }: { text: string }) {
 }
 
 type PackStepProps = {
+  merchantId: string;
   form: Form;
   items: Parameters<typeof PackFields>[0]['items'];
   currency: string;
@@ -383,7 +389,7 @@ type PackStepProps = {
 };
 
 /** One product, or — with the switch on — a list of them, each added through its own editor. */
-function PackStep({ form, items, currency, fromCase, editing, onEdit }: PackStepProps) {
+function PackStep({ merchantId, form, items, currency, fromCase, editing, onEdit }: PackStepProps) {
   const multi = useWatch({ control: form.control, name: 'multi' });
   const lines = useWatch({ control: form.control, name: 'lines' });
   const receivedOn = useWatch({ control: form.control, name: 'receivedOn' });
@@ -415,7 +421,7 @@ function PackStep({ form, items, currency, fromCase, editing, onEdit }: PackStep
           {fromCase ? <OptionalNote text="The Case, Pallet and Unit Load counts apply to one product, and are not saved with a list." /> : null}
           {lines.map((line, index) =>
             editing === index ? (
-              <PackLineEditor key={index} items={items} currency={currency} initial={line} receivedOn={receivedOn} onSave={saveLine} onCancel={() => onEdit(null)} />
+              <PackLineEditor key={index} merchantId={merchantId} items={items} currency={currency} initial={line} receivedOn={receivedOn} onSave={saveLine} onCancel={() => onEdit(null)} />
             ) : (
               <LineRow
                 key={index}
@@ -428,20 +434,21 @@ function PackStep({ form, items, currency, fromCase, editing, onEdit }: PackStep
             )
           )}
           {editing === 'new' ? (
-            <PackLineEditor items={items} currency={currency} initial={emptyPackLine} receivedOn={receivedOn} onSave={saveLine} onCancel={() => onEdit(null)} />
+            <PackLineEditor merchantId={merchantId} items={items} currency={currency} initial={emptyPackLine} receivedOn={receivedOn} onSave={saveLine} onCancel={() => onEdit(null)} />
           ) : (
             <AddButton label="Add product / variant" onPress={() => onEdit('new')} disabled={editing !== null} />
           )}
           {linesError ? <HelperText type="error">{linesError}</HelperText> : null}
         </View>
       ) : (
-        <PackFields form={form} items={items} currency={currency} fromCase={fromCase} receivedOn={receivedOn} />
+        <PackFields merchantId={merchantId} form={form} items={items} currency={currency} fromCase={fromCase} receivedOn={receivedOn} />
       )}
     </>
   );
 }
 
 type EditorProps = {
+  merchantId: string;
   items: PackStepProps['items'];
   currency: string;
   initial: PackLineValues;
@@ -455,7 +462,7 @@ type EditorProps = {
  * the receipt. The receipt's shape with only its `line` checked (packLineFormSchema), so it reuses the Pack
  * and Base Unit fields; the Base Unit block shows and hides with Sell By as it is changed.
  */
-function PackLineEditor({ items, currency, initial, receivedOn, onSave, onCancel }: EditorProps) {
+function PackLineEditor({ merchantId, items, currency, initial, receivedOn, onSave, onCancel }: EditorProps) {
   const { colors } = useAppTheme();
   const form = useForm<ReceiptValues>({
     resolver: zodResolver(packLineFormSchema),
@@ -466,7 +473,7 @@ function PackLineEditor({ items, currency, initial, receivedOn, onSave, onCancel
 
   return (
     <View style={[styles.editor, { borderColor: colors.outlineVariant, backgroundColor: colors.surface }]}>
-      <PackFields form={form} items={items} currency={currency} fromCase={null} receivedOn={receivedOn} />
+      <PackFields merchantId={merchantId} form={form} items={items} currency={currency} fromCase={null} receivedOn={receivedOn} />
       {sellBy !== 'pack' ? <BaseUnitFields form={form} currency={currency} receipt={null} /> : null}
       <View style={styles.editorActions}>
         <Button mode="contained" icon="check" onPress={() => void form.handleSubmit((receipt) => onSave(receipt.line))()}>
@@ -500,7 +507,7 @@ function LineRow({ line, currency, disabled, onEdit, onRemove }: LineRowProps) {
           {line.name || 'New item'}
         </Text>
         <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-          {[line.sku, `${linePacks(line, null)} packs`, `${formatMoney(Number(line.costPerPack || 0), currency)}/pack`, line.productId === '' ? 'New item' : '']
+          {[line.sku, `${linePacks(line, null)} packs`, `${formatMoney(Number(line.costPerPack || 0), currency)}/pack`, line.restock ? '' : 'New item']
             .filter(Boolean)
             .join(' · ')}
         </Text>

@@ -492,8 +492,15 @@ export function ControlledSwitch<T extends FieldValues>({
   on,
   off,
   disabled,
+  onChange,
   ...field
-}: ControlledProps<T, boolean> & { on: string; off: string; disabled?: boolean }) {
+}: ControlledProps<T, boolean> & {
+  on: string;
+  off: string;
+  disabled?: boolean;
+  /** Replaces the binding's own write, for a switch that resets other fields with it (the receipt's Restock item). */
+  onChange?: (value: boolean) => void;
+}) {
   const { colors } = useAppTheme();
   const { field: input } = useController({ control, name });
 
@@ -505,7 +512,7 @@ export function ControlledSwitch<T extends FieldValues>({
           // SAFETY: `name` is a FieldPathByValue<T, boolean>, so the value at it is a boolean; TypeScript
           // cannot resolve the generic path's value type inside the component.
           value={input.value as boolean}
-          onValueChange={input.onChange}
+          onValueChange={onChange ?? input.onChange}
           disabled={disabled}
           color={colors.accent}
           accessibilityLabel={field.label}

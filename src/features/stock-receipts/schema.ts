@@ -29,7 +29,8 @@ const isoDate = z
  * item is named here and made by save_receipt in the same transaction.
  */
 const packLineFields = z.object({
-  /** '' is a new item. */
+  /** Restock item: on, an existing item (productId) arrives; off, a new one is named here. */
+  restock: z.boolean(),
   productId: z.string(),
   name: optional(120, 'Pack name'),
   sku: optional(64, 'SKU'),
@@ -55,18 +56,27 @@ const packLineFields = z.object({
   unitsPerPackReceived: amount('Base units qty received'),
   /** Cost per base unit, final when typed. Blank, it is the pack cost ÷ base units qty. */
   unitCost: amount('Cost per base unit'),
+  /** A new item's variant group, picked or named (save_stock_item makes a named one). */
+  isVariant: z.boolean(),
+  groupId: z.string(),
+  newGroup: z.boolean(),
+  newGroupName: optional(120, 'Variant group name'),
+  /** Variant name, "Red, L": one attribute per comma, stored as products.attributes. */
+  attributes: optional(200, 'Variant name'),
 });
 
 export type PackLineValues = z.infer<typeof packLineFields>;
 
 type Issue = [path: string, message: string];
 
-/** A new item names itself; an existing one brings its name and SKU. */
+/** A restock names its item; a new item names itself, and its variant group when it is a variant. */
 function identityIssues(line: PackLineValues): Issue[] {
-  if (line.productId !== '') return [];
+  if (line.restock) return line.productId === '' ? [['productId', 'Choose the item to restock.']] : [];
   const issues: Issue[] = [];
   if (line.name === '') issues.push(['name', 'Enter the pack name.']);
   if (line.sku === '') issues.push(['sku', 'Enter a SKU, or tap Auto-generate.']);
+  if (line.isVariant && line.newGroup && line.newGroupName === '') issues.push(['newGroupName', 'Enter the variant group name.']);
+  if (line.isVariant && !line.newGroup && line.groupId === '') issues.push(['groupId', 'Choose the variant group.']);
   return issues;
 }
 
@@ -124,7 +134,7 @@ type AddIssue = (path: (string | number)[], message: string) => void;
 
 function lineRules(receipt: ReceiptValues, fromCase: boolean, add: AddIssue) {
   for (const [path, message] of packLineIssues(receipt.line, fromCase)) add(['line', path], message);
-  if (serialList(receipt.line.serials).length > linePacks(receipt.line, fromCase ? receipt : null))
+  if (commaList(receipt.line.serials).length > linePacks(receipt.line, fromCase ? receipt : null))
     add(['line', 'serials'], 'More serial numbers than packs.');
 }
 
@@ -164,6 +174,7 @@ export const packLineFormSchema = receiptFields.superRefine((receipt, ctx) => {
 const emptyTier = { sscc: '', received: '', per: '' };
 
 export const emptyPackLine: PackLineValues = {
+  restock: false,
   productId: '',
   name: '',
   sku: '',
@@ -182,6 +193,11 @@ export const emptyPackLine: PackLineValues = {
   unitsPerPack: '1',
   unitsPerPackReceived: '',
   unitCost: '',
+  isVariant: false,
+  groupId: '',
+  newGroup: false,
+  newGroupName: '',
+  attributes: '',
 };
 
 /** Today on the device's calendar. `current_date` on the server is UTC, which is yesterday or tomorrow near midnight. */
@@ -271,10 +287,10 @@ export const lineUnitCost = (line: PackLineValues, receipt: Pick<ReceiptValues, 
 /** The lines a receipt saves: the list on a multi-product receipt, else the one line. */
 export const receiptLines = (receipt: ReceiptValues) => (receipt.multi ? receipt.lines : [receipt.line]);
 
-const serialList = (serials: string) =>
-  serials
+const commaList = (text: string) =>
+  text
     .split(',')
-    .map((serial) => serial.trim())
+    .map((part) => part.trim())
     .filter(Boolean);
 
 /** A code to start from when the merchant has none: PREFIX-YYYYMMDD-NNNN. Uniqueness is the server's. */
@@ -289,7 +305,7 @@ function linePayload(line: PackLineValues, receipt: ReceiptValues) {
   const fromCase = !receipt.multi ? caseTotals(receipt) : null;
   const byPack = line.sellBy === 'pack';
   return {
-    ...(line.productId === ''
+    ...(!line.restock
       ? {
           new_item: {
             item: {
@@ -302,7 +318,11 @@ function linePayload(line: PackLineValues, receipt: ReceiptValues) {
               conversion_factor: unitsPerPack(line),
               reorder_threshold: numberOrNull(line.reorderAt),
               storage_location: orNull(line.location),
+              ...(line.isVariant
+                ? { group_id: line.newGroup ? null : orNull(line.groupId), attributes: commaList(line.attributes) }
+                : { group_id: null, attributes: [] }),
             },
+            group_name: line.isVariant && line.newGroup ? line.newGroupName : null,
           },
         }
       : { product_id: line.productId }),
@@ -326,7 +346,7 @@ function linePayload(line: PackLineValues, receipt: ReceiptValues) {
     lot_code: orNull(line.lotCode),
     expires_on: line.hasExpiry ? orNull(line.expiresOn) : null,
     location: orNull(line.location),
-    serials: serialList(line.serials),
+    serials: commaList(line.serials),
   };
 }
 

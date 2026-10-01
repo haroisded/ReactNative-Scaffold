@@ -158,7 +158,7 @@ added to the receipt's total, and the fee is **not** added to the cost of a tabl
 11. Type `2` in **Received cases**, `3` in **Packs per case** and `150` in **Cost per case**.
 12. Look at **Total cost** and **Total packs** below.
 13. Tap **Next**. **Pack** opens.
-14. Tap the **Restock item** field and choose **Paracetamol 500mg**.
+14. Turn on **Restock item** (it reads **Restock an existing item**) and choose **Paracetamol 500mg** in **Item**.
 15. Look at the **Pack quantity**, **Received packs** and **Cost per pack** fields.
 16. Type `LOT-A1` in the **Lot / batch number** field.
 17. Tap the **Expiration date** field and pick a date 60 days from today.
@@ -197,7 +197,7 @@ lot saves with no number, the typed cost is kept as typed, and the sooner-expiri
 1. On **Stock → Receipts**, tap **Stock receipt**.
 2. Choose **Test Pharma Supply** in **Supplier**, pick today in **Date received**, then tap **Next**.
 3. Tap **Skip tier** three times, until **Pack** opens.
-4. Choose **Paracetamol 500mg** in the **Restock item** field.
+4. Turn on **Restock item** (it reads **Restock an existing item**) and choose **Paracetamol 500mg** in **Item**.
 5. Type `2` in **Pack quantity**, `1` in **Received packs** and `48` in **Cost per pack**.
 6. Leave **Lot / batch number** empty. Check it shows the grey words **Leave blank for none**.
 7. Pick an **Expiration date** 30 days from today.
@@ -233,7 +233,7 @@ means the receipt saves with today's date, and a second lot with no number is ac
 1. On **Stock → Receipts**, tap **Stock receipt**.
 2. Leave every field on **Supplier** empty and tap **Next**.
 3. Tap **Skip tier** three times, until **Pack** opens.
-4. Choose **Paracetamol 500mg** in **Restock item**.
+4. Turn on **Restock item** and tap **Next** without choosing an item. Then choose **Paracetamol 500mg** in **Item**.
 5. Type `1` in **Pack quantity** and `48` in **Cost per pack**. Leave **Lot / batch number** empty.
 6. Pick an **Expiration date** 120 days from today.
 7. Tap **Next** until **Review**.
@@ -242,6 +242,8 @@ means the receipt saves with today's date, and a second lot with no number is ac
 
 ### What's the expected output?
 - After step 2 the form moves on to **Unit Load** with no red message.
+- In step 4, **Next** stays on **Pack** and **Choose the item to restock.** shows in red under **Item**.
+  There is no **+ New item** in the **Item** list.
 - After step 8 the **Supplier** row reads **—**.
 - After step 9 the receipt's page opens, dated today, with no supplier named. No message says the lot
   number is already used, even though Test 5's lot also has none.
@@ -261,10 +263,11 @@ gets its own line, and a brand-new item made on the receipt appears in Inventory
    **Next**, and **Skip tier** three times.
 2. On **Pack**, turn on the switch so it reads **This pack has other products / variants in it**.
 3. Tap **Add product / variant**. An editor box opens.
-4. Choose **Paracetamol 500mg** in **Restock item**, type `2` in **Pack quantity** and `48` in **Cost per pack**, and pick an **Expiration date** 90 days from today.
+4. Turn on **Restock item** (it reads **Restock an existing item**) and choose **Paracetamol 500mg** in **Item**, type `2` in **Pack quantity** and `48` in **Cost per pack**, and pick an **Expiration date** 90 days from today.
 5. Tap **Save to list**. Paracetamol appears as a row.
 6. Tap **Add product / variant** again.
-7. Leave **Restock item** on **+ New item**. Type `Amoxicillin 250mg` in **Pack name** and tap **Auto-generate** on **SKU**.
+7. Leave **Restock item** off (it reads **New item**). Type `Amoxicillin 250mg` in **Pack name** and tap **Auto-generate** on **SKU**.
+   Turn on **Variant**, tap the **Variant group name** field, tap **New group**, type `Amoxicillin`, and type `250mg` in **Variant name**.
 8. Tap **Base unit** under **Sell by**. A **Base unit details** part appears inside the editor.
 9. Type `capsule` in **Base unit type** and `10` in **Base units qty**.
 10. Type `3` in **Pack quantity**, `85` in **Cost per pack**, and pick an **Expiration date**.
@@ -275,7 +278,7 @@ gets its own line, and a brand-new item made on the receipt appears in Inventory
 ### What's the expected output?
 - After step 8 the **Base unit details** part appears in the editor as soon as **Base unit** is tapped.
 - The review lists both products, each with its own cost per unit.
-- After step 13 Inventory lists **Amoxicillin 250mg** with **30 capsule**, and **Paracetamol 500mg** is 24 tablets higher than before step 1.
+- After step 13 Inventory lists **Amoxicillin 250mg** with **30 capsule**, under the **Amoxicillin** group, and **Paracetamol 500mg** is 24 tablets higher than before step 1.
 
 ## Test 8 - Title: Change an item's type from the list
 
@@ -495,8 +498,8 @@ only archived once it is empty.
 ## Test 19 - Title: A supplier without a date, and a date without a supplier
 
 ### What will be tested?
-A pass means the **Supplier** step can be left empty, but a supplier and a date received always go
-together: filling one asks for the other.
+A pass means the **Supplier** step can be left empty, a supplier and a date received always go
+together (filling one asks for the other), and both can be emptied again after being filled.
 
 ### What do you need before starting?
 - Test 1 done, on **Stock → Receipts**.
@@ -507,10 +510,15 @@ together: filling one asks for the other.
 3. Press the phone's Back button, tap **Discard**, and tap **Stock receipt** again.
 4. Pick today in **Date received**, leave **Supplier** empty, and tap **Next**.
 5. Look under **Supplier**.
+6. Choose **Test Pharma Supply** in **Supplier**, then open **Supplier** again and choose **No supplier** at the top of the list.
+7. Tap **Clear** beside **Date received**.
+8. Tap **Next**.
 
 ### What's the expected output?
 - After step 2 the form stays on **Supplier**, and **Enter the date the stock arrived.** shows in red under **Date received**.
 - After step 5 the form stays on **Supplier**, and **Choose the supplier, or clear the date.** shows in red under **Supplier**.
+- After step 6 **Supplier** reads **No supplier**. After step 7 **Date received** is empty and **Clear** is gone.
+- After step 8 the form moves on to **Unit Load** with no red message.
 
 ## Test 20 - Title: An expiring item received without a date
 

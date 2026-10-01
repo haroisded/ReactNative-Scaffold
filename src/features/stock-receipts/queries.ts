@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { postgrestError } from '../../lib/errors';
 import { STALE } from '../../lib/query';
 import { supabase } from '../../lib/supabase';
+import { productGroupsKey } from '../product-groups/queries';
 import { productsKey } from '../products/queries';
 import { toReceiptPayload } from './schema';
 import type { ReceiptValues } from './schema';
@@ -152,6 +153,7 @@ export function useInvalidateStock() {
 }
 
 export function useSaveReceiptMutation({ merchantId }: { merchantId: string }) {
+  const queryClient = useQueryClient();
   const invalidate = useInvalidateStock();
 
   return useMutation({
@@ -163,7 +165,8 @@ export function useSaveReceiptMutation({ merchantId }: { merchantId: string }) {
         .throwOnError();
       return data;
     },
-    onSuccess: invalidate,
+    // productGroupsKey too: a new item's variant group name makes a group row.
+    onSuccess: () => Promise.all([invalidate(), queryClient.invalidateQueries({ queryKey: productGroupsKey.all })]),
   });
 }
 

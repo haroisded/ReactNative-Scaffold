@@ -1,4 +1,4 @@
-import { useWatch } from 'react-hook-form';
+import { useController, useWatch } from 'react-hook-form';
 import type { UseFormReturn } from 'react-hook-form';
 import { StyleSheet } from 'react-native';
 
@@ -13,6 +13,7 @@ import {
 } from '../../components/form-fields';
 import { MenuSelect } from '../../components/menu-select';
 import { Text } from '../../components/text';
+import { VariantFields } from '../../components/variant-fields';
 import type { StockItemOption } from '../../features/products/queries';
 import { generateSku } from '../../features/products/schema';
 import { SELL_BY_LABEL, STOCK_ROLE_LABEL } from '../../features/products/stock-item';
@@ -32,6 +33,7 @@ const SELL_BY_OPTIONS = Object.entries(SELL_BY_LABEL).map(([value, label]) => ({
 type Form = UseFormReturn<ReceiptValues>;
 
 type PackFieldsProps = {
+  merchantId: string;
   form: Form;
   items: StockItemOption[];
   currency: string;
@@ -42,69 +44,19 @@ type PackFieldsProps = {
 };
 
 /** Pack step: which product, its identifiers, how it sells, and what arrived at what cost. */
-export function PackFields({ form, items, currency, fromCase, receivedOn }: PackFieldsProps) {
-  const { control, setValue, getValues } = form;
+export function PackFields({ merchantId, form, items, currency, fromCase, receivedOn }: PackFieldsProps) {
+  const { control } = form;
   // SAFETY: defaultValues sets every field of the line and nothing unregisters one, so the watched object
   // is whole; useWatch types it DeepPartial only because it cannot know that.
   const line = useWatch({ control, name: 'line' }) as ReceiptValues['line'];
-  const existing = line.productId !== '';
+  const existing = line.restock;
   const money = currencySymbol(currency);
   const packs = line.packs === '' ? (fromCase ? fromCase.packs : Number(line.packsExpected || 0)) : Number(line.packs);
   const costPerPack = fromCase ? fromCase.costPerPack : Number(line.costPerPack || 0);
 
-  const pickItem = (id: string) => {
-    const item = items.find((row) => row.id === id);
-    const current = getValues('line');
-    setValue('line', item ? lineForItem(current, item) : { ...emptyPackLine, lotCode: current.lotCode, serials: current.serials }, {
-      shouldDirty: true,
-    });
-  };
-  const fill = (path: 'line.sku' | 'line.lotCode' | 'line.serials', value: string) =>
-    setValue(path, value, { shouldDirty: true, shouldValidate: true });
-  const serials = () =>
-    Array.from({ length: Math.max(packs, 1) }, (_, index) => `SN-${(receivedOn || '').replace(/-/g, '')}-${String(index + 1).padStart(2, '0')}`).join(', ');
-
   return (
     <>
-      <GroupHeading title="Product details" />
-      <FieldGrid>
-        <Field
-          label="Restock item"
-          span="full"
-          hint={existing ? 'Restocking this item: its details come from it' : 'Pick an item to restock, or fill in a new one below'}
-        >
-          <ItemSelect form={form} items={items} onPick={pickItem} />
-        </Field>
-        <ControlledText control={control} name="line.name" label="Pack name" required disabled={existing} maxLength={120} />
-        <ControlledText
-          control={control}
-          name="line.sku"
-          label="SKU"
-          required
-          disabled={existing}
-          maxLength={64}
-          action={existing ? undefined : { label: 'Auto-generate', onPress: () => fill('line.sku', generateSku('stock', '')) }}
-        />
-        <ControlledSegmented control={control} name="line.stockRole" label="Pack type" required disabled={existing} options={ROLE_OPTIONS} />
-        <ControlledText
-          control={control}
-          name="line.serials"
-          label="Serial numbers"
-          hint="Manufacturer's, comma-separated"
-          maxLength={4000}
-          action={{ label: 'Auto-generate', onPress: () => fill('line.serials', serials()) }}
-        />
-        <ControlledText
-          control={control}
-          name="line.lotCode"
-          label="Lot / batch number"
-          placeholder="Leave blank for none"
-          maxLength={64}
-          action={{ label: 'Auto-generate', onPress: () => fill('line.lotCode', generatedCode('LOT', receivedOn)) }}
-        />
-        <ControlledText control={control} name="line.location" label="Storage location" maxLength={120} />
-        <ControlledSegmented control={control} name="line.sellBy" label="Sell by" span="full" required disabled={existing} options={SELL_BY_OPTIONS} />
-      </FieldGrid>
+      <ProductDetails merchantId={merchantId} form={form} items={items} receivedOn={receivedOn} packs={packs} />
 
       <GroupHeading title="Receiving details" />
       <FieldGrid>
@@ -153,13 +105,104 @@ export function PackFields({ form, items, currency, fromCase, receivedOn }: Pack
   );
 }
 
+type ProductDetailsProps = Pick<PackFieldsProps, 'merchantId' | 'form' | 'items' | 'receivedOn'> & { packs: number };
+
+/** New item or restock, then the item's identifiers and how it sells; a restock's come from the item and lock. */
+function ProductDetails({ merchantId, form, items, receivedOn, packs }: ProductDetailsProps) {
+  const { control, setValue, getValues } = form;
+  const existing = useWatch({ control, name: 'line.restock' });
+
+  const pickItem = (id: string) => {
+    const item = items.find((row) => row.id === id);
+    if (item) setValue('line', lineForItem(getValues('line'), item), { shouldDirty: true, shouldValidate: true });
+  };
+  // Either way the line starts over: a new item's typed details are not the restocked item's, nor the reverse.
+  const setRestock = (restock: boolean) => {
+    const current = getValues('line');
+    setValue('line', { ...emptyPackLine, restock, lotCode: current.lotCode, serials: current.serials }, { shouldDirty: true });
+  };
+  const fill = (path: 'line.sku' | 'line.lotCode' | 'line.serials', value: string) =>
+    setValue(path, value, { shouldDirty: true, shouldValidate: true });
+  const serials = () =>
+    Array.from({ length: Math.max(packs, 1) }, (_, index) => `SN-${(receivedOn || '').replace(/-/g, '')}-${String(index + 1).padStart(2, '0')}`).join(', ');
+
+  return (
+    <>
+      <GroupHeading title="Product details" />
+      <FieldGrid>
+        <ControlledSwitch
+          control={control}
+          name="line.restock"
+          label="Restock item"
+          span="full"
+          on="Restock an existing item"
+          off="New item"
+          onChange={setRestock}
+        />
+        {existing ? <ItemSelect form={form} items={items} onPick={pickItem} /> : null}
+        <ControlledText control={control} name="line.name" label="Pack name" required disabled={existing} maxLength={120} />
+        <ControlledText
+          control={control}
+          name="line.sku"
+          label="SKU"
+          required
+          disabled={existing}
+          maxLength={64}
+          action={existing ? undefined : { label: 'Auto-generate', onPress: () => fill('line.sku', generateSku('stock', '')) }}
+        />
+        <ControlledSegmented control={control} name="line.stockRole" label="Pack type" required disabled={existing} options={ROLE_OPTIONS} />
+        <ControlledText
+          control={control}
+          name="line.serials"
+          label="Serial numbers"
+          hint="Manufacturer's, comma-separated"
+          maxLength={4000}
+          action={{ label: 'Auto-generate', onPress: () => fill('line.serials', serials()) }}
+        />
+        <ControlledText
+          control={control}
+          name="line.lotCode"
+          label="Lot / batch number"
+          placeholder="Leave blank for none"
+          maxLength={64}
+          action={{ label: 'Auto-generate', onPress: () => fill('line.lotCode', generatedCode('LOT', receivedOn)) }}
+        />
+        <ControlledText control={control} name="line.location" label="Storage location" maxLength={120} />
+        <ControlledSegmented control={control} name="line.sellBy" label="Sell by" span="full" required disabled={existing} options={SELL_BY_OPTIONS} />
+        {existing ? null : (
+          <VariantFields
+            merchantId={merchantId}
+            control={control}
+            names={{
+              isVariant: 'line.isVariant',
+              newGroup: 'line.newGroup',
+              groupId: 'line.groupId',
+              newGroupName: 'line.newGroupName',
+              attributes: 'line.attributes',
+            }}
+          />
+        )}
+      </FieldGrid>
+    </>
+  );
+}
+
+/** The item a restock fills from; picking one copies its details into the line (lineForItem). */
 function ItemSelect({ form, items, onPick }: { form: Form; items: StockItemOption[]; onPick: (id: string) => void }) {
-  const productId = useWatch({ control: form.control, name: 'line.productId' });
-  const options = [
-    { value: '', label: '+ New item' },
-    ...items.map((row) => ({ value: row.id, label: row.sku ? `${row.name} · ${row.sku}` : row.name })),
-  ];
-  return <MenuSelect value={productId} options={options} onChange={onPick} placeholder="Choose an item" accessibilityLabel="Restock item" />;
+  const { field, fieldState } = useController({ control: form.control, name: 'line.productId' });
+  const options = items.map((row) => ({ value: row.id, label: row.sku ? `${row.name} · ${row.sku}` : row.name }));
+  return (
+    <Field label="Item" span="full" required hint="Its details come from it" error={fieldState.error?.message}>
+      <MenuSelect
+        value={field.value}
+        options={options}
+        onChange={onPick}
+        placeholder="Choose an item"
+        accessibilityLabel="Item to restock"
+        error={!!fieldState.error}
+      />
+    </Field>
+  );
 }
 
 type BaseUnitFieldsProps = {
@@ -174,7 +217,7 @@ export function BaseUnitFields({ form, currency, receipt }: BaseUnitFieldsProps)
   const { control } = form;
   // SAFETY: as in PackFields.
   const line = useWatch({ control, name: 'line' }) as ReceiptValues['line'];
-  const existing = line.productId !== '';
+  const existing = line.restock;
   const unit = line.baseUnit || 'unit';
   const units = linePacks(line, receipt) * unitsPerPack(line);
   // What a blank Cost per unit saves as, shown as its placeholder.

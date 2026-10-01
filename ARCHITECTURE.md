@@ -480,7 +480,9 @@ the rail asks before switching destination, because a drawer switch removes noth
 **Stock** (`systems/[id]/stock/`) holds Suppliers and Receipts. The Receipts pane lists one row per
 receipt line — remaining against received — opening onto its cases and packs. A receipt is written once
 by the seven-step `receipt-wizard` (Supplier, Unit Load, Pallet, Case, Pack, Base Unit, Review; the tiers
-can be skipped, and Base Unit only shows while something sells by the base unit). A line's stock is its
+can be skipped, and Base Unit only shows while something sells by the base unit). The Pack step's
+**Restock item** switch picks an existing item, which is then required; off, the line names a new item,
+optionally a variant (`src/components/variant-fields.tsx`, shared with the item form). A line's stock is its
 received packs, or its expected packs when received is left blank and read back by
 `receipt-detail`, where it can be voided while nothing has been drawn from it. **Inventory** is
 `product-list` in the `inventory` scope: rows from `inventory-rows.tsx` show the count in base units,

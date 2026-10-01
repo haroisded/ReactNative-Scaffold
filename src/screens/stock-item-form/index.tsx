@@ -10,11 +10,12 @@ import { CategoryPicker } from '../../components/category-picker';
 import { DiscardDialog } from '../../components/discard-dialog';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
-import { ControlledSelect, ControlledSwitch, ControlledText, Field, FieldGrid, SectionHeading } from '../../components/form-fields';
+import { ControlledSwitch, ControlledText, Field, FieldGrid, SectionHeading } from '../../components/form-fields';
 import { PageHeader } from '../../components/page-header';
 import { NarrowSteps, WideSections } from '../../components/section-stepper';
 import { SegmentedButtons } from '../../components/segmented-buttons';
 import { Text } from '../../components/text';
+import { VariantFields } from '../../components/variant-fields';
 import { useCategoriesQuery } from '../../features/categories/queries';
 import { useProductGroupsQuery } from '../../features/product-groups/queries';
 import { saveFailure, useSaveStockItemMutation } from '../../features/products/queries';
@@ -358,41 +359,14 @@ function StockOnHandSection({ control, currency }: { control: Control<StockItemV
 }
 
 /** Variant setup: a variant joins an existing group, or names a new one. */
-function VariantSection({ merchantId, control, setValue }: SectionProps) {
-  const groups = useProductGroupsQuery({ merchantId });
-  const [isVariant, newGroup] = useWatch({ control, name: ['isVariant', 'newGroup'] });
-  const groupOptions = (groups.data ?? []).map((row) => ({ value: row.id, label: row.name }));
-
+function VariantSection({ merchantId, control }: SectionProps) {
   return (
     <FieldGrid>
-      <ControlledSwitch control={control} name="isVariant" label="Variant" span="full" on="This is a variant of another item" off="A standalone item" />
-      {isVariant ? (
-        <>
-          {newGroup ? (
-            <ControlledText
-              control={control}
-              name="newGroupName"
-              label="New group name"
-              required
-              maxLength={120}
-              placeholder="e.g. Cotton T-shirt"
-              action={{ label: 'Pick existing', onPress: () => setValue('newGroup', false) }}
-            />
-          ) : (
-            <ControlledSelect
-              control={control}
-              name="groupId"
-              label="Variant of"
-              required
-              options={groupOptions}
-              placeholder={groups.isPending ? 'Loading…' : 'Choose a group'}
-              createLabel="New group"
-              onCreate={() => setValue('newGroup', true, { shouldDirty: true })}
-            />
-          )}
-          <ControlledText control={control} name="attributes" label="Variant attributes" hint="Comma-separated" placeholder="Red, L" maxLength={200} />
-        </>
-      ) : null}
+      <VariantFields
+        merchantId={merchantId}
+        control={control}
+        names={{ isVariant: 'isVariant', newGroup: 'newGroup', groupId: 'groupId', newGroupName: 'newGroupName', attributes: 'attributes' }}
+      />
     </FieldGrid>
   );
 }
@@ -417,8 +391,8 @@ function ReviewSection({ merchantId, currency, control }: { merchantId: string; 
         ['Subcategory', nameOf(categories.data, item.subcategoryId)],
         ...settingsFacts(item, units.base),
         ...unitFacts(item, units, currency),
-        ['Variant of', item.isVariant ? (item.newGroup ? item.newGroupName : nameOf(groups.data, item.groupId)) : null],
-        ['Variant attributes', item.isVariant ? item.attributes : null],
+        ['Variant group', item.isVariant ? (item.newGroup ? item.newGroupName : nameOf(groups.data, item.groupId)) : null],
+        ['Variant name', item.isVariant ? item.attributes : null],
         ['Description', item.description],
       ]}
     />
