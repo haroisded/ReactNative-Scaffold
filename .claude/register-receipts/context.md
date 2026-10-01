@@ -72,5 +72,5 @@ Stock on a pack-by-pack ledger with a pick order"). Also read `.claude/inventory
 The human does git. Never touch the emulator unless allowed that session. There is no web target.
 Every migration ships its revert, then `build:migrations` and `check:migrations`. RLS is written by
 hand for every table. Paper is imported through `src/components`. Use theme keys only, never
-literals. Write acceptance tests in `.claude/tests/<feature>.md`. Before handing over, run lint,
+literals. Write acceptance tests in `.claude/tests/<screen>.md`. Before handing over, run lint,
 typecheck, `tools/fallow-verdict.mjs` and `/ponytail-review`.

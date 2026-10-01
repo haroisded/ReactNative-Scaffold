@@ -96,11 +96,15 @@ dead and correct to delete.
 
 ## 4. oxlint and npm
 
-- **`MODULE_TYPELESS_PACKAGE_JSON` on every `npm run lint`** comes from
-  `tools/oxlint/anti-slop/index.ts` being TypeScript in a package with no `"type": "module"`. **oxlint
-  still exits 0.** PowerShell renders the stderr as a `NativeCommandError`, which makes a clean run
-  look failed. Check the exit code, not the text. Its suggested fix — adding `"type": "module"` — is
-  harmful; it changes module resolution for the whole Expo app.
+- **`MODULE_TYPELESS_PACKAGE_JSON` on `npm run lint`** came from `tools/oxlint/anti-slop/index.ts`
+  being TypeScript in a package with no `"type": "module"`. `package.json` has carried
+  `"type": "module"` since 2026-10-01 (the human's request), and the warning is gone. Checked that
+  day with it set: lint, typecheck, `npx expo config` (`app.config.ts` still loads), the `tools/*.mjs`
+  scripts, and `npx expo export --platform android` (Metro bundles every module). Not yet checked: an
+  iOS export, and a run on a device. This entry used to call the field harmful because it changes
+  module resolution for the whole app; no tracked `.js` file uses `require` or `module.exports`, so
+  nothing broke. If the warning comes back, oxlint still exits 0 — check the exit code, not the
+  text; PowerShell renders the stderr as a `NativeCommandError`.
 - **Colour literals in `src/themes.js` are correct.** `.oxlintrc.json` turns
   `anti-slop/no-design-literals` on for `src/**` and off for `src/themes.js`.
 

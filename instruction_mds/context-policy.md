@@ -177,7 +177,7 @@ Every file in `instruction_mds/` is Rules first, then numbered sections.
 | [`tenancy.md`](./tenancy.md) | `merchant_id`, RLS policy shape |
 | [`migrations.md`](./migrations.md) | Migration and revert pairing |
 | [`testing-workflow.md`](./testing-workflow.md) | Before/after code; the agent never touches the device |
-| [`acceptance-tests.md`](./acceptance-tests.md) | How `.claude/tests/<feature>.md` is written for human testers |
+| [`acceptance-tests.md`](./acceptance-tests.md) | How `.claude/tests/<screen>.md` is written for human testers |
 | [`optimization.md`](./optimization.md) | Performance review and the one skill gate table |
 | [`token-budget.md`](./token-budget.md) | Wrapped tool output, narrow skill triggers, bounded retrieval |
 | [`false-positives.md`](./false-positives.md) | Tool findings that are wrong here |
@@ -200,6 +200,6 @@ on the same diff get narrower descriptions, never a merge — [`token-budget.md`
 
 **No `System-Context/` directory, no per-page history markdown, no `Tests.md` in a page directory,
 no index file listing where code lives.** Git, the graph and the single system-context file replace
-all of them. The one exception is `.claude/tests/<feature>.md`: it is written for human testers,
+all of them. The one exception is `.claude/tests/<screen>.md`: it is written for human testers,
 not as agent context, and the agent does not read it to orient ([`acceptance-tests.md`](./acceptance-tests.md)). An index nothing checks is an index that rots, and a table that has quietly started
 lying is worse than no table.
