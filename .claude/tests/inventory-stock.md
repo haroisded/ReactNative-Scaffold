@@ -55,53 +55,47 @@ page, the supplier is saved with a supplier code of its own, and it can be picke
 ### What will be tested?
 On the **Inventory** screen you will create a medicine bought in cups of 12 tablets and sold by the
 tablet, going through the item form one step at a time. A pass means the barcode can be made by the
-app, the **Base unit** switch shows the tablet fields only when turned on, and the item saves with its units.
+app, the **Base unit** step appears only when **Sell by** asks for it, and the item saves with its units.
 
 ### What do you need before starting?
 - Test 1 done, on a phone.
 
 ### Steps
 1. Open the side menu, tap **Resources**, then **Inventory**. The Inventory list opens.
-2. Tap **Add item** at the top right. A form titled **Add an inventory item** opens on **Pack info**, step 1 of 7.
+2. Tap **Add item** at the top right. A form titled **Add an inventory item** opens on **Pack**, step 1 of 3.
 3. Type `Paracetamol 500mg` in the **Pack name** field.
 4. Tap **Auto-generate** on the right of the **SKU** label. A code fills the **SKU** field.
 5. Tap **Auto-generate** on the right of the **Barcode** label.
 6. Look at the **Barcode** field.
 7. Under **Pack type**, tap **Sellable**.
-8. Tap **Next** at the bottom. **Stock settings** opens.
-9. Type `cup` in the **Pack unit name** field.
+8. Under **Sell by**, tap **Base unit**. Look at the step count at the top.
+9. Scroll down to **Stock settings**. Type `cup` in the **Pack unit name** field.
 10. Type `Pharmacy shelf 1` in the **Storage location** field.
 11. Type `20` in the **Re-order at** field.
 12. Check the **Expiry** switch reads **Has an expiration date**.
-13. Tap **Next**. **Base unit** opens.
-14. Look at the **Base unit** switch and what is under it.
-15. Tap the **Base unit** switch to turn it on.
-16. Look under the switch again.
-17. Under **Sell by**, check **Base unit** is chosen.
-18. Type `tablet` in the **Base unit type** field.
-19. Type `12` in the field below it, now labelled **tablet per cup**.
-20. Tap **Next**. **Stock on hand** opens, marked **Optional**.
-21. Check the switch reads **No stock yet**, then tap **Skip step** at the bottom. **Variant setup** opens.
-22. Tap **Skip step**. **Extra** opens; it has only a **Description** field.
-23. Tap **Next**. **Review** opens.
-24. Tap **Save item** at the bottom of the screen.
+13. Scroll down to **Quantity on hand** and leave both fields blank.
+14. Tap **Next**. **Variant** opens, marked **Optional**. Tap **Skip step**. **Base unit** opens.
+15. Type `tablet` in the **Base unit type** field.
+16. Type `12` in the field below it, now labelled **tablet per cup**.
+17. Tap **Next**. **Review** opens.
+18. Tap **Save item** at the bottom of the screen.
 
 ### What's the expected output?
+- The form has no supplier field and no link to the Stock screen.
 - After step 6 the **Barcode** field holds 13 digits starting with **2**. Tapping **Auto-generate** again
   gives a different 13-digit number, also starting with **2**.
-- After step 14 the switch reads **Sold and counted by the pack only**, and there is nothing under it.
-- After step 16 the switch reads **Sold or used by the base unit**, and **Sell by** (with **Base unit**
-  and **Both**), **Base unit type** and a units-per-pack field have appeared under it.
-- After step 23 the review lists **Paracetamol 500mg**, **Sell by: Base unit**, **Units per pack: 12 tablet
-  per cup**, and no **Opening stock** line.
-- After step 24 the form closes and the item's own page opens, with **Paracetamol 500mg** at the top.
+- After step 8 the step count reads **of 4**: a **Base unit** step was added. Tapping **Pack** under
+  **Sell by** takes it back to 3.
+- After step 17 the review lists **Paracetamol 500mg**, **Sell by: Base unit**, **Units per pack: 12 tablet
+  per cup**, and no **Quantity on hand** line.
+- After step 18 the form closes and the item's own page opens, with **Paracetamol 500mg** at the top.
 - Near the top of that page the amount on hand reads **0 cup**, and **Lots (0)** further down says no
   packs yet.
 - In the item's details: **Sell by** reads **Base unit**, **Per pack** reads **1 cup = 12 tablet**,
   **Reorder at** reads **20 tablet**, and **Location** reads **Pharmacy shelf 1**.
 - A **Selling as** part lists **Paracetamol 500mg (tablet)** with a red **Needs price** on its right.
 
-## Test 3 - Title: Add sample item 2 — rice with stock on hand, no supplier
+## Test 3 - Title: Add sample item 2 — rice with a quantity on hand, no supplier
 
 ### What will be tested?
 On the **Inventory** screen you will create rice sold by the sack, and type how many sacks are already
@@ -112,23 +106,21 @@ supplier or receipt behind it.
 - On the **Inventory** screen, on a phone.
 
 ### Steps
-1. Tap **Add item** at the top right. The **Add an inventory item** form opens on **Pack info**.
+1. Tap **Add item** at the top right. The **Add an inventory item** form opens on **Pack**.
 2. Type `Rice 5kg` in the **Pack name** field.
 3. Tap **Auto-generate** next to **SKU**.
-4. Under **Pack type**, tap **Component**.
-5. Tap **Next**. On **Stock settings**, type `sack` in the **Pack unit name** field.
+4. Under **Pack type**, tap **Component**. Leave **Sell by** on **Pack**.
+5. Under **Stock settings**, type `sack` in the **Pack unit name** field.
 6. Turn the **Expiry** switch off, so it reads **Does not expire**.
-7. Tap **Next**. On **Base unit**, leave the switch off (**Sold and counted by the pack only**).
-8. Tap **Next**. On **Stock on hand**, tap the switch so it reads **Add opening stock**.
-9. Type `5` in the **sack on hand** field.
-10. Type `250` in the **Cost per sack** field.
-11. Tap **Next**, then **Skip step** on **Variant setup**, then **Next** on **Extra**.
-12. On **Review**, tap **Save item**.
+7. Under **Quantity on hand**, type `5` in the **sack on hand** field.
+8. Type `250` in the **Cost per sack** field.
+9. Tap **Next**, then **Skip step** on **Variant**.
+10. On **Review**, tap **Save item**.
 
 ### What's the expected output?
-- After step 8 the **sack on hand** and **Cost per sack** fields appear under the switch; there is no
-  loose-units field, because rice is counted by the sack only.
-- The review lists **Opening stock: 5 sack**.
+- After step 6 the **Expiry alert** field is gone.
+- There is no loose-units field anywhere, and no **Base unit** step: rice is counted by the sack only.
+- The review lists **Quantity on hand: 5 sack** and **Cost per pack: 250**.
 - The item's page opens with **Rice 5kg** at the top and **5 sack** on hand.
 - Under **Lots (1)** there is one lot with the grey words **Added in Inventory**, and five packs under it.
 - There is no **Selling as** part (a Component is not sold on its own).
@@ -436,23 +428,25 @@ leaves the counts.
 
 ### What will be tested?
 A pass means an item's details can change, but its base unit and units per pack cannot while stock is on
-hand, and an edit has no **Stock on hand** step.
+hand, and an edit has no **Quantity on hand**.
 
 ### What do you need before starting?
 - Test 5 done, on a phone.
 
 ### Steps
-1. On Paracetamol's page, tap **Edit**. The form opens on **Pack info**.
-2. Look at the step count at the top.
-3. Tap **Next** twice. **Base unit** opens.
-4. Look at the **Base unit** switch and the **tablet per cup** field.
-5. Tap the back arrow beside the step name once, to go back to **Stock settings**.
+1. On Paracetamol's page, tap **Edit**. The form opens on **Pack**.
+2. Look at the step count at the top, the **Sell by** buttons, and the bottom of the step.
+3. Tap **Next** twice (via **Variant**). **Base unit** opens.
+4. Look at the **tablet per cup** field.
+5. Tap the back arrow beside the step name twice, to go back to **Pack**.
 6. Change **Storage location** to `Pharmacy shelf 2`.
 7. Tap **Next** until **Review**, then tap **Save changes**.
 
 ### What's the expected output?
-- After step 2 the form reads step 1 of **6**, not 7: there is no **Stock on hand** step when editing.
-- After step 4 the switch and the **tablet per cup** field are greyed out with the hint **Locked while stock is on hand**.
+- After step 2 the form reads step 1 of **4**. Under **Sell by**, **Pack** is greyed out (the hint says it is
+  locked while stock is on hand), and there is no **Quantity on hand** part at the bottom.
+- After step 4 the **tablet per cup** field is greyed out with the hint **Locked while stock is on hand**, and
+  there is no **Loose tablet on hand** field.
 - After step 7 the page shows **Location** as **Pharmacy shelf 2**.
 
 ## Test 17 - Title: Edit sample item 2
@@ -464,13 +458,13 @@ A pass means Rice's details can be changed and saved from its edit form.
 - Test 3 done.
 
 ### Steps
-1. On Rice's page, tap **Edit**, then **Next** to reach **Stock settings**.
-2. Type `2` in **Re-order at**.
-3. Tap **Next** until **Extra** and look at it.
-4. Tap **Next**, then **Save changes**.
+1. On Rice's page, tap **Edit**. The form opens on **Pack**.
+2. Under **Stock settings**, type `2` in **Re-order at**.
+3. Look at the **Description** field at the end of **Stock settings**.
+4. Tap **Next** until **Review**, then **Save changes**.
 
 ### What's the expected output?
-- After step 3 **Extra** has only a **Description** field, with no **Notes** field.
+- After step 3 there is a **Description** field and no **Notes** field; the form has no **Extra** step.
 - After step 4 the page shows **Reorder at** as **2 sack**.
 
 ## Test 18 - Title: Archive and delete both sample items
@@ -563,7 +557,7 @@ step holding the problem, instead of failing quietly.
 
 ### Steps
 1. Tap **Add item**. Type `Test syrup` in **Pack name** and tap **Auto-generate** next to **SKU**.
-2. Tap **Next** twice, to **Base unit**. Turn the **Base unit** switch on and leave the units-per-pack field empty.
+2. Under **Sell by**, tap **Base unit**. Tap **Next**, **Skip step** on **Variant**, and on **Base unit** clear the units-per-pack field.
 3. Tap **Next** until **Review**, using **Skip step** on the optional steps.
 4. Tap **Save item**.
 
@@ -572,25 +566,31 @@ step holding the problem, instead of failing quietly.
   shows in red under the units-per-pack field.
 - A red line near the buttons says some fields need attention. No item named **Test syrup** is on the Inventory list.
 
-## Test 23 - Title: Opening stock turned on and left empty
+## Test 23 - Title: A variant takes its group's category
 
 ### What will be tested?
-A pass means turning on **Add opening stock** asks for the amount, and **Skip step** turns it back off.
+A pass means a variant group owns one category: the first item saved into it sets it, and every later
+variant is filed under it, whatever was picked before.
 
 ### What do you need before starting?
-- On the **Inventory** screen, on a phone.
+- On the **Inventory** screen, on a phone. Two inventory categories exist, `Medicines` and `Supplies`
+  (create them from the **Category** field's **New category** row if not).
 
 ### Steps
-1. Tap **Add item**. Type `Test gauze` in **Pack name** and tap **Auto-generate** next to **SKU**.
-2. Tap **Next** until **Stock on hand**. Turn the switch on so it reads **Add opening stock**, and type nothing.
-3. Tap **Next** until **Review**, then tap **Save item**.
-4. On the **Stock on hand** step the form opened, tap **Skip step**.
-5. Tap **Next** until **Review**, then tap **Save item**.
+1. Tap **Add item**. Type `Gauze 5cm` in **Pack name** and tap **Auto-generate** next to **SKU**.
+2. Pick **Supplies** as the **Category**. Tap **Next**.
+3. On **Variant**, turn the switch on (**This is a variant**). In **Variant group name** tap **New group**, type `Gauze`. Type `5cm` in **Variant name**.
+4. Tap **Next** until **Review**, then **Save item**.
+5. Back on Inventory, tap **Add item**. Type `Gauze 10cm`, tap **Auto-generate** next to **SKU**, and pick **Medicines** as the **Category**.
+6. Tap **Next**. Turn **Variant** on, choose **Gauze** in **Variant group name**, type `10cm` in **Variant name**. Look under the group field.
+7. Tap the back arrow beside the step name, to go back to **Pack**. Look at **Category**.
+8. Tap **Next** until **Review**, then **Save item**.
 
 ### What's the expected output?
-- After step 3 the form jumps to **Stock on hand** with **Enter the packs on hand, or turn Add opening stock off.** in red.
-- After step 4 the switch reads **No stock yet** again.
-- After step 5 the item saves with **0** on hand.
+- After step 6 the hint under **Variant group name** reads **Filed under Supplies**.
+- After step 7 **Category** shows **Supplies**, greyed out, with the hint **Set by the variant group**.
+- After step 8 both Gauze items show the category **Supplies** on their pages. Neither is under **Medicines**.
+- No item was saved with a typed quantity, and both read **0** on hand.
 
 ## Test 24 - Title: More serial numbers than packs
 
@@ -819,10 +819,10 @@ A pass means what was typed is kept, on whichever step of the item form you were
 - Signed in.
 
 ### Steps
-1. Start an inventory item, fill **Pack info**, tap **Next**, type in **Stock settings**, then take a call or open a notification, and come back.
+1. Start an inventory item, fill **Pack name** and **SKU**, tap **Next**, turn **Variant** on and type a **Variant name**, then take a call or open a notification, and come back.
 
 ### What's the expected output?
-- The form is still on **Stock settings** with the typed fields there, and **Pack info** still holds what was typed.
+- The form is still on **Variant** with the typed fields there, and **Pack** still holds what was typed.
 
 ## Test 38 - Title: Storage almost full, and a wrong clock
 
@@ -859,7 +859,7 @@ open as a full page on both.
 - Tablet: receipts in a table with columns **Date / Receipt** to **Location**; the receipt form shows every
   step on the left and the **Review** on the right; Inventory rows show a type chip, cost and value, and an
   opened item appears beside the list.
-- Tablet, step 2: the item form lists its seven steps down the left (**Pack info** to **Review**, with
+- Tablet, step 2: the item form lists its steps down the left (**Pack** to **Review**, with
   **Opt** beside the optional ones) and the open step on the right, with **Save item** at the top right.
 - Tablet, steps 3 and 4: **New supplier**, **Adjust count**, **New category** and the create-system form
   each fill the whole screen with a back arrow at the top left — none opens as a box in the middle of the screen.

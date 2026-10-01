@@ -10,7 +10,7 @@ import { CategoryPicker } from '../../components/category-picker';
 import { DiscardDialog } from '../../components/discard-dialog';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
-import { ControlledSwitch, ControlledText, Field, FieldGrid, SectionHeading } from '../../components/form-fields';
+import { ControlledSwitch, ControlledText, Field, FieldGrid, GroupHeading, SectionHeading } from '../../components/form-fields';
 import { PageHeader } from '../../components/page-header';
 import { NarrowSteps, WideSections } from '../../components/section-stepper';
 import { SegmentedButtons } from '../../components/segmented-buttons';
@@ -58,18 +58,18 @@ const COPY = {
 };
 
 const ROLE_BUTTONS = stockRole.options.map((value) => ({ value, label: STOCK_ROLE_LABEL[value] }));
-// Pack is the Base unit switch turned off, so the choice under it is between the other two.
-const SELL_BY_BUTTONS = stockSellBy.options.filter((value) => value !== 'pack').map((value) => ({ value, label: SELL_BY_LABEL[value] }));
+const SELL_BY_BUTTONS = stockSellBy.options.map((value) => ({ value, label: SELL_BY_LABEL[value] }));
 
 /**
  * An Inventory item (design.md §1, the Inventory.html create modal): what it is, how it is counted, and
  * when to warn. Saved through save_stock_item, which also keeps the register drafts the Sell by choice
  * wants — so a sellable item shows up in the register as a draft that needs its price.
  *
- * Stepped like the product form, through the same section-stepper: once the Base unit and Stock on hand
- * each became a switch with fields under it, one scroll ran to four phone screens. Base unit comes before
- * Stock on hand, so the loose-units field knows whether it exists. Rejected: one scroll of sections (the
- * form before 2026-09-30) — the fields Pack info depends on were three screens away from it.
+ * Stepped like the receipt's Pack, Variant and Base unit steps, without the receipt's supplier, lot or
+ * costs: Pack holds everything about the item plus an optional quantity on hand, and Base unit appears only
+ * when Sell by asks for one. Nothing here touches a supplier or the Stock screen. Rejected: the seven steps
+ * before 2026-10-01 (Stock settings, Stock on hand and Extra each their own step) — over-built for what is
+ * mostly one screen of fields.
  */
 export function StockItemForm({ merchantId, currency, product }: Props) {
   const wide = useShellWide();
@@ -90,12 +90,10 @@ export function StockItemForm({ merchantId, currency, product }: Props) {
 
   const editing = product !== null;
   const copy = COPY[editing ? 'edit' : 'new'];
-  const guard = useLeaveGuard(isDirty, (id) => {
-    if (editing) router.back();
-    else router.replace({ pathname: '/systems/[id]/inventory/[productId]', params: { id: merchantId, productId: id } });
-  });
+  const guard = useLeaveGuard(isDirty, (id) => leaveSaved(editing, merchantId, id));
 
-  const sections = stockSections(!editing);
+  const sellBy = useWatch({ control, name: 'sellBy' });
+  const sections = stockSections(sellBy !== 'pack');
   const [sectionId, setSectionId] = useState<StockSectionId>('pack');
   const index = Math.max(0, sections.findIndex((entry) => entry.id === sectionId));
   const current = sections[index];
@@ -111,8 +109,7 @@ export function StockItemForm({ merchantId, currency, product }: Props) {
       (fieldErrors) => {
         setInvalid(true);
         const failed = sectionsWithErrors(Object.keys(fieldErrors));
-        const first = sections.find((entry) => failed.has(entry.id));
-        if (first) setSectionId(first.id);
+        setSectionId((open) => sections.find((entry) => failed.has(entry.id))?.id ?? open);
       }
     )();
   };
@@ -120,18 +117,25 @@ export function StockItemForm({ merchantId, currency, product }: Props) {
   // Skip step undoes the step's switch, so a skipped step saves nothing.
   const skip = () => {
     if (current.id === 'variant') setValue('isVariant', false, { shouldDirty: true });
-    if (current.id === 'opening') setValue('addStock', false, { shouldDirty: true });
     setSectionId(sections[index + 1].id);
   };
 
-  const notice = stockItemNotice(save, invalid && failedSections.size > 0);
-  const saving = save.isPending && !save.isPaused;
+  const notice = stockItemNotice(save, invalid, failedSections);
+  const saving = isSaving(save);
   const actions = <SaveActions wide={wide} saving={saving} label={copy.save} onSave={submit} />;
 
   const body = (
     <>
       <SectionHeading title={STOCK_SECTION_META[current.id].name} hint={STOCK_SECTION_META[current.id].hint} />
-      <StepBody id={current.id} merchantId={merchantId} currency={currency} control={control} setValue={setValue} locked={locked} />
+      <StepBody
+        id={current.id}
+        merchantId={merchantId}
+        currency={currency}
+        control={control}
+        setValue={setValue}
+        locked={locked}
+        creating={!editing}
+      />
     </>
   );
   const steps = { sections, current, index, names: STOCK_SECTION_META, failedSections, notice, body, onOpen: setSectionId };
@@ -152,6 +156,12 @@ export function StockItemForm({ merchantId, currency, product }: Props) {
   );
 }
 
+/** After a save: an edit goes back to the item, a new item opens on its page. */
+function leaveSaved(editing: boolean, merchantId: string, productId: string) {
+  if (editing) router.back();
+  else router.replace({ pathname: '/systems/[id]/inventory/[productId]', params: { id: merchantId, productId } });
+}
+
 /** The steps holding any of these fields. */
 function sectionsWithErrors(fields: string[]): ReadonlySet<StockSectionId> {
   // SAFETY: the keys of react-hook-form's errors are field names of the form; one not in the map drops out.
@@ -164,84 +174,115 @@ type SectionProps = {
   setValue: UseFormSetValue<StockItemValues>;
 };
 
-type StepBodyProps = SectionProps & { id: StockSectionId; currency: string; locked: boolean };
+type StepBodyProps = SectionProps & { id: StockSectionId; currency: string; locked: boolean; creating: boolean };
 
-function StepBody({ id, merchantId, currency, control, setValue, locked }: StepBodyProps) {
+function StepBody({ id, merchantId, currency, control, setValue, locked, creating }: StepBodyProps) {
   switch (id) {
     case 'pack':
-      return <PackInfoSection merchantId={merchantId} control={control} setValue={setValue} />;
-    case 'settings':
-      return <StockSettingsSection control={control} />;
-    case 'base':
-      return <BaseUnitSection control={control} locked={locked} />;
-    case 'opening':
-      return <StockOnHandSection control={control} currency={currency} />;
+      return (
+        <>
+          <PackInfoSection merchantId={merchantId} control={control} setValue={setValue} locked={locked} />
+          <StockSettingsSection control={control} />
+          {creating ? <QuantitySection control={control} currency={currency} /> : null}
+        </>
+      );
     case 'variant':
       return <VariantSection merchantId={merchantId} control={control} setValue={setValue} />;
-    case 'extra':
-      return (
-        <FieldGrid>
-          <ControlledText control={control} name="description" label="Description" span="full" multiline maxLength={2000} />
-        </FieldGrid>
-      );
+    case 'base':
+      return <BaseUnitSection control={control} locked={locked} creating={creating} />;
     case 'review':
       return <ReviewSection merchantId={merchantId} currency={currency} control={control} />;
   }
 }
 
-/** Pack info: what the item is, how it is used, and where it is filed. */
-function PackInfoSection({ merchantId, control, setValue }: SectionProps) {
+/**
+ * The picked variant group's category, when it has one: the group owns it (20261001110000_group_category.sql),
+ * so the item's own Category is shown as the group's and locked. A new group, or one with no category yet,
+ * takes the item's.
+ */
+function useGroupCategory(merchantId: string, control: Control<StockItemValues>) {
+  const groups = useProductGroupsQuery({ merchantId });
+  const [isVariant, newGroup, groupId] = useWatch({ control, name: ['isVariant', 'newGroup', 'groupId'] });
+  const group = isVariant && !newGroup ? groups.data?.find((row) => row.id === groupId) : undefined;
+  return group?.category_id ? { categoryId: group.category_id, subcategoryId: group.subcategory_id ?? '' } : null;
+}
+
+/** Pack: what the item is, how it is used and sold, and where it is filed. */
+function PackInfoSection({ merchantId, control, setValue, locked }: SectionProps & { locked: boolean }) {
   const categories = useCategoriesQuery({ merchantId, scope: 'inventory' });
   const category = useController({ control, name: 'categoryId' });
   const role = useController({ control, name: 'stockRole' });
-  const categoryName = categories.data?.find((row) => row.id === category.field.value)?.name ?? '';
+  const sellBy = useController({ control, name: 'sellBy' });
+  const fromGroup = useGroupCategory(merchantId, control);
+  const categoryId = fromGroup?.categoryId ?? category.field.value;
+  const categoryName = categories.data?.find((row) => row.id === categoryId)?.name ?? '';
+  // guard_stock_item refuses a change of units per pack while stock is on hand; Pack to or from a base unit is one.
+  const sellByButtons = SELL_BY_BUTTONS.map((button) => ({
+    ...button,
+    disabled: locked && (button.value === 'pack') !== (sellBy.field.value === 'pack'),
+  }));
 
   return (
-    <FieldGrid>
-      <ControlledText control={control} name="name" label="Pack name" required span="full" maxLength={120} placeholder="e.g. Coffee beans 1kg" />
-      <ControlledText
-        control={control}
-        name="sku"
-        label="SKU"
-        required
-        maxLength={64}
-        action={{
-          label: 'Auto-generate',
-          onPress: () => setValue('sku', generateSku('stock', categoryName), { shouldDirty: true, shouldValidate: true }),
-        }}
-      />
-      <ControlledText
-        control={control}
-        name="barcode"
-        label="Barcode"
-        maxLength={64}
-        keyboardType="number-pad"
-        action={{ label: 'Auto-generate', onPress: () => setValue('barcode', generateBarcode(), { shouldDirty: true, shouldValidate: true }) }}
-      />
-      <Field label="Pack type" required span="full" error={role.fieldState.error?.message}>
-        <SegmentedButtons value={role.field.value} onValueChange={(value) => role.field.onChange(stockRole.parse(value))} buttons={ROLE_BUTTONS} />
-      </Field>
-      <Field label="Category">
-        <CategoryPicker
-          merchantId={merchantId}
-          scope="inventory"
-          parentId={null}
-          value={category.field.value}
-          onChange={(id) => {
-            category.field.onChange(id);
-            // A subcategory belongs to one category; switching category drops it.
-            setValue('subcategoryId', '', { shouldDirty: true });
+    <>
+      <GroupHeading title="Product details" />
+      <FieldGrid>
+        <ControlledText control={control} name="name" label="Pack name" required span="full" maxLength={120} placeholder="e.g. Coffee beans 1kg" />
+        <ControlledText
+          control={control}
+          name="sku"
+          label="SKU"
+          required
+          maxLength={64}
+          action={{
+            label: 'Auto-generate',
+            onPress: () => setValue('sku', generateSku('stock', categoryName), { shouldDirty: true, shouldValidate: true }),
           }}
-          accessibilityLabel="Category"
-          clearable
         />
-      </Field>
-      <SubcategoryField merchantId={merchantId} control={control} categoryId={category.field.value} />
-    </FieldGrid>
+        <ControlledText
+          control={control}
+          name="barcode"
+          label="Barcode"
+          maxLength={64}
+          keyboardType="number-pad"
+          action={{ label: 'Auto-generate', onPress: () => setValue('barcode', generateBarcode(), { shouldDirty: true, shouldValidate: true }) }}
+        />
+        <Field label="Pack type" required span="full" error={role.fieldState.error?.message}>
+          <SegmentedButtons value={role.field.value} onValueChange={(value) => role.field.onChange(stockRole.parse(value))} buttons={ROLE_BUTTONS} />
+        </Field>
+        <Field
+          label="Sell by"
+          required
+          span="full"
+          hint={locked ? 'Pack or a base unit is locked while stock is on hand' : 'Base unit or Both adds the Base unit step'}
+          error={sellBy.fieldState.error?.message}
+        >
+          <SegmentedButtons value={sellBy.field.value} onValueChange={(value) => sellBy.field.onChange(stockSellBy.parse(value))} buttons={sellByButtons} />
+        </Field>
+        <Field label="Category" hint={fromGroup ? 'Set by the variant group' : undefined}>
+          <CategoryPicker
+            merchantId={merchantId}
+            scope="inventory"
+            parentId={null}
+            value={categoryId}
+            onChange={(id) => {
+              category.field.onChange(id);
+              // A subcategory belongs to one category; switching category drops it.
+              setValue('subcategoryId', '', { shouldDirty: true });
+            }}
+            accessibilityLabel="Category"
+            clearable
+            disabled={fromGroup !== null}
+          />
+        </Field>
+        <SubcategoryField merchantId={merchantId} control={control} categoryId={categoryId} fromGroup={fromGroup?.subcategoryId ?? null} />
+      </FieldGrid>
+    </>
   );
 }
 
-function SubcategoryField({ merchantId, control, categoryId }: Omit<SectionProps, 'setValue'> & { categoryId: string }) {
+type SubcategoryFieldProps = Omit<SectionProps, 'setValue'> & { categoryId: string; fromGroup: string | null };
+
+function SubcategoryField({ merchantId, control, categoryId, fromGroup }: SubcategoryFieldProps) {
   const { colors } = useAppTheme();
   const subcategory = useController({ control, name: 'subcategoryId' });
 
@@ -252,10 +293,11 @@ function SubcategoryField({ merchantId, control, categoryId }: Omit<SectionProps
           merchantId={merchantId}
           scope="inventory"
           parentId={categoryId}
-          value={subcategory.field.value}
+          value={fromGroup ?? subcategory.field.value}
           onChange={subcategory.field.onChange}
           accessibilityLabel="Subcategory"
           clearable
+          disabled={fromGroup !== null}
         />
       ) : (
         <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
@@ -266,99 +308,74 @@ function SubcategoryField({ merchantId, control, categoryId }: Omit<SectionProps
   );
 }
 
-/** The unit stock is counted and re-ordered in: the base unit while the switch is on, else the pack. */
+/** The unit stock is counted and re-ordered in: the base unit unless it sells by the pack only. */
 function useUnits(control: Control<StockItemValues>) {
-  const [packUnit, baseUnit, byBase] = useWatch({ control, name: ['packUnit', 'baseUnit', 'byBase'] });
+  const [packUnit, baseUnit, sellBy] = useWatch({ control, name: ['packUnit', 'baseUnit', 'sellBy'] });
   const pack = packUnit || 'pack';
+  const byBase = sellBy !== 'pack';
   return { pack, base: byBase ? baseUnit || 'unit' : pack, byBase };
 }
 
 function StockSettingsSection({ control }: { control: Control<StockItemValues> }) {
   const { base } = useUnits(control);
+  const hasExpiry = useWatch({ control, name: 'hasExpiry' });
 
   return (
-    <FieldGrid>
-      <ControlledText control={control} name="packUnit" label="Pack unit name" placeholder="e.g. cup, box, tray" maxLength={20} />
-      <ControlledText control={control} name="storageLocation" label="Storage location" maxLength={120} placeholder="Back room, shelf 2" />
-      <ControlledText control={control} name="reorderAt" label="Re-order at" hint="In base units" keyboardType="decimal-pad" suffix={base} />
-      <ControlledSwitch control={control} name="hasExpiry" label="Expiry" on="Has an expiration date" off="Does not expire" />
-      <ControlledText control={control} name="expiryAlertDays" label="Expiry alert" hint="Days before a lot expires" keyboardType="number-pad" suffix="days" />
-    </FieldGrid>
+    <>
+      <GroupHeading title="Stock settings" />
+      <FieldGrid>
+        <ControlledText control={control} name="packUnit" label="Pack unit name" placeholder="e.g. cup, box, tray" maxLength={20} />
+        <ControlledText control={control} name="storageLocation" label="Storage location" maxLength={120} placeholder="Back room, shelf 2" />
+        <ControlledText control={control} name="reorderAt" label="Re-order at" hint="In base units" keyboardType="decimal-pad" suffix={base} />
+        <ControlledSwitch control={control} name="hasExpiry" label="Expiry" on="Has an expiration date" off="Does not expire" />
+        {hasExpiry ? (
+          <ControlledText control={control} name="expiryAlertDays" label="Expiry alert" hint="Days before a lot expires" keyboardType="number-pad" suffix="days" />
+        ) : null}
+        <ControlledText control={control} name="description" label="Description" span="full" multiline maxLength={2000} />
+      </FieldGrid>
+    </>
   );
 }
 
-/** The Base unit switch drives Sell by: off is sold by the pack alone, on asks what one pack holds. */
-function BaseUnitSection({ control, locked }: { control: Control<StockItemValues>; locked: boolean }) {
-  const { pack, base, byBase } = useUnits(control);
-  const role = useWatch({ control, name: 'stockRole' });
-  const sellBy = useController({ control, name: 'sellBy' });
-  const lockedHint = locked ? 'Locked while stock is on hand' : undefined;
+/** A new item's count on hand, optional: Inventory-added stock that sales draw down, never shown on Stock. */
+function QuantitySection({ control, currency }: { control: Control<StockItemValues>; currency: string }) {
+  const { pack } = useUnits(control);
+
+  return (
+    <>
+      <GroupHeading title="Quantity on hand" />
+      <FieldGrid>
+        <ControlledText control={control} name="openingPacks" label={`${pack} on hand`} hint="Blank for none yet" keyboardType="number-pad" />
+        <ControlledText control={control} name="openingCost" label={`Cost per ${pack}`} keyboardType="decimal-pad" prefix={currencySymbol(currency)} />
+      </FieldGrid>
+    </>
+  );
+}
+
+/** What one pack holds, and a new item's loose units on hand. Only while it sells by a base unit. */
+function BaseUnitSection({ control, locked, creating }: { control: Control<StockItemValues>; locked: boolean; creating: boolean }) {
+  const { pack, base } = useUnits(control);
 
   return (
     <FieldGrid>
-      <ControlledSwitch
+      <ControlledText control={control} name="baseUnit" label="Base unit type" placeholder="e.g. tablet" maxLength={20} />
+      <ControlledText
         control={control}
-        name="byBase"
-        label="Base unit"
-        span="full"
-        on="Sold or used by the base unit"
-        off="Sold and counted by the pack only"
+        name="unitsPerPack"
+        label={`${base} per ${pack}`}
+        required
+        keyboardType="decimal-pad"
         disabled={locked}
-        hint={lockedHint}
+        hint={locked ? 'Locked while stock is on hand' : undefined}
       />
-      {byBase ? (
-        <>
-          <Field
-            label="Sell by"
-            required
-            span="full"
-            hint={role === 'component' ? 'How it is counted' : 'Makes its Products drafts'}
-            error={sellBy.fieldState.error?.message}
-          >
-            <SegmentedButtons
-              value={sellBy.field.value}
-              onValueChange={(value) => sellBy.field.onChange(stockSellBy.parse(value))}
-              buttons={SELL_BY_BUTTONS}
-            />
-          </Field>
-          <ControlledText control={control} name="baseUnit" label="Base unit type" placeholder="e.g. tablet" maxLength={20} />
-          <ControlledText
-            control={control}
-            name="unitsPerPack"
-            label={`${base} per ${pack}`}
-            required
-            keyboardType="decimal-pad"
-            disabled={locked}
-            hint={lockedHint}
-          />
-        </>
+      {creating ? (
+        <ControlledText control={control} name="openingLoose" label={`Loose ${base} on hand`} hint="Outside a full pack" keyboardType="decimal-pad" />
       ) : null}
     </FieldGrid>
   );
 }
 
-/** A new item's opening stock, behind its switch. */
-function StockOnHandSection({ control, currency }: { control: Control<StockItemValues>; currency: string }) {
-  const { pack, base, byBase } = useUnits(control);
-  const addStock = useWatch({ control, name: 'addStock' });
-
-  return (
-    <FieldGrid>
-      <ControlledSwitch control={control} name="addStock" label="Opening stock" span="full" on="Add opening stock" off="No stock yet" />
-      {addStock ? (
-        <>
-          <ControlledText control={control} name="openingPacks" label={`${pack} on hand`} keyboardType="number-pad" />
-          {byBase ? (
-            <ControlledText control={control} name="openingLoose" label={`Loose ${base}`} hint="Outside a full pack" keyboardType="decimal-pad" />
-          ) : null}
-          <ControlledText control={control} name="openingCost" label={`Cost per ${pack}`} keyboardType="decimal-pad" prefix={currencySymbol(currency)} />
-        </>
-      ) : null}
-    </FieldGrid>
-  );
-}
-
-/** Variant setup: a variant joins an existing group, or names a new one. */
+/** Variant: a variant joins an existing group, or names a new one. */
 function VariantSection({ merchantId, control }: SectionProps) {
   return (
     <FieldGrid>
@@ -378,6 +395,7 @@ function ReviewSection({ merchantId, currency, control }: { merchantId: string; 
   const categories = useCategoriesQuery({ merchantId, scope: 'inventory' });
   const groups = useProductGroupsQuery({ merchantId });
   const units = useUnits(control);
+  const fromGroup = useGroupCategory(merchantId, control);
   const nameOf = (rows: { id: string; name: string }[] | undefined, id: string) => rows?.find((row) => row.id === id)?.name;
 
   return (
@@ -387,13 +405,12 @@ function ReviewSection({ merchantId, currency, control }: { merchantId: string; 
         ['SKU', item.sku],
         ['Barcode', item.barcode],
         ['Pack type', STOCK_ROLE_LABEL[item.stockRole]],
-        ['Category', nameOf(categories.data, item.categoryId)],
-        ['Subcategory', nameOf(categories.data, item.subcategoryId)],
+        ['Category', nameOf(categories.data, fromGroup?.categoryId ?? item.categoryId)],
+        ['Subcategory', nameOf(categories.data, fromGroup?.subcategoryId ?? item.subcategoryId)],
         ...settingsFacts(item, units.base),
         ...unitFacts(item, units, currency),
         ['Variant group', item.isVariant ? (item.newGroup ? item.newGroupName : nameOf(groups.data, item.groupId)) : null],
         ['Variant name', item.isVariant ? item.attributes : null],
-        ['Description', item.description],
       ]}
     />
   );
@@ -404,16 +421,19 @@ const settingsFacts = (item: StockItemValues, base: string): Fact[] => [
   ['Storage location', item.storageLocation],
   ['Re-order at', item.reorderAt && `${item.reorderAt} ${base}`],
   ['Expiry', item.hasExpiry ? 'Has an expiration date' : 'Does not expire'],
-  ['Expiry alert', item.expiryAlertDays && `${item.expiryAlertDays} days`],
+  ['Expiry alert', item.hasExpiry && item.expiryAlertDays ? `${item.expiryAlertDays} days` : null],
+  ['Description', item.description],
 ];
 
 function unitFacts(item: StockItemValues, { pack, base }: { pack: string; base: string }, currency: string): Fact[] {
-  const loose = item.byBase && Number(item.openingLoose) > 0 ? ` + ${item.openingLoose} ${base}` : '';
+  const byBase = item.sellBy !== 'pack';
+  const loose = byBase && Number(item.openingLoose) > 0 ? Number(item.openingLoose) : 0;
+  const onHand = Number(item.openingPacks || 0) > 0 || loose > 0;
   return [
-    ['Sell by', SELL_BY_LABEL[item.byBase ? item.sellBy : 'pack']],
-    ['Units per pack', item.byBase ? `${item.unitsPerPack} ${base} per ${pack}` : null],
-    ['Opening stock', item.addStock ? `${item.openingPacks || 0} ${pack}${loose}` : null],
-    ['Cost per pack', item.addStock && item.openingCost ? formatMoney(Number(item.openingCost), currency) : null],
+    ['Sell by', SELL_BY_LABEL[item.sellBy]],
+    ['Units per pack', byBase ? `${item.unitsPerPack} ${base} per ${pack}` : null],
+    ['Quantity on hand', onHand ? `${item.openingPacks || 0} ${pack}${loose > 0 ? ` + ${loose} ${base}` : ''}` : null],
+    ['Cost per pack', onHand && item.openingCost ? formatMoney(Number(item.openingCost), currency) : null],
   ];
 }
 
@@ -436,7 +456,15 @@ function SaveActions({ wide, saving, label, onSave }: { wide: boolean; saving: b
   );
 }
 
-function stockItemNotice(save: { isPaused: boolean; isError: boolean; error: Error | null }, invalid: boolean): Notice | null {
+/** A paused save (queued offline) is not in flight. */
+const isSaving = (save: { isPending: boolean; isPaused: boolean }) => save.isPending && !save.isPaused;
+
+function stockItemNotice(
+  save: { isPaused: boolean; isError: boolean; error: Error | null },
+  submitted: boolean,
+  failedSections: ReadonlySet<StockSectionId>
+): Notice | null {
+  const invalid = submitted && failedSections.size > 0;
   const failure = stockFailure(save.error);
   const text =
     saveFailure(save.error) === 'sku'

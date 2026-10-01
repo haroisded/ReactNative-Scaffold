@@ -177,30 +177,53 @@ export type Database = {
       }
       product_groups: {
         Row: {
+          category_id: string | null
           created_at: string
           id: string
           merchant_id: string
           name: string
+          scope: Database["public"]["Enums"]["category_scope"]
+          subcategory_id: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           id?: string
           merchant_id: string
           name: string
+          scope?: Database["public"]["Enums"]["category_scope"]
+          subcategory_id?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           id?: string
           merchant_id?: string
           name?: string
+          scope?: Database["public"]["Enums"]["category_scope"]
+          subcategory_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_groups_category_fk"
+            columns: ["category_id", "merchant_id", "scope"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id", "merchant_id", "scope"]
+          },
           {
             foreignKeyName: "product_groups_merchant_id_fkey"
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_groups_subcategory_fk"
+            columns: ["subcategory_id", "merchant_id", "scope"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id", "merchant_id", "scope"]
           },
         ]
       }

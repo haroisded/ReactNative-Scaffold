@@ -16,7 +16,7 @@ export function useProductGroupsQuery({ merchantId }: { merchantId: string }) {
     queryFn: async () => {
       const { data } = await supabase
         .from('product_groups')
-        .select('id, name')
+        .select('id, name, category_id, subcategory_id')
         .eq('merchant_id', merchantId)
         .order('name')
         .throwOnError();

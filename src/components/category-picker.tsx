@@ -17,6 +17,7 @@ type Props = {
   error?: boolean;
   /** A subcategory is optional, so its picker offers "None". */
   clearable?: boolean;
+  disabled?: boolean;
 };
 
 /**
@@ -32,7 +33,7 @@ type Props = {
  *
  * In src/components/ because the product form and the stock item form both use it.
  */
-export function CategoryPicker({ merchantId, scope, parentId, value, onChange, accessibilityLabel, error, clearable }: Props) {
+export function CategoryPicker({ merchantId, scope, parentId, value, onChange, accessibilityLabel, error, clearable, disabled }: Props) {
   const categories = useCategoriesQuery({ merchantId, scope });
   const resultKey = parentId ? 'subcategory' : 'category';
   useSheetResult(resultKey, onChange);
@@ -55,7 +56,7 @@ export function CategoryPicker({ merchantId, scope, parentId, value, onChange, a
       accessibilityLabel={accessibilityLabel}
       error={error}
       // A subcategory needs its parent picked first.
-      disabled={parentId !== null && !parent}
+      disabled={disabled || (parentId !== null && !parent)}
       createLabel={`New ${resultKey}`}
       onCreate={create}
     />

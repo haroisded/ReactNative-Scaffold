@@ -426,6 +426,11 @@ What these follow is `.claude/inventory-stock/` — the two mockups (`Inventory.
   Inventory** calls the same function to bring back a face someone deleted.
 - **`save_stock_item()`** (security invoker) is the Inventory form's writer: the item, a new group,
   and optional stock on hand, in one transaction.
+- **A variant group owns its category** (`20261001110000_group_category.sql`). `product_groups` carries
+  `category_id` / `subcategory_id`; the first categorised item saved into a group gives it one, and from
+  then on `private.group_category_to_item` overwrites a member's category with the group's, and
+  `private.group_category_to_items` moves every member when the group's changes. So a group is one folder
+  under one category, and queries filtering items by category need no join.
 - **The ledger.** `stock_receipts` (supplier optional; `received_on` falls back to today) →
   `stock_lots` (one per receipt line, or per Inventory add with `source = 'inventory'` and no receipt;
   the Unit Load, Pallet and Case tiers it came in; lot number, null when left blank; expiry;
@@ -490,8 +495,9 @@ packs and open packs, cost and value, an inline Type menu, and open onto a lot-a
 (`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
 tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows
 adjust, write off and return through `record_stock_movement` — the full-page `forms/stock-movement`
-at every width. The Inventory item form (`stock-item-form`) is a `section-stepper`: Pack info, Stock
-settings, Base unit, Stock on hand (new items only), Variant setup, Extra, Review. **Products** gains **Add from Inventory**
+at every width. The Inventory item form (`stock-item-form`) is a `section-stepper` mirroring the receipt's
+Pack step: Pack (details, stock settings, and a new item's optional quantity on hand), Variant, Base unit (only
+when Sell by is not Pack), Review. A picked group's category shows in Pack, locked. **Products** gains **Add from Inventory**
 (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`). Rentables is off the rail for now; its
 routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
 (`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.
