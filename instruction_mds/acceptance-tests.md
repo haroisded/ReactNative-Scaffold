@@ -10,8 +10,8 @@ tablet. The testers are people who will use the POS, not developers.
    between two or more screens goes in `.claude/tests/<screen-a>-<screen-b>.md`. §0 says how to pick.
 2. **A change gets new tests, never a rewrite of old ones.** Add the new tests to the end of the right
    file (or a new file), numbered on from its last test. A test whose behaviour the change replaced
-   keeps its steps; it gets one line under its title, `> Retired by <file> Test <n>.`, and nothing
-   else. The human asked for this on 2026-10-01: a tester's report never names a test whose steps
+   keeps its steps; it gets one line under its title, `> Retired by <file> Test <n>.` — or
+   `> Retired: <why>, and nothing replaces this test.` — and nothing else. The human asked for this on 2026-10-01: a tester's report never names a test whose steps
    changed under it.
 3. **Written for a shop owner, not a developer.** No code, file, table, API, query or error-class
    names. Name what is on the screen, in the words the screen uses ("tap **Save**", "the product list").

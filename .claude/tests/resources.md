@@ -4,6 +4,10 @@ Covers the **Resources** group in the side menu and its three screens: **Product
 **Inventory**, with their **Setup**, add, edit, archive, restore and delete. Receiving stock and the
 Inventory item's own page are covered in the inventory and stock tests instead.
 
+> **Products** is now **Assets**, under **Store** in the side menu — see `assets.md`, and
+> `side-menu.md` for the menu itself. A test marked **Retired** below is no longer run; the line under
+> its title names the test that replaced it.
+
 **Words used in this file**
 
 - **The side menu** — the list of places inside a system (Home, Register, Resources, …). On a phone
@@ -25,6 +29,8 @@ Inventory item's own page are covered in the inventory and stock tests instead.
   screen; on a tablet they sit in the bar across the top.
 
 ## Test 1 - Title: Resources opens and closes its three screens
+
+> Retired by side-menu.md Test 3.
 
 ### What will be tested?
 In the side menu, you will tap **Resources** twice. A pass means the first tap shows the three
@@ -48,6 +54,8 @@ screens under it and the second tap hides them, and neither tap changes the page
 
 ## Test 2 - Title: Resources on a tablet
 
+> Retired by side-menu.md Test 7.
+
 ### What will be tested?
 On a tablet, you will use **Resources** from the narrow bar of icons on the left edge. A pass means
 the bar widens to show the three screens, and **Rentables** opens from it.
@@ -67,6 +75,8 @@ the bar widens to show the three screens, and **Rentables** opens from it.
 - After step 2, the **Rentables** list opens, with **Rentables** as the title at the top of the page.
 
 ## Test 3 - Title: Each screen shows only its own kind of item
+
+> Retired by assets.md Test 1.
 
 ### What will be tested?
 You will look through the lists on **Products**, **Rentables** and **Inventory**. A pass means each
@@ -91,6 +101,8 @@ screen lists only its own kind of item, so a service never shows up among rental
   list — it holds only stock items.
 
 ## Test 4 - Title: Setup shows only the lists that screen uses
+
+> Retired by assets.md Test 6.
 
 ### What will be tested?
 You will open the **Setup** page of **Products** and of **Inventory** and add a category on one. A
@@ -120,6 +132,8 @@ screen uses.
 
 ## Test 5 - Title: Record 1 — add a service and save it as active
 
+> Retired by assets.md Test 1.
+
 ### What will be tested?
 On **Products**, you will add a new service and save it with **Save as active** on the form's last
 step. A pass means the last step offers both ways to save, and the saved service opens on its own
@@ -146,6 +160,8 @@ page marked **Active**.
 
 ## Test 6 - Title: Record 1 — edit, then view
 
+> Retired by assets.md Test 2.
+
 ### What will be tested?
 You will rename the active service from Test 5. A pass means editing an item that is already active
 only offers **Save changes** (not the draft/active choice again), and the item stays **Active** with
@@ -169,6 +185,8 @@ its new name.
   status badge still reads **Active**.
 
 ## Test 7 - Title: Record 1 — archive, restore, delete
+
+> Retired by assets.md Test 4.
 
 ### What will be tested?
 On the service's page, you will archive it, restore it, and then delete it. A pass means archiving
@@ -295,6 +313,8 @@ as hours, minutes and AM/PM — never as a 24-hour clock like 14:30.
 
 ## Test 12 - Title: Cancel with and without changes
 
+> Retired by assets.md Test 8.
+
 ### What will be tested?
 On the **Review** step of the product form, you will tap **Cancel** — once without typing anything,
 and once after typing a name. A pass means the app only warns you when something would be lost, and
@@ -322,6 +342,8 @@ and once after typing a name. A pass means the app only warns you when something
 
 ## Test 13 - Title: Saving with a required field empty
 
+> Retired: Assets has no create form, and nothing replaces this test.
+
 ### What will be tested?
 You will try to save a new product with no name. A pass means nothing is saved, and the form shows
 you exactly which step needs fixing and takes you there.
@@ -341,6 +363,8 @@ you exactly which step needs fixing and takes you there.
 - Nothing is saved: going back to the **Products** list shows no new item.
 
 ## Test 14 - Title: Double-tapping Save
+
+> Retired by assets.md Test 8.
 
 ### What will be tested?
 You will tap **Save as active** twice very quickly. A pass means only one item is made, not two
@@ -400,6 +424,8 @@ screen's settings.
 
 ## Test 17 - Title: Sign out and back in
 
+> Retired: Products left the Resources group, and nothing replaces this test.
+
 ### What will be tested?
 You will sign out while looking at the **Products** list, then sign back in. A pass means signing
 out goes cleanly to the sign-in screen, and the items are all still there afterwards.
@@ -419,6 +445,8 @@ out goes cleanly to the sign-in screen, and the items are all still there afterw
 - After step 4, the **Products** list shows the same items you noted before starting.
 
 ## Test 18 - Title: A different person sees none of the first person's items
+
+> Retired by assets.md Test 9.
 
 ### What will be tested?
 You will sign in as a second person on the same phone and look through all three screens. A pass
@@ -444,6 +472,8 @@ important test in this file: a failure would show one shop's data to another sho
 
 ## Test 19 - Title: Delete the account while it has items
 
+> Retired: Products left the Resources group, and nothing replaces this test.
+
 ### What will be tested?
 You will delete an account that has items on all three screens, then sign up again with the same
 login. A pass means the items are deleted along with the account, and the new start is empty.
@@ -465,6 +495,8 @@ login. A pass means the items are deleted along with the account, and the new st
 - After step 4, the **Products** list is empty. None of the old account's items are there.
 
 ## Test 20 - Title: The internet drops while saving
+
+> Retired: Assets has no create form, and nothing replaces this test.
 
 ### What will be tested?
 You will tap save while the phone is in airplane mode. A pass means the app clearly says it is
@@ -528,6 +560,8 @@ half-finished is saved: the unsaved item simply is not there when you come back.
 
 ## Test 23 - Title: A call or notification mid-form, and ten minutes away
 
+> Retired: Assets has no create form, and nothing replaces this test.
+
 ### What will be tested?
 You will be interrupted while typing in the product form, first by a call and then by leaving the
 app for ten minutes. A pass means what you typed is still there both times, and you are not asked to
@@ -550,6 +584,8 @@ sign in again.
 - Tap **Cancel** and then **Discard** when finished, so nothing is saved.
 
 ## Test 24 - Title: Phone storage almost full, and the clock set wrong
+
+> Retired: Assets has no create form, and nothing replaces this test.
 
 ### What will be tested?
 You will save a product on a phone that is almost out of storage, then try Google sign-in with the
@@ -574,6 +610,8 @@ record exactly what it says.
   read **Sign-in failed. Try again.**), so the developer can match it.
 
 ## Test 25 - Title: Phone and tablet layouts
+
+> Retired by assets.md Test 11.
 
 ### What will be tested?
 You will look at the product form's **Review** step and an archived item's page on a phone and on a
