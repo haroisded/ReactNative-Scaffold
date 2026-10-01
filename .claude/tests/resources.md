@@ -219,6 +219,8 @@ happens straight away without a "delete" warning, **Restore** brings the item ba
 
 ## Test 8 - Title: Record 2 — a rental asks for its type first
 
+> Retired: Rentables is set aside for now and not in the side menu, and nothing replaces this test.
+
 ### What will be tested?
 On **Rentables**, you will add a mountain bike and save it as a draft. A pass means the screen asks
 whether it is a **Rental Asset** or a **Bookable Service** before showing the form, the form never
@@ -245,6 +247,8 @@ lets you change that choice, and the bike saves as a **Draft**.
 
 ## Test 9 - Title: Record 2 — edit a draft, then make it active
 
+> Retired: Rentables is set aside for now and not in the side menu, and nothing replaces this test.
+
 ### What will be tested?
 You will edit the draft bike from Test 8 and save it as active. A pass means a draft still gets the
 choice between draft and active when edited, and choosing active changes its status badge.
@@ -264,6 +268,8 @@ choice between draft and active when edited, and choosing active changes its sta
 - After step 3, the page for **Mountain bike** opens and its status badge reads **Active**.
 
 ## Test 10 - Title: Record 2 — archive with Undo, then delete
+
+> Retired: Rentables is set aside for now and not in the side menu, and nothing replaces this test.
 
 ### What will be tested?
 You will archive the bike and then undo it straight away from the message bar. A pass means **Undo**
@@ -286,6 +292,8 @@ puts the bike back exactly as it was (still **Active**, not a draft), and it can
   it.
 
 ## Test 11 - Title: Opening hours use a 12-hour clock
+
+> Retired: Rentables is set aside for now and not in the side menu, and nothing replaces this test.
 
 ### What will be tested?
 On a **Bookable Service**, you will set an opening time. A pass means every time is picked and shown
@@ -520,6 +528,8 @@ waiting for the internet and will finish by itself, instead of spinning forever 
 - Delete **Offline test** afterwards.
 
 ## Test 21 - Title: Opening a screen in airplane mode
+
+> Retired: Rentables is set aside for now and not in the side menu, and nothing replaces this test.
 
 ### What will be tested?
 You will open **Rentables** with no internet. A pass means the screen says it is offline, instead of
