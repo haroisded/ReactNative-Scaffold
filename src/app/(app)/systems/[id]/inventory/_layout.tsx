@@ -2,6 +2,9 @@ import { Stack } from 'expo-router';
 
 import { useAppTheme } from '../../../../../lib/theme';
 
+// The list stays under every screen here — see products/_layout.tsx.
+export const unstable_settings = { anchor: 'index' };
+
 // Inventory is one drawer destination holding five screens — list, detail, create, edit and Setup —
 // so it is a Stack inside the shell. The shell's header stays above all of them; each screen draws
 // its own page header, so the Stack draws none.

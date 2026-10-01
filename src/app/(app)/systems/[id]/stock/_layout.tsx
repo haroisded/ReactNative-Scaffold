@@ -2,6 +2,9 @@ import { Stack } from 'expo-router';
 
 import { useAppTheme } from '../../../../../lib/theme';
 
+// The list stays under every screen here — see products/_layout.tsx.
+export const unstable_settings = { anchor: 'index' };
+
 // Stock is one drawer destination holding three screens — the Receipts | Suppliers list, the receipt
 // wizard and a receipt's detail — so it is a Stack inside the shell, like Inventory.
 export default function StockLayout() {

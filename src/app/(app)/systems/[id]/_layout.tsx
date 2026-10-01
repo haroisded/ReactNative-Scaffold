@@ -135,8 +135,16 @@ export default function SystemLayout() {
             onExpandRail={() => setExpanded(true)}
           />
         )}
+        // Back retraces the destinations actually visited. The default, 'firstRoute' (TabRouter.js:96),
+        // sends Back from any destination straight to Home — so a product opened from Inventory
+        // returned to Home, not to Inventory.
+        backBehavior="history"
         screenOptions={{
           headerShown: false,
+          // Leaving a destination pops its stack back to its list (DrawerView.js:68-78), so the rail
+          // never reopens on a detail left open earlier. Drawer scenes otherwise stay mounted with
+          // their whole stack (DrawerView.js:62-65).
+          popToTopOnBlur: true,
           drawerType: wide ? 'permanent' : 'front',
           drawerStyle: [wide ? styles.rail : styles.drawer, { backgroundColor: colors.primary, width: drawerWidth }],
           overlayColor: colors.backdrop,

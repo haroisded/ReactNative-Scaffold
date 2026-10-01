@@ -133,7 +133,9 @@ type SnackbarProps = { sale: RecordedSale | null; onDismiss: () => void; merchan
 /** "SL-00012 saved · change ₱20.00", and the way to its receipt. */
 function SaleSnackbar({ sale, onDismiss, merchantId, currency }: SnackbarProps) {
   if (!sale) return null;
-  const view = () => router.push({ pathname: '/systems/[id]/receipts/[saleId]', params: { id: merchantId, saleId: sale.id } });
+  // withAnchor: Receipts is another destination, so its list goes under the receipt (products/_layout.tsx).
+  const view = () =>
+    router.push({ pathname: '/systems/[id]/receipts/[saleId]', params: { id: merchantId, saleId: sale.id } }, { withAnchor: true });
 
   return (
     <Snackbar visible onDismiss={onDismiss} duration={6000} action={{ label: 'View receipt', onPress: view }}>

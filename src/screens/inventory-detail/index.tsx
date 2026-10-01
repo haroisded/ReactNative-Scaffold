@@ -164,7 +164,10 @@ function FacesSection({ merchantId, product, currency }: { merchantId: string; p
           {faces.data.map((face) => (
             <Pressable
               key={face.id}
-              onPress={() => router.push({ pathname: RESOURCE_ROUTE.products.detail, params: { id: merchantId, productId: face.id } })}
+              // withAnchor: another destination, so its list goes under the detail (products/_layout.tsx).
+              onPress={() =>
+                router.push({ pathname: RESOURCE_ROUTE.products.detail, params: { id: merchantId, productId: face.id } }, { withAnchor: true })
+              }
               // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
               android_ripple={{ color: colors.ripple }}
               accessibilityRole="button"

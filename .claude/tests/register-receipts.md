@@ -286,8 +286,9 @@ You check what the Register offers. A pass means only published products appear.
 ## Test 13 - Title: Double-tap, Back, and voiding twice
 
 ### What will be tested?
-You tap **Complete sale** twice fast, press Back in the void dialog, and try to void a voided sale. A
-pass means one sale, one void.
+You tap **Complete sale** twice fast, press Back in the void dialog, try to void a voided sale, and
+press Back from a receipt opened from the Register. A pass means one sale, one void, and Back stepping
+back the way you came.
 
 ### What do you need before starting?
 - On the Register with Paracetamol **1** in the cart and `10` typed as cash.
@@ -297,10 +298,17 @@ pass means one sale, one void.
 2. Open **Receipts**.
 3. Open the newest sale, tap **Void**, then press the phone's Back button (or tap **Cancel**).
 4. Look at the page.
+5. Go back to **Register** from the side menu and complete another sale. A bar at the bottom shows the
+   sale's code and **View receipt**.
+6. Tap **View receipt**. That sale's receipt opens.
+7. Press the phone's Back button once.
+8. Press the phone's Back button again.
 
 ### What's the expected output?
 - After step 2 exactly one new sale for **8.00** is in the list.
 - After step 4 the sale still reads **Paid · cash**. A voided sale shows no **Void** button at all.
+- After step 7 you are on the **Receipts** list — not on Home.
+- After step 8 you are back on the **Register** — not on Home.
 
 ## Group 3 — Accounts
 

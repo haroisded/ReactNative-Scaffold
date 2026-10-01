@@ -203,7 +203,11 @@ and `systems/[id]` sits beside it rather than inside it, so opening a system pus
 instead of becoming a fifth tab.
 
 `systems/[id]` is the merchant shell: one expo-router `Drawer`, a permanent rail on a wide container
-and an off-canvas drawer on a narrow one, around eight destinations. `profile` sits beside it as
+and an off-canvas drawer on a narrow one, around eight destinations. Back retraces visited
+destinations (`backBehavior="history"`), and leaving one pops its stack to its list
+(`popToTopOnBlur`). Every destination stack anchors on its list (`unstable_settings.anchor`), so a
+push from another destination — Inventory's **Selling as**, the Register's **View receipt** — passes
+`withAnchor: true` and Back lands on that list rather than on Home. `profile` sits beside it as
 well, so Profile opened from inside a system pushes over the shell and back returns there; its
 **Back to your systems** button is `router.dismissTo('/')`. `(app)/_layout.tsx` anchors the stack on
 `(tabs)`, so a deep link into a system still has the systems list underneath. Signing

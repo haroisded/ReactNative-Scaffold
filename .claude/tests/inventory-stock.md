@@ -645,19 +645,32 @@ number of deliveries can have no lot number (Tests 5 and 6).
 ## Test 28 - Title: Back button and double-tap
 
 ### What will be tested?
-A pass means a half-typed receipt is not lost by accident, and one tap saves one receipt.
+A pass means a half-typed receipt is not lost by accident, one tap saves one receipt, and the Back
+button steps back the way you came from an item's product, instead of jumping to Home.
 
 ### What do you need before starting?
-- Test 1 done.
+- Test 1 and Test 2 done, so sample item 1 has a product under **Selling as**.
 
 ### Steps
 1. Start a receipt, choose a supplier, then press the phone's Back button.
 2. Tap **Keep editing** (or cancel) in the window that asks about unsaved changes.
 3. Finish the receipt and tap **Save receipt** twice quickly.
+4. Open **Inventory** from the side menu, and tap sample item 1 in the list. Its page opens (on a
+   tablet, beside the list).
+5. Under **Selling as**, tap the product row (it may read **Needs price**). The **Products** screen
+   opens on that product's page.
+6. Press the phone's Back button once.
+7. Press the phone's Back button again.
+8. Tap **Products** in the side menu.
+9. Tap **Inventory** in the side menu.
 
 ### What's the expected output?
 - After step 1 a window asks whether to discard the receipt.
 - After step 3 only one new receipt appears in the **Receipts** list.
+- After step 6 you are on the **Products** list — not on Home.
+- After step 7 you are back on **Inventory** — not on Home.
+- After step 8 **Products** opens on its list, not on the product from step 5.
+- After step 9 **Inventory** shows its list with no item open beside it and no row highlighted.
 
 ## Test 29 - Title: Void a receipt stock was already taken from
 

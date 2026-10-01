@@ -1,6 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -511,6 +511,10 @@ function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, c
   // Rows whose lot drill is open. Held here, not in a row: FlashList recycles its cells.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [paneId, setPaneId] = useState<string | null>(null);
+  // Close the item pane on leaving Inventory. The drawer keeps this screen mounted, so the pane and its
+  // highlighted row were still open on the way back. useCallback is useFocusEffect's contract (it
+  // re-runs on a new function), not a render optimisation.
+  useFocusEffect(useCallback(() => () => setPaneId(null), []));
   const today = localToday();
   const selecting = rows.some((row) => selected.has(row.id));
   const paned = wide && paneId !== null;
