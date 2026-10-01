@@ -17,8 +17,8 @@ and Assets tests.
   buttons sit at the bottom of the screen on a phone and at the top right on a tablet; **Delete** is a
   red bin icon at the top right on a phone and a red **Delete** button on a tablet.
 
-Before any test: Inventory and Stock tests 2 and 3 done, so **Paracetamol 500mg** (sold by the tablet)
-and **Rice 5kg** exist in Inventory.
+Before any test: Inventory and Stock tests 2 and 3 and Inventory Test 1 done, so **Paracetamol 500mg**
+(sold by the tablet) and **Rice 5kg** exist in Inventory, and both are sold.
 
 ---
 
@@ -246,3 +246,52 @@ You will open **Assets** on a phone and on a tablet. A pass means each gets its 
 - On the phone the list is cards, and **Add from Inventory** slides up from the bottom.
 - On the tablet the list is a table with checkboxes, and **Add from Inventory** opens as a box in the
   middle.
+
+---
+
+## Added later — Normal use
+
+## Test 12 - Title: An asset saves with no category
+
+### What will be tested?
+On **Assets**, you will price **Paracetamol 500mg (tablet)** and leave its category empty. A pass means
+the category is optional, and the asset's page names the Inventory item it sells.
+
+### What do you need before starting?
+- Test 3 done, so **Paracetamol 500mg (tablet)** is a draft again with no price.
+
+### Steps
+1. On **Assets**, tap **Paracetamol 500mg (tablet)**. Its page opens.
+2. Look under the price on its page.
+3. Tap **Edit**. The edit form opens on its first step.
+4. Look at the **Category** field on that step, and leave it empty.
+5. Go to the **Pricing** step and type `8` in **Selling price**.
+6. Go to **Review** and tap **Save as active**.
+
+### What's the expected output?
+- After step 2 a grey line reads **From Inventory: Paracetamol 500mg**, followed by its SKU.
+- After step 4 **Category** has no **(required)** after its name.
+- After step 6 it saves with no message about the category, and the asset's page shows **Active** and
+  **8.00**.
+
+## Added later — Outside the app
+
+## Test 13 - Title: Setup's New category on a phone and a tablet
+
+### What will be tested?
+From **Assets**, you will open the new category form on a tablet and on a phone. A pass means it fills
+the whole screen on both, instead of opening as a box in the middle.
+
+### What do you need before starting?
+- A phone and a tablet signed in to the same account, each on **Assets**.
+
+### Steps
+1. On the tablet, tap **Setup** at the top right of **Assets**. The **Setup** screen opens.
+2. Tap **New category**.
+3. Tap the back arrow at the top left.
+4. Do steps 1–3 on the phone.
+
+### What's the expected output?
+- After step 2, on both, the **New category** form fills the whole screen with a back arrow at the top
+  left — not a box in the middle of the screen.
+- After step 3, on both, the **Setup** screen shows again.

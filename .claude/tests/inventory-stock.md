@@ -8,6 +8,10 @@ class, new category and the stock count forms.
 
 Run the tests in order: later tests use the supplier, items and receipts earlier ones make.
 
+**Products** is now **Assets**, under **Store** in the side menu. The tests that sent you to Products
+are retired, and new tests for these screens are in `inventory.md`, `stock.md`, `assets.md` and
+`home.md`. A test marked Retired is no longer run.
+
 A few words used throughout:
 
 - **Pack** — what an item is bought and counted in: a cup of tablets, a sack of rice.
@@ -274,6 +278,8 @@ gets its own line, and a brand-new item made on the receipt appears in Inventory
 
 ## Test 8 - Title: Change an item's type from the list
 
+> Retired by inventory.md Test 1.
+
 ### What will be tested?
 On a **tablet**, you will change Rice from Component to Both on the Inventory list. A pass means a
 draft for it appears on the Products screen, waiting for a price.
@@ -292,6 +298,8 @@ draft for it appears on the Products screen, waiting for a price.
 - On **Products**, a row **Rice 5kg (sack)** shows as a draft with **Needs price**.
 
 ## Test 9 - Title: Price a draft so it can be sold
+
+> Retired by assets.md Test 12.
 
 ### What will be tested?
 You will give Paracetamol's tablet draft a price and publish it, with no category. A pass means it
@@ -312,6 +320,8 @@ becomes an active product — the only kind the Register will sell — and Categ
 - On the Inventory page of Paracetamol, **Selling as** shows **Active · 8.00**.
 
 ## Test 10 - Title: Bring back a deleted draft with Add from Inventory
+
+> Retired by assets.md Test 3.
 
 ### What will be tested?
 You will delete Rice's draft and bring it back. A pass means **Add from Inventory** only offers items
@@ -739,6 +749,8 @@ number of deliveries can have no lot number (Tests 5 and 6).
 
 ## Test 28 - Title: Back button and double-tap
 
+> Retired by stock.md Test 1, and inventory-assets.md Tests 1 and 4.
+
 ### What will be tested?
 A pass means a half-typed receipt is not lost by accident, one tap saves one receipt, and the Back
 button steps back the way you came from an item's product, instead of jumping to Home.
@@ -801,6 +813,8 @@ A pass means signing out never freezes the screen.
 
 ## Test 31 - Title: A different account sees none of this stock
 
+> Retired by inventory.md Test 2, stock.md Test 2 and assets.md Test 9.
+
 ### What will be tested?
 The most important test here. A pass means a second person never sees the first person's items,
 suppliers or receipts, not even for a moment.
@@ -816,6 +830,8 @@ suppliers or receipts, not even for a moment.
 - None of **Paracetamol 500mg**, **Rice 5kg**, **Test Pharma Supply** or the receipts appear on any screen, at any moment.
 
 ## Test 32 - Title: Sign back in as the first account
+
+> Retired by inventory.md Test 2 and stock.md Test 2.
 
 ### What will be tested?
 A pass means the first person's stock is all still there.
@@ -926,6 +942,8 @@ A pass means the app still opens and saves; note any message a wrong clock cause
 - After step 1 both save. After step 2 write down any message shown.
 
 ## Test 39 - Title: Phone and tablet
+
+> Retired by inventory.md Test 3, stock.md Test 3, assets.md Test 13 and home.md Test 1.
 
 ### What will be tested?
 A pass means the tablet shows the wide layouts and the phone the narrow ones, and that the create forms

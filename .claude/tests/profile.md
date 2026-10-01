@@ -144,6 +144,8 @@ look for the whole screen, and does not freeze, close, or leave some parts in th
 
 ## Test 7 - Title: Every other screen follows the look
 
+> Retired by profile.md Test 15.
+
 ### What will be tested?
 You will change the look on **Profile** and then visit other screens. A pass means the look applies
 to the whole app, not only to the **Profile** screen.
@@ -322,3 +324,29 @@ change and remember the look even when the phone is short of space.
 **Sample records:** none. Nothing on this screen creates, edits or deletes a record of its own, so
 the two-record cycle in the acceptance-test rules does not apply here. Test 11 is the one thing that
 removes data, and it removes the account itself.
+
+---
+
+## Added later — Normal use
+
+## Test 15 - Title: Every other screen follows the look
+
+### What will be tested?
+You will change the look on **Profile** and then visit other screens. A pass means the look applies
+to the whole app, not only the **Profile** screen.
+
+### What do you need before starting?
+- Signed in, on the **Profile** screen, on a phone, with at least one system (shop) already created,
+  and at least one asset on its **Assets** screen.
+
+### Steps
+1. Tap the theme button on the **Themes** row once. Note the look the app is in now.
+2. Go back to the list of systems: tap **Home** in the tab bar at the bottom.
+3. Tap one of the systems. It opens on its own home page.
+4. Tap the **☰** menu button at the top left. The side menu slides in. Tap **Store**, then **Assets**.
+   The **Assets** list opens.
+5. Tap any asset in the list. The asset's page opens.
+
+### What's the expected output?
+- The list of systems in step 2, the system's home page in step 3, the side menu and the **Assets**
+  list in step 4, and the asset's page in step 5 are all in the look you noted in step 1.

@@ -15,8 +15,11 @@ A few words used throughout:
   its stock goes back on the shelf.
 - **(required)** — at the end of a field's name when it must be filled in.
 
-Before any test: the Inventory and Stock tests 1–4 and 9 are done, so **Paracetamol 500mg (tablet)**
-is an active product priced `8`, with tablets received into stock.
+Before any test: the Inventory and Stock tests 1–4 and the Assets tests 1–3 and 12 are done, so
+**Paracetamol 500mg (tablet)** is an active product priced `8`, with tablets received into stock.
+
+**Products** is now **Assets**, under **Store** in the side menu, and it has no create form. The tests
+that needed one are retired; a test marked Retired is no longer run.
 
 ---
 
@@ -99,6 +102,8 @@ totals follow every change and exact payment gives no change.
 
 ## Test 4 - Title: Sell sample sale 2 — a recipe and a product with no stock
 
+> Retired: Assets has no create form, so the recipe and the service cannot be made, and nothing replaces this test.
+
 ### What will be tested?
 You make a product built from Paracetamol (a recipe) and a service with no stock, then sell both. A
 pass means the recipe takes its parts out of stock and the service sells without touching stock.
@@ -129,6 +134,8 @@ pass means the recipe takes its parts out of stock and the service sells without
 
 ## Test 5 - Title: Receipts list and a receipt's details
 
+> Retired by receipts.md Test 1.
+
 ### What will be tested?
 On the **Receipts** screen in the side menu you look at every sale made so far and open one. A pass
 means every sale appears once, newest first, and its page shows the lines, the cash and the stock it took.
@@ -152,6 +159,8 @@ means every sale appears once, newest first, and its page shows the lines, the c
   On **Stock → Receipts**, that pack's count is 3 lower.
 
 ## Test 6 - Title: Void sample sale 1
+
+> Retired by receipts.md Test 2.
 
 ### What will be tested?
 On sample sale 1's page you void it with a reason. A pass means the sale is marked **Void** but stays
@@ -178,6 +187,8 @@ in the list, and its 3 tablets go back to the pack they came from.
 - After step 7 the number is 3 higher than before step 1.
 
 ## Test 7 - Title: Void sample sale 2
+
+> Retired: it voids the sale from Test 4, which is retired, and nothing replaces this test.
 
 ### What will be tested?
 You void the recipe sale from test 4. A pass means the two tablets the recipe used go back.
@@ -252,6 +263,8 @@ are never sold.
 
 ## Test 11 - Title: Product no longer sold
 
+> Retired by assets-register.md Test 2.
+
 ### What will be tested?
 A product is archived while it is in the cart. A pass means the sale is refused and names the product.
 
@@ -269,6 +282,8 @@ A product is archived while it is in the cart. A pass means the sale is refused 
 - After step 4 the **Fever pack** tile is gone.
 
 ## Test 12 - Title: Only Products appear — never Rentables or bare Inventory items
+
+> Retired by assets-register.md Test 1.
 
 ### What will be tested?
 You check what the Register offers. A pass means only published products appear.

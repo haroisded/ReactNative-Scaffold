@@ -13,8 +13,8 @@ its own is covered in the Inventory and Stock tests and the Assets tests.
   is sold.
 - **Selling as** — a list on an Inventory item's page, near the bottom, of the assets made from it.
 
-Before any test: Inventory and Stock tests 2 and 3 done, so **Paracetamol 500mg** (sold by the tablet)
-and **Rice 5kg** exist in Inventory.
+Before any test: Inventory and Stock tests 2 and 3 and Inventory Test 1 done, so **Paracetamol 500mg**
+(sold by the tablet) and **Rice 5kg** exist in Inventory, and both are sold.
 
 ---
 

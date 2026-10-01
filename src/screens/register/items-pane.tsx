@@ -79,7 +79,7 @@ export function ItemsPane({ merchantId, currency, onAdd }: Props) {
                 failure="Couldn't load products. Try again."
               >
                 <Text variant="bodyMedium">
-                  {term ? 'Nothing matches that search.' : 'No products to sell. Publish one in Products.'}
+                  {term ? 'Nothing matches that search.' : 'No products to sell. Publish one in Assets.'}
                 </Text>
               </QueryState>
             </View>
