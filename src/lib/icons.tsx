@@ -41,6 +41,8 @@ export const ICONS = {
   account: { ios: 'person', android: 'person' },
   'account-circle': { ios: 'person.crop.circle', android: 'account_circle' },
   'bar-chart': { ios: 'chart.bar', android: 'bar_chart' },
+  // Inventory's and Stock's category and variant group folders.
+  folder: { ios: 'folder', android: 'folder' },
   bell: { ios: 'bell', android: 'notifications' },
   // SF Symbols has no calculator glyph; the mockups' Register key reads as arithmetic either way.
   calculator: { ios: 'plus.forwardslash.minus', android: 'calculate' },

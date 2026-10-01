@@ -5,7 +5,6 @@ import { ActivityIndicator } from '../../components/activity-indicator';
 import { Button } from '../../components/button';
 import { Checkbox } from '../../components/checkbox';
 import { Chip } from '../../components/chip';
-import { Icon } from '../../components/icon';
 import { IconButton } from '../../components/icon-button';
 import { LotDrill } from '../../components/lot-drill';
 import { Menu } from '../../components/menu';
@@ -19,19 +18,12 @@ import { useItemStockQuery } from '../../features/stock-movements/queries';
 import { failureMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
+import type { InventorySource } from '../../Store/list-filters';
 import { spacing } from '../../themes';
 
 // The Inventory screen's rows (.claude/inventory-stock/Inventory.html): live counts per item in its base
 // unit, how many packs and how many open, its type — changed right here — cost and value, and a drill
-// down to lot and individual pack. Variants gather under their group; standalone items follow.
-
-export type InventorySource = 'all' | 'stock' | 'inventory';
-
-export const SOURCE_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'stock', label: 'Received via Stock' },
-  { value: 'inventory', label: 'Added in Inventory' },
-] satisfies { value: InventorySource; label: string }[];
+// down to lot and individual pack. The folders around them are src/features/products/folders.ts.
 
 /** Received via Stock once any of its stock came on a receipt; otherwise it was added in Inventory. */
 export function itemSource(item: ProductListRow): Exclude<InventorySource, 'all'> {
@@ -45,79 +37,12 @@ function itemExpiry(item: ProductListRow, today: string) {
   return states.includes('expired') ? 'expired' : states.includes('soon') ? 'soon' : null;
 }
 
-export type InventoryEntry =
-  | { kind: 'group'; id: string; name: string; count: number; open: boolean }
-  | { kind: 'label'; id: string; name: string }
-  | { kind: 'item'; item: ProductListRow; nested: boolean };
-
-/**
- * The list's rows in display order: each group's header followed by its variants (unless collapsed), the
- * groups in the order their first variant arrives in, then "Standalone items" and every item without a
- * group.
- */
-export function groupInventory(rows: ProductListRow[], collapsed: ReadonlySet<string>): InventoryEntry[] {
-  const groups = new Map<string, { name: string; items: ProductListRow[] }>();
-  const loose: InventoryEntry[] = [];
-  for (const item of rows) {
-    if (item.group_id === null) {
-      loose.push({ kind: 'item', item, nested: false });
-      continue;
-    }
-    const group = groups.get(item.group_id) ?? { name: item.group?.name ?? 'Group', items: [] };
-    group.items.push(item);
-    groups.set(item.group_id, group);
-  }
-
-  const entries: InventoryEntry[] = [];
-  for (const [id, group] of groups) {
-    const open = !collapsed.has(id);
-    entries.push({ kind: 'group', id, name: group.name, count: group.items.length, open });
-    if (open) entries.push(...group.items.map((item) => ({ kind: 'item' as const, item, nested: true })));
-  }
-  if (entries.length > 0 && loose.length > 0) entries.push({ kind: 'label', id: 'standalone', name: 'Standalone items' });
-  return [...entries, ...loose];
-}
-
-export function GroupHeader({ name, count, open, onToggle }: { name: string; count: number; open: boolean; onToggle: () => void }) {
-  const { colors } = useAppTheme();
-
-  return (
-    <Pressable
-      onPress={onToggle}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
-      android_ripple={{ color: colors.ripple }}
-      accessibilityRole="button"
-      accessibilityState={{ expanded: open }}
-      accessibilityLabel={`${name}, ${count} variants`}
-      style={[styles.group, { backgroundColor: colors.surfaceMuted, borderBottomColor: colors.surfaceVariant }]}
-    >
-      <Icon source={open ? 'chevron-down' : 'chevron-right'} size={20} color={colors.onSurfaceMuted} />
-      <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.fill}>
-        {name}
-      </Text>
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
-        {`${count} ${count === 1 ? 'variant' : 'variants'}`}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** "Standalone items": the heading between the grouped variants and everything else. */
-export function SectionLabel({ name }: { name: string }) {
-  const { colors } = useAppTheme();
-  return (
-    <Text variant="labelMedium" style={[styles.label, { color: colors.onSurfaceMuted, borderBottomColor: colors.surfaceVariant }]}>
-      {name}
-    </Text>
-  );
-}
-
 type RowProps = {
   item: ProductListRow;
   today: string;
   currency: string;
   wide: boolean;
-  /** Under a group header: indented, and named by its attributes when it has them. */
+  /** In its variant group's folder: named by its attributes when it has them. */
   nested: boolean;
   selecting: boolean;
   selected: boolean;
@@ -132,14 +57,14 @@ type RowProps = {
 };
 
 export function InventoryRow(props: RowProps) {
-  const { item, currency, wide, nested, selecting, selected, active, expanded, showEmpty, onExpand, onToggle } = props;
+  const { item, currency, wide, selecting, selected, active, expanded, showEmpty, onExpand, onToggle } = props;
   const { colors } = useAppTheme();
   const highlighted = selected || active;
   const unit = unitName(item);
 
   return (
     <View style={[styles.row, { borderBottomColor: colors.surfaceVariant }, highlighted && { backgroundColor: colors.surfaceMuted }]}>
-      <View style={[styles.inner, nested && styles.nested]}>
+      <View style={styles.inner}>
         {selecting ? (
           <Checkbox.Android status={selected ? 'checked' : 'unchecked'} onPress={onToggle} />
         ) : (
@@ -301,7 +226,7 @@ function RowDrill({ item, unit, currency, showEmpty }: { item: ProductListRow; u
   );
 }
 
-/** A variant under its group reads as its attributes: "Red / Large". */
+/** A variant in its group's folder reads as its attributes: "Red / Large". */
 function rowName(item: ProductListRow, nested: boolean) {
   return nested && item.attributes.length > 0 ? item.attributes.join(' / ') : item.name;
 }
@@ -326,18 +251,8 @@ function packInfo(item: ProductListRow) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  group: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.ms,
-  },
-  label: { borderBottomWidth: 1, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   row: { borderBottomWidth: 1 },
   inner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingLeft: spacing.xs, paddingRight: spacing.md, paddingVertical: spacing.sm },
-  nested: { paddingLeft: spacing.lg },
   // IconButton ships a 6dp margin of its own; zeroed so the row's gap is the only spacing.
   caret: { margin: 0 },
   nameCell: { flex: 1.6, gap: spacing.xs },

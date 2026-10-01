@@ -34,6 +34,7 @@ src/lib/icons.tsx          the icon name map ({ ios, android } symbols) and Pape
 src/lib/database.types.ts  generated from the schema; regenerate whenever a migration lands
 src/Store/StoreUser.ts     the session handler — one onAuthStateChange subscription
 src/Store/sheet-result.ts  the row a create sheet hands back to the picker that opened it
+src/Store/list-filters.ts  a list screen's filters, shared by its folder levels and its Filters sheet
 src/themes.js              MD3 light/dark palettes + Merchant keys, roundness, spacing and radius
                            scales, the type scale
 src/features/<resource>/   data only — queries.ts and schema.ts for merchants, profiles, products
@@ -490,7 +491,12 @@ can be skipped, and Base Unit only shows while something sells by the base unit)
 optionally a variant (`src/components/variant-fields.tsx`, shared with the item form). A line's stock is its
 received packs, or its expected packs when received is left blank and read back by
 `receipt-detail`, where it can be voided while nothing has been drawn from it. **Inventory** is
-`product-list` in the `inventory` scope: rows from `inventory-rows.tsx` show the count in base units,
+`product-list` in the `inventory` scope, browsed as folders — category, subcategory, variant group
+(`src/features/products/folders.ts`, `src/components/folder-nav.tsx`); each folder is the list route pushed
+with `category` / `sub` / `group` params, so Back climbs one, and a search lists every match flat. Stock's
+Receipts pane folds its lines the same way. Filters other than search and sort sit in a panel
+(`list-filters-dialog.tsx`, `sheets/list-filters`) whose state is `src/Store/list-filters.ts`, shared by
+every folder level. Rows from `inventory-rows.tsx` show the count in base units,
 packs and open packs, cost and value, an inline Type menu, and open onto a lot-and-pack drill
 (`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
 tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows

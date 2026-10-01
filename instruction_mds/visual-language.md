@@ -137,7 +137,9 @@ on Android.
 | Pack row (Stock and Inventory drills) | outlined `radius.sm` row: `titleMedium` code, status in `labelMedium` (Sealed `onSurface`, Open `accent`, Empty `onSurfaceFaint` and the row at half opacity), `bodySmall` caption, `ProgressBar` in `accent` with `rem/units` — `src/components/pack-row.tsx`; lots of them under a lot head — `src/components/lot-drill.tsx` |
 | Low-stock and lot-expiry badges (Low, Expiring, Expired) | `labelMedium` in `error` — `src/components/product-badges.tsx`. A lot's Expired is a warning, not the faint Expired status under §3 Status colours |
 | Search | outlined dense `TextInput` with a `TextInput.Icon` |
-| Filter and sort | an outlined `Button` anchoring a `Menu` |
+| Filter and sort | one toolbar row: the Search field, an outlined `Button` "Filters · n" (`filter` icon) opening the Filter panel, and Sort as an outlined `Button` anchoring a `Menu`. Each filter that is on is a `Chip` with an `x` under the row, then an `accent` text `Button` "Clear all" — `src/screens/product-list/` |
+| Filter panel | `src/components/list-filters-dialog.tsx`: a Dialog wide, `sheets/list-filters` narrow. Selects for one-of-many, `SegmentedButtons` for two to four, Toggles for on/off; changes apply as made, so it has Done and no Apply. Rejected: filters spread across the toolbar and two chip rows — they wrapped into three lines on a phone |
+| Folder row and breadcrumb | `src/components/folder-nav.tsx`: `folder` `Icon`, `titleMedium` name, `bodySmall` count, `chevron-right`; above the list inside a folder, text `Button` segments split by `chevron-right` and the open folder in `titleSmall`. Each folder is a push of the list route, so Back climbs one. Rejected: collapsible group headers — a long category list scrolled past them |
 | Type badge | `View` with a 1px `outlineVariant` border on `surfaceMuted`, holding `labelMedium` |
 | Thumbnail placeholder | `View` on `surfaceVariant` with an `Icon`; a real image is `expo-image` |
 

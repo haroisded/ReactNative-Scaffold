@@ -383,29 +383,42 @@ A pass means used-up packs are hidden until asked for.
 ### Steps
 1. On **Inventory**, open the Paracetamol row's arrow.
 2. Look for the pack emptied in Test 12.
-3. Turn on **Show empty packs** above the list.
+3. Tap **Filters** beside the search box, turn on **Show empty packs**, and tap **Done**.
+4. Tap the **x** on the **Showing empty packs** chip under the search box.
 
 ### What's the expected output?
 - After step 2 the empty pack is not listed.
-- After step 3 it is listed, faded, reading **Empty** and **0/12**.
+- After step 3 it is listed, faded, reading **Empty** and **0/12**. **Filters · 1** shows on the button,
+  and a **Showing empty packs** chip sits under the search box.
+- After step 4 the chip is gone, the button reads **Filters**, and the empty pack is hidden again.
 
 ## Test 14 - Title: Filters on the Inventory list
 
 ### What will be tested?
-A pass means the list can be narrowed by where stock came from and by type.
+A pass means the list can be narrowed by where stock came from and by type, from one **Filters**
+panel, with each filter that is on shown as a chip.
 
 ### What do you need before starting?
 - Tests 3–7 done.
 
 ### Steps
-1. On **Inventory**, tap **Added in Inventory**.
-2. Tap **Received via Stock**.
-3. Tap **All**, then tap **Sellable** in the second row of chips.
+1. On **Inventory**, look at the row under the title: a search box, **Filters** and **Sort: Name**. There is
+   no **Category** filter.
+2. Tap **Filters**. Under **Source** tap **In Inventory**. Tap **Done**.
+3. Tap **Filters** again. Under **Source** tap **Via Stock**. Tap **Done**.
+4. Tap **Filters**. Under **Source** tap **All**, under **Type** tap **Sellable**, and turn on **Low stock only**.
+   Tap **Done**.
+5. Tap **Clear all** under the search box.
 
 ### What's the expected output?
-- After step 1 only **Rice 5kg** shows.
-- After step 2 **Paracetamol 500mg** and **Amoxicillin 250mg** show, and **Rice 5kg** does not.
-- After step 3 only Sellable items show.
+- On a phone, step 2 opens a sheet from the bottom; on a tablet, a box in the middle of the screen.
+- After step 2 only **Rice 5kg** shows, a **Added in Inventory** chip sits under the search box, and the
+  button reads **Filters · 1**.
+- After step 3 **Paracetamol 500mg** and **Amoxicillin 250mg** show, **Rice 5kg** does not, and the chip
+  reads **Received via Stock**.
+- After step 4 only Sellable items at or under their re-order point show, with two chips: **Sellable** and
+  **Low stock only**. The button reads **Filters · 2**.
+- After step 5 every item is back, there are no chips, and the sort is still **Name**.
 
 ## Test 15 - Title: Void a receipt nothing has been taken from
 
@@ -485,6 +498,79 @@ only archived once it is empty.
 - After step 1 a message says the item can be archived only once its stock is gone; nothing changes.
 - After step 2 Rice leaves the list (it is archived).
 - After step 3 a message says the item has stock history and cannot be deleted.
+
+## Test 39 - Title: Browse Inventory by folder
+
+### What will be tested?
+A pass means categories and variant groups show as folders you open and back out of, and a search
+ignores them.
+
+### What do you need before starting?
+- Test 23 done: **Gauze 5cm** and **Gauze 10cm** in the **Gauze** group, filed under **Supplies**.
+
+### Steps
+1. On **Inventory**, look at the top of the list.
+2. Tap the **Supplies** folder.
+3. Tap the **Gauze** folder.
+4. Tap **Supplies** in the line above the list (**Inventory › Supplies › Gauze**).
+5. Open **Gauze** again, then press the phone's back button twice.
+6. Open **Supplies** › **Gauze**, then tap **Home** in the rail or drawer and come back to **Inventory**.
+7. Type `gauze` in the search box.
+
+### What's the expected output?
+- After step 1 folders come first — **Supplies** reading **2 items** — then the items with no category,
+  such as **Paracetamol 500mg** and **Rice 5kg**. There are no **Standalone items** heading and no
+  open/close group headers.
+- After step 2 the list holds only the **Gauze** folder (**2 items**), with **Inventory › Supplies** above it.
+- After step 3 the two rows read **5cm** and **10cm**, with **Inventory › Supplies › Gauze** above them.
+- After step 4 you are back in **Supplies**.
+- After step 5 the first back shows **Supplies**, the second the top of **Inventory** — the app does not
+  leave Inventory.
+- After step 6 Inventory opens at the top level, not inside **Gauze**.
+- After step 7 both Gauze items show in one flat list with their full names, with no folders and no
+  **Inventory ›** line.
+
+## Test 40 - Title: Filters stay on inside a folder
+
+### What will be tested?
+A pass means a filter set at the top of Inventory still applies inside every folder, and in its sheet.
+
+### What do you need before starting?
+- Test 39 done.
+
+### Steps
+1. On **Inventory**, tap **Filters**, under **Type** tap **Component**, and tap **Done**.
+2. Open the **Supplies** folder, if it still shows.
+3. Tap **Filters** inside the folder.
+4. Tap **Done**, then tap **Clear all**, then press back.
+
+### What's the expected output?
+- After step 1 a **Component** chip shows, and a folder shows only if a Component item is inside it.
+- After step 2 the **Component** chip is still there.
+- After step 3 **Type** has **Component** selected.
+- After step 4 the top of Inventory has no chips either.
+
+## Test 41 - Title: Browse Stock receipts by folder
+
+### What will be tested?
+A pass means Stock's receipt lines sit in the same category and variant group folders as Inventory.
+
+### What do you need before starting?
+- Tests 4–7 done, and at least one received item filed under a category (edit one and pick
+  **Supplies** if none is).
+
+### Steps
+1. Open **Stock**, on **Receipts**.
+2. Tap the category folder.
+3. Open a line's arrow.
+4. Press back.
+
+### What's the expected output?
+- After step 1 folders come first, each with how many receipt lines it holds, then the lines with no
+  category, newest first.
+- After step 2 **Stock › <category>** shows above the lines, newest first.
+- After step 3 the line opens onto its cases and packs, as before.
+- After step 4 you are at the top of **Stock**.
 
 ---
 

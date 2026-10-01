@@ -25,6 +25,7 @@ const SHEETS = [
   'sheets/delete-product',
   'sheets/delete-supplier',
   'sheets/delete-tax-class',
+  'sheets/list-filters',
   'sheets/remove-system',
   'sheets/void-receipt',
   'sheets/void-sale',

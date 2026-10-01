@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from '../../components/activity-indicator';
 import { Button } from '../../components/button';
 import { DataTable } from '../../components/data-table';
+import { FolderBreadcrumb, FolderRow, useFolderPath } from '../../components/folder-nav';
 import { displayDate } from '../../components/form-fields';
 import { HeaderTitle } from '../../components/header-title';
 import { Icon } from '../../components/icon';
@@ -14,6 +15,10 @@ import { PackRow } from '../../components/pack-row';
 import { ProgressBar } from '../../components/progress-bar';
 import { QueryState } from '../../components/query-state';
 import { Text } from '../../components/text';
+import { useCategoriesQuery } from '../../features/categories/queries';
+import { useProductGroupsQuery } from '../../features/product-groups/queries';
+import { folderEntries, folderTrail } from '../../features/products/folders';
+import type { FolderEntry } from '../../features/products/folders';
 import { lotBalance } from '../../features/stock-movements/queries';
 import { RECEIPT_STATUS_LABEL, lineStatus, useLotPacksQuery, useReceiptLinesQuery } from '../../features/stock-receipts/queries';
 import type { ReceiptLineRow, ReceiptStatus } from '../../features/stock-receipts/queries';
@@ -25,7 +30,8 @@ import { spacing } from '../../themes';
 
 // Stock → Receipts (.claude/inventory-stock/Stock_Receiving.html): one row per receipt line — what
 // arrived, from whom, and how much of it is left — each opening onto its cases and packs. Receipt data is
-// fixed as history; the remaining counts move as stock is sold, used or written off.
+// fixed as history; the remaining counts move as stock is sold, used or written off. The lines sit in
+// Inventory's folders — category, subcategory, variant group — newest first inside each.
 
 // A line's status in the muted scale of instruction_mds/visual-language.md §3: only Partial, the one that
 // is being drawn from, carries the accent.
@@ -47,12 +53,79 @@ export function ReceiptsPane({ merchantId, currency }: Props) {
   const lines = useReceiptLinesQuery({ merchantId });
   const rows = lines.data ?? [];
   const [open, setOpen] = useState<string | null>(null);
+  const folders = useFolderPath('/systems/[id]/stock', merchantId);
+  const categories = useCategoriesQuery({ merchantId, scope: 'inventory' });
+  const groups = useProductGroupsQuery({ merchantId });
+  const named = [...(categories.data ?? []), ...(groups.data ?? [])];
+  const entries = folderEntries(rows, placeOf, folders.path, named);
+  const crumbs = <FolderBreadcrumb root="Stock" trail={folderTrail(folders.path, named)} />;
 
   const toggle = (id: string) => setOpen((current) => (current === id ? null : id));
   const openReceipt = (receiptId: string) =>
     router.push({ pathname: '/systems/[id]/stock/receipts/[receiptId]', params: { id: merchantId, receiptId } });
 
-  const empty = (
+  const empty = <EmptyLines lines={lines} merchantId={merchantId} />;
+
+  const renderItem = ({ item: entry }: { item: FolderEntry<ReceiptLineRow> }) => {
+    if (entry.kind === 'folder') {
+      const caption = `${entry.count} receipt ${entry.count === 1 ? 'line' : 'lines'}`;
+      return <FolderRow name={entry.name} caption={caption} onOpen={() => folders.open(entry.level, entry.id)} />;
+    }
+    const { item } = entry;
+    return (
+      <LineRow
+        item={item}
+        wide={wide}
+        currency={currency}
+        open={open === item.id}
+        onToggle={() => toggle(item.id ?? '')}
+        onOpenReceipt={() => item.receipt_id && openReceipt(item.receipt_id)}
+      />
+    );
+  };
+  const list = (
+    <FlashList
+      data={entries}
+      keyExtractor={(entry) => (entry.kind === 'item' ? (entry.item.id ?? '') : `${entry.level}:${entry.id}`)}
+      getItemType={(entry) => entry.kind}
+      extraData={open}
+      ListEmptyComponent={empty}
+      renderItem={renderItem}
+    />
+  );
+
+  if (!wide) {
+    return (
+      <View style={styles.fill}>
+        {crumbs}
+        {list}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.fill}>
+      {crumbs}
+      <DataTable style={styles.fill}>
+        <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
+          <HeaderTitle label="Date / Receipt" style={styles.dateCell} />
+          <HeaderTitle label="Supplier" style={styles.supplierCell} />
+          <HeaderTitle label="Item" style={styles.itemCell} />
+          <HeaderTitle label="Batch / Lot" style={styles.lotCell} />
+          <HeaderTitle label="Remaining / Received" style={styles.remainingCell} />
+          <HeaderTitle label="Status" style={styles.statusCell} />
+          <HeaderTitle label="Cost" style={styles.moneyCell} />
+          <HeaderTitle label="Unit cost" style={styles.moneyCell} />
+          <HeaderTitle label="Location" style={styles.locationCell} />
+        </DataTable.Header>
+        {list}
+      </DataTable>
+    </View>
+  );
+}
+
+function EmptyLines({ lines, merchantId }: { lines: ReturnType<typeof useReceiptLinesQuery>; merchantId: string }) {
+  return (
     <View style={styles.state}>
       {/* Paused before pending (instruction_mds/data-layer.md §5). */}
       {lines.isPaused && !lines.data ? (
@@ -78,39 +151,14 @@ export function ReceiptsPane({ merchantId, currency }: Props) {
       )}
     </View>
   );
-
-  const renderItem = ({ item }: { item: ReceiptLineRow }) => (
-    <LineRow
-      item={item}
-      wide={wide}
-      currency={currency}
-      open={open === item.id}
-      onToggle={() => toggle(item.id ?? '')}
-      onOpenReceipt={() => item.receipt_id && openReceipt(item.receipt_id)}
-    />
-  );
-
-  if (!wide) {
-    return <FlashList data={rows} keyExtractor={(item) => item.id ?? ''} extraData={open} ListEmptyComponent={empty} renderItem={renderItem} />;
-  }
-
-  return (
-    <DataTable style={styles.fill}>
-      <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
-        <HeaderTitle label="Date / Receipt" style={styles.dateCell} />
-        <HeaderTitle label="Supplier" style={styles.supplierCell} />
-        <HeaderTitle label="Item" style={styles.itemCell} />
-        <HeaderTitle label="Batch / Lot" style={styles.lotCell} />
-        <HeaderTitle label="Remaining / Received" style={styles.remainingCell} />
-        <HeaderTitle label="Status" style={styles.statusCell} />
-        <HeaderTitle label="Cost" style={styles.moneyCell} />
-        <HeaderTitle label="Unit cost" style={styles.moneyCell} />
-        <HeaderTitle label="Location" style={styles.locationCell} />
-      </DataTable.Header>
-      <FlashList data={rows} keyExtractor={(item) => item.id ?? ''} extraData={open} ListEmptyComponent={empty} renderItem={renderItem} />
-    </DataTable>
-  );
 }
+
+/** Where a line's item sits in the folders. */
+const placeOf = (item: ReceiptLineRow) => ({
+  category: item.product?.category_id ?? null,
+  sub: item.product?.subcategory_id ?? null,
+  group: item.product?.group_id ?? null,
+});
 
 /** "Chicken — Whole Chicken" for a variant, else the item's name. */
 const itemLabel = (item: ReceiptLineRow) =>

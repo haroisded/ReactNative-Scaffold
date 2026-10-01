@@ -20,7 +20,7 @@ const stockReceiptsKey = {
 
 /**
  * The Stock screen's rows: one per receipt line (a lot that came on a receipt), newest first, with what it
- * has left. Inventory-added stock has no receipt and is not listed here.
+ * has left, and where its item sits in the folders (src/features/products/folders.ts). Inventory-added stock has no receipt and is not listed here.
  */
 export function useReceiptLinesQuery({ merchantId }: { merchantId: string }) {
   return useQuery({
@@ -31,7 +31,7 @@ export function useReceiptLinesQuery({ merchantId }: { merchantId: string }) {
       const { data } = await supabase
         .from('stock_lot_lines')
         .select(
-          'id, receipt_id, code, qty_received, qty_remaining, packs_total, packs_open, line_cost, freight_share, unit_cost, location, expires_on, created_at, receipt:stock_receipts!stock_lots_receipt_fk(code, received_on, voided_at, supplier:suppliers!stock_receipts_supplier_fk(name)), product:products!stock_lots_product_fk(name, base_unit_name, pack_unit_name, group:product_groups!products_group_fk(name))'
+          'id, receipt_id, code, qty_received, qty_remaining, packs_total, packs_open, line_cost, freight_share, unit_cost, location, expires_on, created_at, receipt:stock_receipts!stock_lots_receipt_fk(code, received_on, voided_at, supplier:suppliers!stock_receipts_supplier_fk(name)), product:products!stock_lots_product_fk(name, category_id, subcategory_id, group_id, base_unit_name, pack_unit_name, group:product_groups!products_group_fk(name))'
         )
         .eq('merchant_id', merchantId)
         .eq('source', 'stock')
