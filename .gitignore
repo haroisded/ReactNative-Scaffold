@@ -66,3 +66,6 @@ supabase/.branches/
 
 # graphify knowledge graph output
 graphify-out/
+
+# /teach workspaces — personal lessons and audit notes, not project docs
+.claude/teach/
