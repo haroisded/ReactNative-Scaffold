@@ -110,6 +110,7 @@ export function ProductList({ merchantId, merchantName, currency, scope }: Props
         kicker={merchantName}
         title={meta.title}
         meta={products.data ? countLabel(rows.length, meta.item, filtered) : undefined}
+        onBack={browsing ? folders.back : undefined}
         actions={<ListActions merchantId={merchantId} scope={scope} add={add} />}
       />
 
@@ -182,8 +183,8 @@ type Folders = ReturnType<typeof useInventoryFolders>;
 /** Inventory's open folder, and the names its folders and breadcrumb read: categories and variant groups. */
 function useInventoryFolders(merchantId: string, categories: { id: string; name: string }[]) {
   const groups = useProductGroupsQuery({ merchantId });
-  const { path, open } = useFolderPath('/systems/[id]/inventory', merchantId);
-  return { path, open, named: [...categories, ...(groups.data ?? [])] };
+  const { path, open, back } = useFolderPath('/systems/[id]/inventory', merchantId);
+  return { path, open, back, named: [...categories, ...(groups.data ?? [])] };
 }
 
 /** Delete asks first: a Dialog wide, a formSheet route narrow. Either way a delete clears the selection. */

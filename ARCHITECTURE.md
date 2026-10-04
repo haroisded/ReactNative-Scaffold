@@ -50,7 +50,8 @@ src/components/            one re-export per Paper primitive (text.tsx is the Te
                            per-variant font-scale cap and iOS ramp), plus what more than one screen or a
                            sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
                            category-picker, lot-drill and pack-row (an item's stock, lot by lot and
-                           pack by pack), add-from-inventory-dialog, the confirm/create dialogs (void-receipt,
+                           pack by pack), pack-fields (a receipt's Pack and Base Unit fields, which the
+                           Inventory item form shares), add-from-inventory-dialog, the confirm/create dialogs (void-receipt,
                            void-sale — both on void-dialog — and stock-movement among them, all on confirm-dialog), discard-dialog (the
                            unsaved-changes prompt the three forms share), form-footer, step-header
                            (the product form and receipt wizard's narrow stepper), section-stepper
@@ -510,9 +511,13 @@ packs and open packs, cost and value, an inline Type menu, and open onto a lot-a
 (`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
 tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows
 adjust, write off and return through `record_stock_movement` — the full-page `forms/stock-movement`
-at every width. The Inventory item form (`stock-item-form`) is a `section-stepper` mirroring the receipt's
-Pack step: Pack (details, stock settings, and a new item's optional quantity on hand), Variant, Base unit (only
-when Sell by is not Pack), Review. A picked group's category shows in Pack, locked. **Assets** is `product-list` in the `products` scope —
+at every width. The Inventory item form (`stock-item-form`) is the receipt's Pack and Base Unit steps on a
+`section-stepper` — the same fields (`src/components/pack-fields.tsx`, `itemForm` mode) on the same line
+(`itemFormSchema`), with no supplier, restock, serials or lot, plus Category and Expiry alert: Pack, Base unit
+(only when Sell by is not Pack), Review. A new item's Pack quantity is its stock on hand — a lot with no receipt
+(`add_inventory_stock`) that the Register draws like any other; an item with stock on hand locks Sell by and
+Base units qty. A picked group's category shows in Pack, locked. Inside a folder the page header's back arrow
+climbs one level, as Back does. **Assets** is `product-list` in the `products` scope —
 the route keeps its name, only the label changed — and has no create: `RESOURCE_ROUTE.products` has no
 `new`, and its one add is **Add from Inventory** (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`).
 Flat rows made directly before that still list and stay editable. Rentables is off the rail for now; its

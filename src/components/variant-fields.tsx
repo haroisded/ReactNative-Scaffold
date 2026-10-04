@@ -8,7 +8,7 @@ import { ControlledSelect, ControlledSwitch, ControlledText } from './form-field
 type Props<T extends FieldValues> = {
   merchantId: string;
   control: Control<T>;
-  /** Where the five fields sit in the form: the Inventory item form's root, a receipt's `line`. */
+  /** Where the five fields sit in the form: a receipt's `line`, which the Inventory item form holds too. */
   names: {
     isVariant: FieldPathByValue<T, boolean>;
     newGroup: FieldPathByValue<T, boolean>;

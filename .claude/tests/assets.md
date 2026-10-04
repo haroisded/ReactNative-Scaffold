@@ -2,8 +2,7 @@
 
 Covers the **Assets** screen on its own: what it lists, its one way to add (**Add from Inventory**),
 pricing an asset, and archive and delete. Assets used to be called **Products**. The side menu that
-leads here is covered in the side menu tests, and moving between Inventory and Assets in the Inventory
-and Assets tests.
+leads here is covered in the side menu tests.
 
 **Words used in this file**
 
@@ -17,8 +16,8 @@ and Assets tests.
   buttons sit at the bottom of the screen on a phone and at the top right on a tablet; **Delete** is a
   red bin icon at the top right on a phone and a red **Delete** button on a tablet.
 
-Before any test: Inventory and Stock tests 2 and 3 and Inventory Test 1 done, so **Paracetamol 500mg**
-(sold by the tablet) and **Rice 5kg** exist in Inventory, and both are sold.
+Before any test: Inventory tests 6 and 9 done, so **Paracetamol 500mg** (sold by the box and by the
+tablet) and **Rice 5kg** exist in Inventory, and both are sold.
 
 ---
 

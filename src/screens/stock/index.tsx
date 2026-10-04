@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../components/button';
+import { useFolderPath } from '../../components/folder-nav';
 import { PageHeader } from '../../components/page-header';
 import { SegmentedButtons } from '../../components/segmented-buttons';
 import { fontScaled, PANE_SWITCH, useShellWide } from '../../lib/columns';
@@ -26,6 +27,8 @@ type Pane = 'receipts' | 'suppliers';
 export function Stock({ merchantId, merchantName, currency }: Props) {
   const [pane, setPane] = useState<Pane>('receipts');
   const wide = useShellWide();
+  // Inside a Receipts folder, the header's arrow climbs one level (the folders are ReceiptsPane's).
+  const folderBack = useFolderPath('/systems/[id]/stock', merchantId).back;
   // The header's "Add supplier" and the pane's empty state open the same form.
   const addSupplier = () => router.push({ pathname: '/forms/supplier', params: { merchantId } });
 
@@ -47,6 +50,7 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
       <PageHeader
         kicker={merchantName}
         title="Stock"
+        onBack={pane === 'receipts' ? folderBack : undefined}
         meta={pane === 'receipts' ? 'Receipts per item — received vs remaining, drill to case and pack' : 'Who you buy from'}
         actions={
           <>

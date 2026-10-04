@@ -5,12 +5,12 @@ import { postgrestError } from '../../lib/errors';
 import { STALE } from '../../lib/query';
 import { supabase } from '../../lib/supabase';
 import { productGroupsKey } from '../product-groups/queries';
+import type { PackLineValues } from '../stock-receipts/schema';
 import type { ResourceScope } from './resources';
 import type { StockRole } from './stock-item';
 import { fromProductDetail, toSavePayload } from './schema';
 import type { ProductFormValues, ProductStatus, ProductType } from './schema';
 import { toStockItemPayload } from './stock-item';
-import type { StockItemValues } from './stock-item';
 
 export type Product = Tables<'products'>;
 
@@ -377,9 +377,9 @@ export function useSaveStockItemMutation({ merchantId }: { merchantId: string })
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ values, product }: { values: StockItemValues; product: ProductDetail | null }) => {
+    mutationFn: async ({ line, product }: { line: PackLineValues; product: ProductDetail | null }) => {
       const { data } = await supabase
-        .rpc('save_stock_item', { payload: toStockItemPayload(values, { merchantId, product }) })
+        .rpc('save_stock_item', { payload: toStockItemPayload(line, { merchantId, product }) })
         .throwOnError();
       return data;
     },

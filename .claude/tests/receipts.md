@@ -1,8 +1,7 @@
 # Receipts — acceptance tests
 
 Covers the **Receipts** screen under **Store** in the side menu: every sale, a sale's page, and voiding
-one. Older tests for it are in the Register and Receipts tests; the tests here replace the ones retired
-there. **Stock**'s own **Receipts** list is deliveries, not sales, and is covered in the Stock tests.
+one. **Stock**'s own **Receipts** list is deliveries, not sales, and is covered in the Stock tests.
 
 **Words used in this file**
 
@@ -11,8 +10,9 @@ there. **Stock**'s own **Receipts** list is deliveries, not sales, and is covere
 - **Void** — cancelling a sale after it was made. The sale stays in the list, marked **Void**, and its
   stock goes back on the shelf.
 
-Before any test: Register and Receipts tests 1–3 done, so two sales exist: sample sale 1 (**24.00**)
-and one for **16.00**.
+Before any test: Inventory Test 6 and Assets Test 2 done (**Paracetamol 500mg (tablet)** at **8.00**,
+**Active**), and two sales made on **Register** in this order: sample sale 1, 3 tablets paid with
+**50.00** (**24.00**); then 2 tablets with **Exact amount** (**16.00**).
 
 ---
 
@@ -75,12 +75,15 @@ stays in the list, and its 3 tablets go back to the pack they came from.
 
 ## Group 2 — Mistakes and edge cases
 
-Register and Receipts Test 13 still covers voiding twice and Back from a receipt.
+Not covered here yet: voiding twice and Back from a receipt were in the Register and Receipts tests,
+removed on 2026-10-04.
 
 ## Group 3 — Accounts
 
-Register and Receipts tests 14–16 still cover signing out and a second account.
+Not covered here yet: signing out and a second account were in the Register and Receipts tests, removed
+on 2026-10-04.
 
 ## Group 4 — Outside the app
 
-Register and Receipts tests 18–22 still cover airplane mode, interruptions and phone and tablet.
+Not covered here yet: airplane mode, interruptions and phone and tablet were in the Register and
+Receipts tests, removed on 2026-10-04.

@@ -1,8 +1,7 @@
 # Stock — acceptance tests
 
 Covers the **Stock** screen on its own: its **Receipts** list of deliveries, the receipt form, and
-**Suppliers**. Older Stock tests are in the Inventory and Stock tests; the tests here replace the ones
-retired there. Sales receipts are a different screen, under **Store**, covered in the Receipts tests.
+**Suppliers**. Sales receipts are a different screen, under **Store**, covered in the Receipts tests.
 
 **Words used in this file**
 
@@ -10,21 +9,23 @@ retired there. Sales receipts are a different screen, under **Store**, covered i
   you tap the **☰** menu button at the top left. **Stock** is under **Resources** in it.
 - **Receipt** — on this screen, one delivery from a supplier, not a sale.
 
-Before any test: Inventory and Stock tests 1–4 done, so **Test Pharma Supply** and **Paracetamol
-500mg** exist and one receipt has been saved.
+Before any test: Inventory Test 6 done, so **Paracetamol 500mg** exists under **Medicines**. On **Stock**,
+tap **Suppliers**, then **Add supplier**, type `Test Pharma Supply` and save it.
 
 ---
 
 ## Group 1 — Normal use
 
-Inventory and Stock tests 4–7, 12, 15 and 42 still cover receiving, returning and voiding; nothing in
-them changed.
+Not covered here yet: receiving, returning and voiding were in the Inventory and Stock tests, removed
+on 2026-10-04. Test 9, added later, covers the folders.
 
 ---
 
 ## Group 2 — Mistakes and edge cases
 
 ## Test 1 - Title: Back on a half-filled receipt, and Save receipt tapped twice
+
+> Retired: step 6 points into the Inventory and Stock tests, removed on 2026-10-04, and nothing replaces this test.
 
 ### What will be tested?
 You will press Back on a receipt you have started, then save one with two fast taps. A pass means a
@@ -82,8 +83,8 @@ afterwards.
 
 ## Group 4 — Outside the app
 
-Inventory and Stock tests 34–38 still cover airplane mode, the phone switching off, calls, storage and
-the clock.
+Not covered here yet: airplane mode, the phone switching off, calls, storage and the clock were in the
+Inventory and Stock tests, removed on 2026-10-04.
 
 ## Test 3 - Title: Phone and tablet
 
@@ -246,3 +247,41 @@ window stays usable with the keyboard up, and the supplier you make is picked on
   keyboard. Nothing is hidden behind the keyboard; the fields scroll inside the window.
 - After step 6, the window closes and the receipt's **Supplier** field reads **Window Test Supply**.
 - After step 7, **Stock** shows. **Window Test Supply** is in the **Suppliers** list.
+
+---
+
+## Added later (2026-10-04) — Normal use
+
+## Test 9 - Title: Restock Paracetamol, and leave the Medicines folder with the back arrow
+
+### What will be tested?
+On **Stock** you will receive 2 more boxes of Paracetamol, then open its category folder and leave it
+with the arrow at the top. A pass means the delivery is filed under **Medicines**, and a folder can be
+left from the screen itself, not only with the phone's back button.
+
+### What do you need before starting?
+- Inventory Test 6 done, on a phone.
+
+### Steps
+1. Open the side menu, tap **Resources**, then **Stock**. Tap **Stock receipt**.
+2. Tap **Next** four times, leaving **Supplier**, **Unit Load**, **Pallet** and **Case** empty. **Pack**
+   opens.
+3. Tap the **Restock item** switch, then the **Item** field, then **Paracetamol 500mg** in the menu.
+4. Scroll down. Type `2` in **Pack quantity** and `100` in **Cost per pack**, and pick a date a month
+   away in **Expiration date**.
+5. Tap **Next** until **Review** opens, then **Save receipt**. Tap the **←** arrow at the top left of
+   the receipt's page.
+6. On the **Receipts** list, look beside the word **Stock** at the top left.
+7. Tap the **Medicines** row (folder icon).
+8. Tap the **←** arrow at the top left.
+
+### What's the expected output?
+- After step 3 **Pack name**, **SKU**, **Pack type** and **Sell by** fill in from Paracetamol and are
+  greyed out; **Serial numbers** and **Lot / batch number** are still there. There is no **Category**
+  field.
+- After step 5 the receipt's page reads **Paracetamol 500mg** with **20 of 20 tablet left**.
+- After step 6 there is no arrow beside **Stock**; the list has a **Medicines** row reading **1 receipt
+  line**.
+- After step 7 a **←** arrow sits left of **Stock**, and under it reads **Stock › Medicines** with the
+  Paracetamol line listed.
+- After step 8 the list is back at the top: the **Medicines** row shows and the arrow is gone.

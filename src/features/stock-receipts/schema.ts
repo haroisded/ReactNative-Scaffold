@@ -8,6 +8,8 @@ import type { StockItemOption } from '../products/queries';
 // merchant typed; toReceiptPayload turns it into save_receipt's payload
 // (20260929100100_stock_ledger.sql §5, reshaped by 20260930100000_receipt_inputs.sql) at the mutation boundary. Limits are stock_receipts_text_length and
 // stock_lots_text_length's, reported before a round trip; save_receipt checks everything again.
+// The Inventory item form holds the same `line` (itemFormSchema), so both screens share the Pack and Base
+// Unit fields (src/components/pack-fields.tsx).
 
 const optional = (max: number, label: string) =>
   z.string().trim().max(max, `${label} can be up to ${max} characters.`);
@@ -63,6 +65,11 @@ const packLineFields = z.object({
   newGroupName: optional(120, 'Variant group name'),
   /** Variant name, "Red, L": one attribute per comma, stored as products.attributes. */
   attributes: optional(200, 'Variant name'),
+  // The Inventory item form only (itemFormSchema); a receipt leaves them blank and sends none.
+  categoryId: z.string(),
+  subcategoryId: z.string(),
+  /** products.expiry_alert_on: from that day the item's lots read Expiring. */
+  expiryAlertOn: isoDate,
 });
 
 export type PackLineValues = z.infer<typeof packLineFields>;
@@ -169,6 +176,30 @@ export const packLineFormSchema = receiptFields.superRefine((receipt, ctx) => {
   lineRules(receipt, false, (path, message) => ctx.addIssue({ code: 'custom', path, message }));
 });
 
+/**
+ * A new item's stock on hand, on the Inventory item form: optional, and once there is some it needs its
+ * cost, and its date when the item expires. Pack quantity holds it, as on a receipt.
+ */
+function stockOnHandIssues(line: PackLineValues): Issue[] {
+  if (line.packsExpected === '') return [];
+  const issues: Issue[] = [];
+  if (!(Number(line.packsExpected) > 0)) issues.push(['packsExpected', 'Enter the packs on hand, or leave it blank.']);
+  if (line.costPerPack === '') issues.push(['costPerPack', 'Enter the cost of one pack.']);
+  if (line.hasExpiry && line.expiresOn === '') issues.push(['expiresOn', 'Enter the expiration date.']);
+  return issues;
+}
+
+/**
+ * The Inventory item form (src/screens/stock-item-form/): a receipt's Pack and Base Unit steps with no
+ * receipt around them, so only `line` is checked — and its stock on hand only while creating.
+ */
+export const itemFormSchema = (creating: boolean) =>
+  receiptFields.superRefine((receipt, ctx) => {
+    const line = receipt.line;
+    const issues = [...identityIssues(line), ...baseUnitIssues(line), ...(creating ? stockOnHandIssues(line) : [])];
+    for (const [path, message] of issues) ctx.addIssue({ code: 'custom', path: ['line', path], message });
+  });
+
 
 
 const emptyTier = { sscc: '', received: '', per: '' };
@@ -198,6 +229,9 @@ export const emptyPackLine: PackLineValues = {
   newGroup: false,
   newGroupName: '',
   attributes: '',
+  categoryId: '',
+  subcategoryId: '',
+  expiryAlertOn: '',
 };
 
 /** Today on the device's calendar. `current_date` on the server is UTC, which is yesterday or tomorrow near midnight. */
@@ -278,7 +312,7 @@ export const lineCost = (line: PackLineValues, receipt: Pick<ReceiptValues, 'cas
   linePacks(line, receipt) * lineCostPerPack(line, receipt);
 
 /** The typed cost per base unit, or null for create_lot's pack cost ÷ units. Sold by the pack, there is none to type. */
-const typedUnitCost = (line: PackLineValues) => (line.sellBy === 'pack' || line.unitCost === '' ? null : Number(line.unitCost));
+export const typedUnitCost = (line: PackLineValues) => (line.sellBy === 'pack' || line.unitCost === '' ? null : Number(line.unitCost));
 
 /** Cost per base unit as create_lot stores it: the typed one, else the pack cost ÷ base units qty. */
 export const lineUnitCost = (line: PackLineValues, receipt: Pick<ReceiptValues, 'caseTier' | 'multi'> | null) =>
@@ -301,31 +335,35 @@ export function generatedCode(prefix: string, date: string) {
 const orNull = (value: string) => (value === '' ? null : value);
 const numberOrNull = (value: string) => (value === '' ? null : Number(value));
 
+/**
+ * A new item's columns as save_stock_item takes them, and its variant group to make: what a receipt's new
+ * item and the Inventory item form (toStockItemPayload) both send. Sold by the pack only, a pack is one unit.
+ */
+export function newItemColumns(line: PackLineValues) {
+  return {
+    item: {
+      name: line.name,
+      sku: line.sku,
+      stock_role: line.stockRole,
+      sell_by: line.sellBy,
+      perishable: line.hasExpiry,
+      base_unit_name: line.sellBy === 'pack' ? null : orNull(line.baseUnit),
+      conversion_factor: unitsPerPack(line),
+      reorder_threshold: numberOrNull(line.reorderAt),
+      storage_location: orNull(line.location),
+      ...(line.isVariant
+        ? { group_id: line.newGroup ? null : orNull(line.groupId), attributes: commaList(line.attributes) }
+        : { group_id: null, attributes: [] }),
+    },
+    group_name: line.isVariant && line.newGroup ? line.newGroupName : null,
+  };
+}
+
 function linePayload(line: PackLineValues, receipt: ReceiptValues) {
   const fromCase = !receipt.multi ? caseTotals(receipt) : null;
   const byPack = line.sellBy === 'pack';
   return {
-    ...(!line.restock
-      ? {
-          new_item: {
-            item: {
-              name: line.name,
-              sku: line.sku,
-              stock_role: line.stockRole,
-              sell_by: line.sellBy,
-              perishable: line.hasExpiry,
-              base_unit_name: byPack ? null : orNull(line.baseUnit),
-              conversion_factor: unitsPerPack(line),
-              reorder_threshold: numberOrNull(line.reorderAt),
-              storage_location: orNull(line.location),
-              ...(line.isVariant
-                ? { group_id: line.newGroup ? null : orNull(line.groupId), attributes: commaList(line.attributes) }
-                : { group_id: null, attributes: [] }),
-            },
-            group_name: line.isVariant && line.newGroup ? line.newGroupName : null,
-          },
-        }
-      : { product_id: line.productId }),
+    ...(!line.restock ? { new_item: newItemColumns(line) } : { product_id: line.productId }),
     ...(fromCase
       ? {
           cases: fromCase.cases,

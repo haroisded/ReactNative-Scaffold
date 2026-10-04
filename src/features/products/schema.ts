@@ -214,7 +214,7 @@ const unitOrNone = z.union([measureUnit, z.literal('')]);
 const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Pick a time.' });
 const optionalTime = z.union([timeOfDay, z.literal('')]);
 /** YYYY-MM-DD or empty: a Postgres `date` a form may leave blank. */
-export const optionalDate = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]);
+const optionalDate = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]);
 
 const rateTierSchema = z.object({
   period: ratePeriod,
@@ -737,23 +737,6 @@ export function generateSku(type: ProductType, categoryName: string) {
   const letters = categoryName.replace(/[^a-z]/gi, '').slice(0, 3).toUpperCase() || 'GEN';
   const random = Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, '0');
   return `${TYPE_META[type].skuPrefix}-${letters}-${random}`;
-}
-
-/** The EAN-13 check digit of twelve digits: weights 1, 3, 1, 3… from the left, up to the next ten. */
-const ean13CheckDigit = (twelve: string) =>
-  (10 - ([...twelve].reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10)) % 10;
-
-// The one published example (4006381333931): a wrong check digit fails here in development, not at a scanner.
-if (__DEV__ && ean13CheckDigit('400638133393') !== 1) throw new Error('ean13CheckDigit is wrong');
-
-/**
- * An in-store EAN-13: prefix 2 (GS1's range for numbers a store assigns itself, never a manufacturer's),
- * eleven random digits and the check digit. Rejected: a server sequence — a collision is as rare as a
- * SKU's, and nothing requires a barcode to be unique.
- */
-export function generateBarcode() {
-  const twelve = `2${Array.from({ length: 11 }, () => Math.floor(Math.random() * 10)).join('')}`;
-  return `${twelve}${ean13CheckDigit(twelve)}`;
 }
 
 type VariantRow = ProductFormValues['variants'][number];

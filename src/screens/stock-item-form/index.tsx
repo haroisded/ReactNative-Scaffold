@@ -1,54 +1,40 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { useController, useForm, useFormState, useWatch } from 'react-hook-form';
-import type { Control, UseFormSetValue } from 'react-hook-form';
+import { useForm, useFormState, useWatch } from 'react-hook-form';
+import type { Control, FieldErrors, UseFormReturn } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../components/button';
-import { CategoryPicker } from '../../components/category-picker';
 import { DiscardDialog } from '../../components/discard-dialog';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
-import { ControlledDate, ControlledSwitch, ControlledText, Field, FieldGrid, GroupHeading, SectionHeading, displayDate } from '../../components/form-fields';
+import { SectionHeading, displayDate } from '../../components/form-fields';
+import { BaseUnitFields, PackFields } from '../../components/pack-fields';
+import type { ItemFormMode } from '../../components/pack-fields';
 import { PageHeader } from '../../components/page-header';
 import { NarrowSteps, WideSections } from '../../components/section-stepper';
-import { SegmentedButtons } from '../../components/segmented-buttons';
-import { Text } from '../../components/text';
-import { VariantFields } from '../../components/variant-fields';
 import { useCategoriesQuery } from '../../features/categories/queries';
 import { useProductGroupsQuery } from '../../features/product-groups/queries';
 import { saveFailure, useSaveStockItemMutation } from '../../features/products/queries';
 import type { ProductDetail } from '../../features/products/queries';
-import { generateBarcode, generateSku } from '../../features/products/schema';
-import {
-  SELL_BY_LABEL,
-  STOCK_FIELD_SECTION,
-  STOCK_ROLE_LABEL,
-  STOCK_SECTION_META,
-  emptyStockItem,
-  fromStockItem,
-  stockItemSchema,
-  stockRole,
-  stockSections,
-  stockSellBy,
-} from '../../features/products/stock-item';
-import type { StockItemValues, StockSectionId } from '../../features/products/stock-item';
+import { SELL_BY_LABEL, STOCK_ROLE_LABEL, lineFromProduct } from '../../features/products/stock-item';
 import { stockFailure } from '../../features/stock-receipts/queries';
+import { emptyReceipt, itemFormSchema, unitsPerPack } from '../../features/stock-receipts/schema';
+import type { PackLineValues, ReceiptValues } from '../../features/stock-receipts/schema';
 import { useShellWide } from '../../lib/columns';
 import { INVALID_FORM, SKU_TAKEN, failureMessage, mutationNotice } from '../../lib/errors';
 import type { Notice } from '../../lib/errors';
-import { currencySymbol, formatMoney } from '../../lib/money';
-import { useAppTheme } from '../../lib/theme';
+import { formatMoney } from '../../lib/money';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
 
 type Props = { merchantId: string; currency: string; product: ProductDetail | null };
 
-// Keyed by the exception save_stock_item or guard_stock_item raises; stockFailure() hands back any
-// snake_case message.
+// Keyed by the exception save_stock_item, guard_stock_item or create_lot raises; stockFailure() hands back
+// any snake_case message.
 const FAILURE_COPY = new Map([
   ['stock_item_units_locked', 'Units per pack can change only while nothing is on hand.'],
-  ['receipt_line_quantity', 'Loose units must be fewer than one full pack.'],
+  ['receipt_line_quantity', 'Enter how many packs are on hand, or leave it blank.'],
   ['product_not_found', 'This item was archived or deleted elsewhere. Go back and open it again.'],
 ]);
 
@@ -57,88 +43,71 @@ const COPY = {
   edit: { kicker: 'Edit item', save: 'Save changes', discard: 'Your edits to this item have not been saved.' },
 };
 
-const ROLE_BUTTONS = stockRole.options.map((value) => ({ value, label: STOCK_ROLE_LABEL[value] }));
-const SELL_BY_BUTTONS = stockSellBy.options.map((value) => ({ value, label: SELL_BY_LABEL[value] }));
+type SectionId = 'pack' | 'base' | 'review';
+
+const SECTION_META = {
+  pack: { name: 'Pack', hint: 'What it is, how it sells, and how many are here' },
+  base: { name: 'Base unit', hint: 'What one pack holds' },
+  review: { name: 'Review', hint: 'Check it, then save' },
+} satisfies Record<SectionId, { name: string; hint: string }>;
+
+/** The line's fields on the Base unit step; every other field is on Pack. */
+const BASE_FIELDS: ReadonlySet<string> = new Set(['baseUnit', 'unitsPerPack', 'unitsPerPackReceived', 'unitCost']);
 
 /**
- * An Inventory item (design.md §1, the Inventory.html create modal): what it is, how it is counted, and
- * when to warn. Saved through save_stock_item, which also keeps the register drafts the Sell by choice
- * wants — so a sellable item shows up in the register as a draft that needs its price.
+ * An Inventory item: the New Stock Receipt's Pack and Base Unit steps (src/components/pack-fields.tsx), the
+ * same fields on the same line, with no supplier and no receipt. A new item's Pack quantity is its stock on
+ * hand — a lot with no receipt, drawn down by the Register like any other. Saved through save_stock_item,
+ * which also keeps the register drafts the Sell by choice wants.
  *
- * Stepped like the receipt's Pack, Variant and Base unit steps, without the receipt's supplier, lot or
- * costs: Pack holds everything about the item plus an optional quantity on hand, and Base unit appears only
- * when Sell by asks for one. Nothing here touches a supplier or the Stock screen. Rejected: the seven steps
- * before 2026-10-01 (Stock settings, Stock on hand and Extra each their own step) — over-built for what is
- * mostly one screen of fields.
+ * Rejected: the item form's own fields (2026-10-01 to 2026-10-04) — a second way to describe the same item
+ * that drifted from the receipt's. The human asked for the receipt's steps, plus Category and Expiry alert.
  */
 export function StockItemForm({ merchantId, currency, product }: Props) {
   const wide = useShellWide();
   const save = useSaveStockItemMutation({ merchantId });
+  const editing = product !== null;
+  // guard_stock_item refuses a new units per pack with stock on hand; the form says so before the save does.
+  const mode: ItemFormMode = { creating: !editing, locked: (product?.qty_on_hand ?? 0) > 0 };
 
-  const form = useForm<StockItemValues>({
-    resolver: zodResolver(stockItemSchema),
-    defaultValues: product ? fromStockItem(product) : emptyStockItem,
+  const form = useForm<ReceiptValues>({
+    resolver: zodResolver(itemFormSchema(!editing)),
+    defaultValues: product ? { ...emptyReceipt(), line: lineFromProduct(product) } : emptyReceipt(),
     mode: 'onTouched',
   });
-  const { control, setValue } = form;
   // useFormState rather than form.formState: it returns a new object when a flag changes, which the
   // compiled component needs to see the change.
-  const { isDirty, errors } = useFormState({ control });
+  const { isDirty, errors } = useFormState({ control: form.control });
 
-  // guard_stock_item refuses these with stock on hand; the form says so before the save does.
-  const locked = (product?.qty_on_hand ?? 0) > 0;
-
-  const editing = product !== null;
   const copy = COPY[editing ? 'edit' : 'new'];
   const guard = useLeaveGuard(isDirty, (id) => leaveSaved(editing, merchantId, id));
-
-  const sellBy = useWatch({ control, name: 'sellBy' });
-  const sections = stockSections(sellBy !== 'pack');
-  const [sectionId, setSectionId] = useState<StockSectionId>('pack');
-  const index = Math.max(0, sections.findIndex((entry) => entry.id === sectionId));
-  const current = sections[index];
-  const failedSections = sectionsWithErrors(Object.keys(errors));
+  const { sections, current, index, setSectionId, openFailed } = useSections(form.control);
+  const failedSections = sectionsWithErrors(errors.line);
 
   const [invalid, setInvalid] = useState(false);
   const submit = () => {
     void form.handleSubmit(
       (values) => {
         setInvalid(false);
-        save.mutate({ values, product }, { onSuccess: guard.setSavedId });
+        save.mutate({ line: values.line, product }, { onSuccess: guard.setSavedId });
       },
       (fieldErrors) => {
         setInvalid(true);
-        const failed = sectionsWithErrors(Object.keys(fieldErrors));
-        setSectionId((open) => sections.find((entry) => failed.has(entry.id))?.id ?? open);
+        openFailed(sectionsWithErrors(fieldErrors.line));
       }
     )();
   };
 
-  // Skip step undoes the step's switch, so a skipped step saves nothing.
-  const skip = () => {
-    if (current.id === 'variant') setValue('isVariant', false, { shouldDirty: true });
-    setSectionId(sections[index + 1].id);
-  };
-
   const notice = stockItemNotice(save, invalid, failedSections);
-  const saving = isSaving(save);
-  const actions = <SaveActions wide={wide} saving={saving} label={copy.save} onSave={submit} />;
+  const actions = <SaveActions wide={wide} saving={save.isPending && !save.isPaused} label={copy.save} onSave={submit} />;
 
   const body = (
     <>
-      <SectionHeading title={STOCK_SECTION_META[current.id].name} hint={STOCK_SECTION_META[current.id].hint} />
-      <StepBody
-        id={current.id}
-        merchantId={merchantId}
-        currency={currency}
-        control={control}
-        setValue={setValue}
-        locked={locked}
-        creating={!editing}
-      />
+      <SectionHeading title={SECTION_META[current.id].name} hint={SECTION_META[current.id].hint} />
+      <StepBody id={current.id} merchantId={merchantId} currency={currency} form={form} mode={mode} />
     </>
   );
-  const steps = { sections, current, index, names: STOCK_SECTION_META, failedSections, notice, body, onOpen: setSectionId };
+  const steps = { sections, current, index, names: SECTION_META, failedSections, notice, body, onOpen: setSectionId };
 
   return (
     <View style={styles.fill}>
@@ -149,7 +118,7 @@ export function StockItemForm({ merchantId, currency, product }: Props) {
         onBack={() => router.back()}
         actions={wide ? actions : undefined}
       />
-      {wide ? <WideSections {...steps} /> : <NarrowSteps {...steps} saveActions={actions} onSkip={skip} />}
+      {wide ? <WideSections {...steps} /> : <NarrowSteps {...steps} saveActions={actions} />}
 
       <DiscardDialog guard={guard} wide={wide} message={copy.discard} />
     </View>
@@ -162,276 +131,91 @@ function leaveSaved(editing: boolean, merchantId: string, productId: string) {
   else router.replace({ pathname: '/systems/[id]/inventory/[productId]', params: { id: merchantId, productId } });
 }
 
-/** The steps holding any of these fields. */
-function sectionsWithErrors(fields: string[]): ReadonlySet<StockSectionId> {
-  // SAFETY: the keys of react-hook-form's errors are field names of the form; one not in the map drops out.
-  return new Set(fields.map((field) => STOCK_FIELD_SECTION[field as keyof StockItemValues]).filter(Boolean));
+/** Pack, Base unit while it sells by one, Review — the receipt's steps 5 and 6 — and which is open. */
+function useSections(control: Control<ReceiptValues>) {
+  const sellBy = useWatch({ control, name: 'line.sellBy' });
+  const sections: { id: SectionId; optional: boolean }[] = [
+    { id: 'pack', optional: false },
+    ...(sellBy !== 'pack' ? [{ id: 'base' as const, optional: false }] : []),
+    { id: 'review', optional: false },
+  ];
+  const [sectionId, setSectionId] = useState<SectionId>('pack');
+  const index = Math.max(0, sections.findIndex((entry) => entry.id === sectionId));
+  // A failed save opens the first step at fault.
+  const openFailed = (failed: ReadonlySet<SectionId>) =>
+    setSectionId((open) => sections.find((entry) => failed.has(entry.id))?.id ?? open);
+  return { sections, current: sections[index], index, setSectionId, openFailed };
 }
 
-type SectionProps = {
-  merchantId: string;
-  control: Control<StockItemValues>;
-  setValue: UseFormSetValue<StockItemValues>;
-};
+/** The steps holding an error, from react-hook-form's errors under `line`. */
+function sectionsWithErrors(lineErrors: FieldErrors<ReceiptValues>['line']): ReadonlySet<SectionId> {
+  return new Set(Object.keys(lineErrors ?? {}).map((field): SectionId => (BASE_FIELDS.has(field) ? 'base' : 'pack')));
+}
 
-type StepBodyProps = SectionProps & { id: StockSectionId; currency: string; locked: boolean; creating: boolean };
+type StepBodyProps = { id: SectionId; merchantId: string; currency: string; form: UseFormReturn<ReceiptValues>; mode: ItemFormMode };
 
-function StepBody({ id, merchantId, currency, control, setValue, locked, creating }: StepBodyProps) {
+function StepBody({ id, merchantId, currency, form, mode }: StepBodyProps) {
   switch (id) {
     case 'pack':
-      return (
-        <>
-          <PackInfoSection merchantId={merchantId} control={control} setValue={setValue} locked={locked} />
-          <StockSettingsSection control={control} />
-          {creating ? <QuantitySection control={control} currency={currency} /> : null}
-        </>
-      );
-    case 'variant':
-      return <VariantSection merchantId={merchantId} control={control} setValue={setValue} />;
+      return <PackFields merchantId={merchantId} form={form} items={[]} currency={currency} fromCase={null} receivedOn="" itemForm={mode} />;
     case 'base':
-      return <BaseUnitSection control={control} locked={locked} creating={creating} />;
+      return <BaseUnitFields form={form} currency={currency} receipt={null} itemForm={mode} />;
     case 'review':
-      return <ReviewSection merchantId={merchantId} currency={currency} control={control} />;
+      return <ReviewSection merchantId={merchantId} currency={currency} control={form.control} />;
   }
 }
 
-/**
- * The picked variant group's category, when it has one: the group owns it (20261001110000_group_category.sql),
- * so the item's own Category is shown as the group's and locked. A new group, or one with no category yet,
- * takes the item's.
- */
-function useGroupCategory(merchantId: string, control: Control<StockItemValues>) {
-  const groups = useProductGroupsQuery({ merchantId });
-  const [isVariant, newGroup, groupId] = useWatch({ control, name: ['isVariant', 'newGroup', 'groupId'] });
-  const group = isVariant && !newGroup ? groups.data?.find((row) => row.id === groupId) : undefined;
-  return group?.category_id ? { categoryId: group.category_id, subcategoryId: group.subcategory_id ?? '' } : null;
-}
-
-/** Pack: what the item is, how it is used and sold, and where it is filed. */
-function PackInfoSection({ merchantId, control, setValue, locked }: SectionProps & { locked: boolean }) {
-  const categories = useCategoriesQuery({ merchantId, scope: 'inventory' });
-  const category = useController({ control, name: 'categoryId' });
-  const role = useController({ control, name: 'stockRole' });
-  const sellBy = useController({ control, name: 'sellBy' });
-  const fromGroup = useGroupCategory(merchantId, control);
-  const categoryId = fromGroup?.categoryId ?? category.field.value;
-  const categoryName = categories.data?.find((row) => row.id === categoryId)?.name ?? '';
-  // guard_stock_item refuses a change of units per pack while stock is on hand; Pack to or from a base unit is one.
-  const sellByButtons = SELL_BY_BUTTONS.map((button) => ({
-    ...button,
-    disabled: locked && (button.value === 'pack') !== (sellBy.field.value === 'pack'),
-  }));
-
-  return (
-    <>
-      <GroupHeading title="Product details" />
-      <FieldGrid>
-        <ControlledText control={control} name="name" label="Pack name" required span="full" maxLength={120} placeholder="e.g. Coffee beans 1kg" />
-        <ControlledText
-          control={control}
-          name="sku"
-          label="SKU"
-          required
-          maxLength={64}
-          action={{
-            label: 'Auto-generate',
-            onPress: () => setValue('sku', generateSku('stock', categoryName), { shouldDirty: true, shouldValidate: true }),
-          }}
-        />
-        <ControlledText
-          control={control}
-          name="barcode"
-          label="Barcode"
-          maxLength={64}
-          keyboardType="number-pad"
-          action={{ label: 'Auto-generate', onPress: () => setValue('barcode', generateBarcode(), { shouldDirty: true, shouldValidate: true }) }}
-        />
-        <Field label="Pack type" required span="full" error={role.fieldState.error?.message}>
-          <SegmentedButtons value={role.field.value} onValueChange={(value) => role.field.onChange(stockRole.parse(value))} buttons={ROLE_BUTTONS} />
-        </Field>
-        <Field
-          label="Sell by"
-          required
-          span="full"
-          hint={locked ? 'Pack or a base unit is locked while stock is on hand' : 'Base unit or Both adds the Base unit step'}
-          error={sellBy.fieldState.error?.message}
-        >
-          <SegmentedButtons value={sellBy.field.value} onValueChange={(value) => sellBy.field.onChange(stockSellBy.parse(value))} buttons={sellByButtons} />
-        </Field>
-        <Field label="Category" hint={fromGroup ? 'Set by the variant group' : undefined}>
-          <CategoryPicker
-            merchantId={merchantId}
-            scope="inventory"
-            parentId={null}
-            value={categoryId}
-            onChange={(id) => {
-              category.field.onChange(id);
-              // A subcategory belongs to one category; switching category drops it.
-              setValue('subcategoryId', '', { shouldDirty: true });
-            }}
-            accessibilityLabel="Category"
-            clearable
-            disabled={fromGroup !== null}
-          />
-        </Field>
-        <SubcategoryField merchantId={merchantId} control={control} categoryId={categoryId} fromGroup={fromGroup?.subcategoryId ?? null} />
-      </FieldGrid>
-    </>
-  );
-}
-
-type SubcategoryFieldProps = Omit<SectionProps, 'setValue'> & { categoryId: string; fromGroup: string | null };
-
-function SubcategoryField({ merchantId, control, categoryId, fromGroup }: SubcategoryFieldProps) {
-  const { colors } = useAppTheme();
-  const subcategory = useController({ control, name: 'subcategoryId' });
-
-  return (
-    <Field label="Subcategory">
-      {categoryId ? (
-        <CategoryPicker
-          merchantId={merchantId}
-          scope="inventory"
-          parentId={categoryId}
-          value={fromGroup ?? subcategory.field.value}
-          onChange={subcategory.field.onChange}
-          accessibilityLabel="Subcategory"
-          clearable
-          disabled={fromGroup !== null}
-        />
-      ) : (
-        <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
-          Choose a category first.
-        </Text>
-      )}
-    </Field>
-  );
-}
-
-/** The unit stock is counted and re-ordered in: the base unit unless it sells by the pack only. */
-function useUnits(control: Control<StockItemValues>) {
-  const [packUnit, baseUnit, sellBy] = useWatch({ control, name: ['packUnit', 'baseUnit', 'sellBy'] });
-  const pack = packUnit || 'pack';
-  const byBase = sellBy !== 'pack';
-  return { pack, base: byBase ? baseUnit || 'unit' : pack, byBase };
-}
-
-function StockSettingsSection({ control }: { control: Control<StockItemValues> }) {
-  const { base } = useUnits(control);
-  const hasExpiry = useWatch({ control, name: 'hasExpiry' });
-
-  return (
-    <>
-      <GroupHeading title="Stock settings" />
-      <FieldGrid>
-        <ControlledText control={control} name="packUnit" label="Pack unit name" placeholder="e.g. cup, box, tray" maxLength={20} />
-        <ControlledText control={control} name="storageLocation" label="Storage location" maxLength={120} placeholder="Back room, shelf 2" />
-        <ControlledText control={control} name="reorderAt" label="Re-order at" hint="In base units" keyboardType="decimal-pad" suffix={base} />
-        <ControlledSwitch control={control} name="hasExpiry" label="Expiry" on="Has an expiration date" off="Does not expire" />
-        {hasExpiry ? <ControlledDate control={control} name="expiryAlertOn" label="Expiry alert" hint="Date to start warning" clearable /> : null}
-        <ControlledText control={control} name="description" label="Description" span="full" multiline maxLength={2000} />
-      </FieldGrid>
-    </>
-  );
-}
-
-/** A new item's count on hand, optional: Inventory-added stock that sales draw down, never shown on Stock. */
-function QuantitySection({ control, currency }: { control: Control<StockItemValues>; currency: string }) {
-  const { pack } = useUnits(control);
-
-  return (
-    <>
-      <GroupHeading title="Quantity on hand" />
-      <FieldGrid>
-        <ControlledText control={control} name="openingPacks" label={`${pack} on hand`} hint="Blank for none yet" keyboardType="number-pad" />
-        <ControlledText control={control} name="openingCost" label={`Cost per ${pack}`} keyboardType="decimal-pad" prefix={currencySymbol(currency)} />
-      </FieldGrid>
-    </>
-  );
-}
-
-/** What one pack holds, and a new item's loose units on hand. Only while it sells by a base unit. */
-function BaseUnitSection({ control, locked, creating }: { control: Control<StockItemValues>; locked: boolean; creating: boolean }) {
-  const { pack, base } = useUnits(control);
-
-  return (
-    <FieldGrid>
-      <ControlledText control={control} name="baseUnit" label="Base unit type" placeholder="e.g. tablet" maxLength={20} />
-      <ControlledText
-        control={control}
-        name="unitsPerPack"
-        label={`${base} per ${pack}`}
-        required
-        keyboardType="decimal-pad"
-        disabled={locked}
-        hint={locked ? 'Locked while stock is on hand' : undefined}
-      />
-      {creating ? (
-        <ControlledText control={control} name="openingLoose" label={`Loose ${base} on hand`} hint="Outside a full pack" keyboardType="decimal-pad" />
-      ) : null}
-    </FieldGrid>
-  );
-}
-
-/** Variant: a variant joins an existing group, or names a new one. */
-function VariantSection({ merchantId, control }: SectionProps) {
-  return (
-    <FieldGrid>
-      <VariantFields
-        merchantId={merchantId}
-        control={control}
-        names={{ isVariant: 'isVariant', newGroup: 'newGroup', groupId: 'groupId', newGroupName: 'newGroupName', attributes: 'attributes' }}
-      />
-    </FieldGrid>
-  );
-}
-
 /** Everything typed, before the save. Blank fields are left out (FactGrid). */
-function ReviewSection({ merchantId, currency, control }: { merchantId: string; currency: string; control: Control<StockItemValues> }) {
-  // SAFETY: useWatch with no name returns the whole form, typed as a deep partial; every field has a default.
-  const item = useWatch({ control }) as StockItemValues;
+function ReviewSection({ merchantId, currency, control }: { merchantId: string; currency: string; control: Control<ReceiptValues> }) {
+  // SAFETY: as in PackFields — every field of the line has a default, so the watched line is whole.
+  const line = useWatch({ control, name: 'line' }) as PackLineValues;
   const categories = useCategoriesQuery({ merchantId, scope: 'inventory' });
   const groups = useProductGroupsQuery({ merchantId });
-  const units = useUnits(control);
-  const fromGroup = useGroupCategory(merchantId, control);
-  const nameOf = (rows: { id: string; name: string }[] | undefined, id: string) => rows?.find((row) => row.id === id)?.name;
+  const group = line.isVariant && !line.newGroup ? groups.data?.find((row) => row.id === line.groupId) : undefined;
+  // A picked group with a category files the item there (src/components/pack-fields.tsx, ItemCategoryFields).
+  const filed = group?.category_id ? { category: group.category_id, sub: group.subcategory_id ?? '' } : { category: line.categoryId, sub: line.subcategoryId };
+  const nameOf = (id: string) => categories.data?.find((row) => row.id === id)?.name;
 
   return (
     <FactGrid
       facts={[
-        ['Pack name', item.name],
-        ['SKU', item.sku],
-        ['Barcode', item.barcode],
-        ['Pack type', STOCK_ROLE_LABEL[item.stockRole]],
-        ['Category', nameOf(categories.data, fromGroup?.categoryId ?? item.categoryId)],
-        ['Subcategory', nameOf(categories.data, fromGroup?.subcategoryId ?? item.subcategoryId)],
-        ...settingsFacts(item, units.base),
-        ...unitFacts(item, units, currency),
-        ['Variant group', item.isVariant ? (item.newGroup ? item.newGroupName : nameOf(groups.data, item.groupId)) : null],
-        ['Variant name', item.isVariant ? item.attributes : null],
+        ...itemFacts(line),
+        ['Category', nameOf(filed.category)],
+        ['Subcategory', nameOf(filed.sub)],
+        ['Variant group', line.isVariant ? (line.newGroup ? line.newGroupName : group?.name) : null],
+        ['Variant name', line.isVariant ? line.attributes : null],
+        ...stockFacts(line, currency),
       ]}
     />
   );
 }
 
-const settingsFacts = (item: StockItemValues, base: string): Fact[] => [
-  ['Pack unit', item.packUnit],
-  ['Storage location', item.storageLocation],
-  ['Re-order at', item.reorderAt && `${item.reorderAt} ${base}`],
-  ['Expiry', item.hasExpiry ? 'Has an expiration date' : 'Does not expire'],
-  ['Expiry alert', item.hasExpiry && item.expiryAlertOn ? displayDate(item.expiryAlertOn) : null],
-  ['Description', item.description],
-];
-
-function unitFacts(item: StockItemValues, { pack, base }: { pack: string; base: string }, currency: string): Fact[] {
-  const byBase = item.sellBy !== 'pack';
-  const loose = byBase && Number(item.openingLoose) > 0 ? Number(item.openingLoose) : 0;
-  const onHand = Number(item.openingPacks || 0) > 0 || loose > 0;
+/** What the item is and how it sells. The unit stock is counted in: the base unit unless it sells by the pack. */
+function itemFacts(line: PackLineValues): Fact[] {
+  const byBase = line.sellBy !== 'pack';
+  const unit = byBase ? line.baseUnit || 'unit' : 'pack';
   return [
-    ['Sell by', SELL_BY_LABEL[item.sellBy]],
-    ['Units per pack', byBase ? `${item.unitsPerPack} ${base} per ${pack}` : null],
-    ['Quantity on hand', onHand ? `${item.openingPacks || 0} ${pack}${loose > 0 ? ` + ${loose} ${base}` : ''}` : null],
-    ['Cost per pack', onHand && item.openingCost ? formatMoney(Number(item.openingCost), currency) : null],
+    ['Pack name', line.name],
+    ['SKU', line.sku],
+    ['Pack type', STOCK_ROLE_LABEL[line.stockRole]],
+    ['Storage location', line.location],
+    ['Sell by', SELL_BY_LABEL[line.sellBy]],
+    ['Base units qty', byBase ? `${line.unitsPerPack} ${unit} per pack` : null],
+    ['Re-order at', line.reorderAt && `${line.reorderAt} ${unit}`],
+  ];
+}
+
+/** Expiry, then a new item's packs on hand: how many, at what cost, and their date. */
+function stockFacts(line: PackLineValues, currency: string): Fact[] {
+  const packs = Number(line.packsExpected || 0);
+  const units = line.sellBy === 'pack' ? '' : ` (${packs * unitsPerPack(line)} ${line.baseUnit || 'unit'})`;
+  const stocked = packs > 0;
+  return [
+    ['Expiry', line.hasExpiry ? 'Has an expiration date' : 'Does not expire'],
+    ['Expiry alert', line.hasExpiry && line.expiryAlertOn ? displayDate(line.expiryAlertOn) : null],
+    ['Quantity on hand', stocked ? `${packs} pack${units}` : null],
+    ['Cost per pack', stocked && line.costPerPack ? formatMoney(Number(line.costPerPack), currency) : null],
+    ['Expiration date', stocked && line.hasExpiry && line.expiresOn ? displayDate(line.expiresOn) : null],
   ];
 }
 
@@ -454,13 +238,10 @@ function SaveActions({ wide, saving, label, onSave }: { wide: boolean; saving: b
   );
 }
 
-/** A paused save (queued offline) is not in flight. */
-const isSaving = (save: { isPending: boolean; isPaused: boolean }) => save.isPending && !save.isPaused;
-
 function stockItemNotice(
   save: { isPaused: boolean; isError: boolean; error: Error | null },
   submitted: boolean,
-  failedSections: ReadonlySet<StockSectionId>
+  failedSections: ReadonlySet<SectionId>
 ): Notice | null {
   const invalid = submitted && failedSections.size > 0;
   const failure = stockFailure(save.error);

@@ -37,7 +37,7 @@ import { useAppTheme } from '../../lib/theme';
 import { useLeaveGuard } from '../../lib/unsaved-guard';
 import { useSheetResult } from '../../Store/sheet-result';
 import { radius, spacing } from '../../themes';
-import { BaseUnitFields, PackFields, ReadOnly } from './pack-fields';
+import { BaseUnitFields, PackFields, ReadOnly } from '../../components/pack-fields';
 import { ReceiptReview } from './review';
 
 type Props = { merchantId: string; currency: string };

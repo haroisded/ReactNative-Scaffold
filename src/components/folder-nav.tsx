@@ -18,7 +18,10 @@ import { Text } from './text';
 
 type ListRoute = '/systems/[id]/inventory' | '/systems/[id]/stock';
 
-/** The open folder, and a push into one of its folders. */
+/**
+ * The open folder, a push into one of its folders, and `back` — the page header's arrow out of it, one
+ * level up. Undefined at the top, where there is no folder to leave.
+ */
 export function useFolderPath(pathname: ListRoute, merchantId: string) {
   const { category, sub, group } = useLocalSearchParams<FolderPath>();
   const path: FolderPath = { category, sub, group };
@@ -27,7 +30,8 @@ export function useFolderPath(pathname: ListRoute, merchantId: string) {
     for (const [key, value] of Object.entries({ ...path, [level]: id })) if (value !== undefined) params[key] = value;
     router.push({ pathname, params });
   };
-  return { path, open };
+  const inFolder = category !== undefined || sub !== undefined || group !== undefined;
+  return { path, open, back: inFolder ? () => router.back() : undefined };
 }
 
 /** A folder in the list: folder icon, name, what it holds, chevron. */
