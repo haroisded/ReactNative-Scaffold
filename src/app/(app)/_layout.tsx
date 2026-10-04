@@ -19,7 +19,7 @@ export const unstable_settings = { anchor: '(tabs)' };
 // This list must name every file in ./sheets/, and nothing else. Both halves fail silently: a name
 // with no file is ignored, and a file with no name here still routes — as an ordinary full-screen
 // push with no sheet presentation and no contentStyle, which is how delete-product shipped as a
-// top-aligned white screen (tests/test-report/resources-test-report.md, Test 7).
+// top-aligned white screen (a tester's report, 2026-09-19 — commit 5076055).
 const SHEETS = [
   'sheets/add-from-inventory',
   'sheets/delete-account',

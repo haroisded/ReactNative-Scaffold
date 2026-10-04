@@ -17,7 +17,7 @@ writing the acceptance tests the human runs ([`acceptance-tests.md`](./acceptanc
 3. **After code, run the static checks** (§1). Screen every finding against
    [`false-positives.md`](./false-positives.md) before acting on it. **Never run `fallow fix`.**
 4. **Write new tests in `.claude/tests/`** per [`acceptance-tests.md`](./acceptance-tests.md) — one file per
-   screen, one per relationship between screens, new tests rather than rewrites — in the same pass as
+   screen, new tests rather than rewrites — in the same pass as
    the code they test.
 5. **A reported failure is fixed from the report** (§2). The human names the test number and what
    they saw; the agent reproduces it from the code, not from the device.

@@ -1,7 +1,6 @@
 # Home — acceptance tests
 
-Covers the **Home** screen: your list of systems, and the form that makes a new one. It holds the
-part of the retired Inventory and Stock Test 39 that is about this screen.
+Covers the **Home** screen: your list of systems, and the form that makes a new one.
 
 ---
 

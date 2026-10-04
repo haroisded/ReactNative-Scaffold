@@ -82,8 +82,8 @@ instruction_mds/           conventions for what is built on the scaffold — str
                            tenancy, frontend, migrations, testing workflow, acceptance tests,
                            token budget. See CLAUDE.md §2
 .claude/tests/<screen>.md  plain-language acceptance scripts the human testers run on a device, one
-                           file per screen and one per relationship between screens —
-                           written by the agent, never run by it (instruction_mds/acceptance-tests.md)
+                           file per screen — written by the agent, never run by it
+                           (instruction_mds/acceptance-tests.md)
 patches/                   patch-package diffs, applied by the postinstall hook
 .oxlintrc.json             oxlint config: rule list + the local plugin it loads, and the overrides
                            that turn no-design-literals on for src/** and off for src/themes.js, and

@@ -5,9 +5,9 @@ tablet. The testers are people who will use the POS, not developers.
 
 ## Rules
 
-1. **One file per screen, and one per relationship between screens — kebab-case, committed.** A test
-   that needs only one screen goes in `.claude/tests/<screen>.md`; a test whose point is what passes
-   between two or more screens goes in `.claude/tests/<screen-a>-<screen-b>.md`. §0 says how to pick.
+1. **One file per screen — `.claude/tests/<screen>.md`, kebab-case, committed.** No file per pair of
+   screens. A test that crosses screens goes in the file of the screen where its expected output is
+   checked. §0 says how to pick.
 2. **A change gets new tests, never a rewrite of old ones.** Add the new tests to the end of the right
    file (or a new file), numbered on from its last test. A test whose behaviour the change replaced
    keeps its steps; it gets one line under its title, `> Retired by <file> Test <n>.` — or
@@ -39,22 +39,18 @@ tablet. The testers are people who will use the POS, not developers.
 | --- | --- | --- |
 | one screen, or one sheet or dialog opened from it | `<screen>.md`, named for the screen as the side menu names it | `assets.md` |
 | the side menu, or anything else every screen shares | a file named for that piece | `side-menu.md` |
-| something that passes between two or more screens — a link, Back between them, data made on one and shown on another | `<screen-a>-<screen-b>.md`, screens in the order the tester visits them | `inventory-assets.md` |
+| something that passes between screens — a link, Back between them, data made on one and shown on another | the file of the screen where the expected output is checked | an item added in Inventory and sold on the Register → `register.md` |
 
-- A cross-screen file covers only the passing between screens. Its intro names the per-screen files
-  that cover each screen on its own, and it does not repeat their tests.
-- Before adding a file, check `.claude/tests/` for one that already covers that screen or that pair.
+- Before adding a file, check `.claude/tests/` for the one that already covers that screen.
 - A screen renamed in the app keeps its file's tests; new tests go in a file under the new name, and
   the old file's intro says where its screen went.
-- `resources.md` and `inventory-stock.md` predate this rule and cover several screens each. Leave
-  them as they are and put new tests for those screens in per-screen files.
 
 ## 1. Template
 
 ```markdown
 # <Screen> — acceptance tests
 
-Covers <what on this screen>. <For a cross-screen file: each screen on its own is covered in … .>
+Covers <what on this screen>.
 
 ## Test 1 - Title: <what a tester would call it>
 
@@ -186,3 +182,6 @@ device — it traces the reported steps through the code.
 - **One file per feature, rewritten in place when the feature changes** (the rule until 2026-10-01).
   A feature spans several screens, so its file mixed them, and a rewrite changed tests a tester was
   already running. Replaced by rules 1 and 2.
+- **A file per relationship between screens, `<screen-a>-<screen-b>.md`** (2026-10-01 to 2026-10-04).
+  Every pair of screens grew its own file and its own tests, far more than a tester could run. The
+  human removed it on 2026-10-04; a cross-screen test now goes in one screen's file (rule 1).

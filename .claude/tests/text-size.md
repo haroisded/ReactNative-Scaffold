@@ -1,8 +1,8 @@
 # Text size — acceptance tests
 
 Covers how every screen's text looks at the phone's biggest text setting. Each screen on its own is
-covered in its own file (`assets.md`, `inventory.md`, `stock.md`, `register-receipts.md`,
-`receipts.md`, `home.md`, `profile.md`, `side-menu.md`); this file only checks that text stays
+covered in its own file (`assets.md`, `inventory.md`, `stock.md`, `receipts.md`, `home.md`,
+`profile.md`, `side-menu.md`); this file only checks that text stays
 readable everywhere when it is made large.
 
 ## Group 1 — Normal use
