@@ -16,10 +16,9 @@ and where this repo overrides it.
    sign-in module is not in it. A change needing a native rebuild (new native dependency, config
    plugin, `app.json` plugin) is a thing to tell the human, not to run.
 5. **These skill rules apply to every screen:** `React.use` over `useContext`;
-   `process.env.EXPO_OS` over `Platform.OS`; `expo-symbols` icons with `{ ios, android }` names;
-   `NativeTabs` for the `(tabs)` bar; native `formSheet` for narrow sheets;
-   `expo-router/react-navigation`, never `@react-navigation/*` directly; kebab-case files and
-   `src/screens/`.
+   `process.env.EXPO_OS` over `Platform.OS`; `expo-router/react-navigation`, never
+   `@react-navigation/*` directly; kebab-case files and `src/screens/`. Icons, `NativeTabs` and
+   `formSheet`: [`frontend.md`](./frontend.md) rules 2 and 20.
 6. **Where an Expo skill contradicts a rule in `instruction_mds/`, the doc wins.** §3 lists the standing cases.
    A new one gets a row there in the same pass — never a quiet change to the code.
 7. **No paid EAS step without the human.** `eas-*` skills (`eas-app-stores`, `eas-update`,
@@ -32,11 +31,11 @@ and where this repo overrides it.
 
 | Goal | Leaf skill | Read with |
 | --- | --- | --- |
-| A new screen, its layout and controls | `expo-native-ui` | [`layout.md`](./layout.md), [`visual-language.md`](./visual-language.md) |
+| A new screen, its layout and controls | `expo-native-ui` | [`frontend.md`](./frontend.md) |
 | Routes, stacks, the `(tabs)` bar, sheets, headers | `expo-router` | [`structure.md`](./structure.md) rule 5 |
 | Motion, gestures, press feedback, keyboard | `expo-animation` | — |
 | Fetching, caching, offline, screen states | `expo-data-fetching` | [`data-layer.md`](./data-layer.md) — it overrides the skill's defaults |
-| Theme tokens, drift audits | `expo-design-system` | [`visual-language.md` §2](./visual-language.md) — `src/themes.js` is the existing system |
+| Theme tokens, drift audits | `expo-design-system` | [`frontend.md` §1–§2](./frontend.md) — `src/themes.js` is the existing system |
 | Camera, audio, video, files, secure storage | `expo-native-ui` references (`media.md`, `storage.md`) | — |
 | A dev build, or a native dependency added | `expo-dev-client` | rule 4 — the human builds |
 | Upgrading past SDK 57 | `expo-upgrade` | a pass of its own |
@@ -50,24 +49,14 @@ colours. Paper, the theme and the type scale stay.
 ## 2. Exceptions inside rule 5
 
 - `src/lib/` auth, storage and query files keep `Platform.OS`.
-- `NativeTabs` is for the `(tabs)` bar only, not the merchant shell — eight destinations, and Android
-  caps native tabs at five.
-- `Pressable` needs `android_ripple` passed by hand; Paper's `TouchableRipple` read the theme itself.
-- `expo-symbols` needs both `{ ios, android }` halves of every name.
 
 ## 3. Where this repo overrides the Expo skills
 
 | Expo skill says | This repo | Where |
 | --- | --- | --- |
 | Try Expo Go first | Development build only | rule 4 |
-| Check `@expo/ui` before any other component | Paper primitives | [`visual-language.md`](./visual-language.md) rule 6 |
-| `Color` from `expo-router` in a `Platform.select` palette | Theme keys in `src/themes.js` | [`visual-language.md` §2](./visual-language.md) |
-| `useWindowDimensions` for sizing | The container's `onLayout` | [`layout.md`](./layout.md) rule 2 |
-| Inline styles, not `StyleSheet.create` | `StyleSheet.create` | [`visual-language.md`](./visual-language.md) rule 9 |
-| `boxShadow` strings | Flat, outlined surfaces | [`visual-language.md` §7](./visual-language.md) |
-| A navigation stack title, never on-page title text | `PageHeader` | [`visual-language.md` §4](./visual-language.md) |
-| A local `ThemedText` wrapper, an Apple text ramp | Paper `Text` with the nine variants | [`typography.md`](./typography.md) |
-| `src/theme/` folder of token files | `src/themes.js` | [`visual-language.md` §2](./visual-language.md) |
+| Frontend: `@expo/ui`, `Platform.select` palettes, `useWindowDimensions` for sizing, inline styles, `boxShadow`, stack titles, `ThemedText` | Paper, theme keys, the window for the threshold only, `StyleSheet.create`, `PageHeader`, Paper `Text` + variant | [`frontend.md` §8](./frontend.md) — the rows live there |
+| `src/theme/` folder of token files | `src/themes.js` | [`frontend.md` §1](./frontend.md) |
 | `hooks/`, `utils/`, `server/` under `src/` | Not created | [`structure.md`](./structure.md) rule 1 |
 | `retry: 2`, five-minute `staleTime`, `expo/fetch` | `retry: false`, `STALE`, supabase-js | [`data-layer.md` §4](./data-layer.md) |
 | `expo-project-structure`'s tree | Only its `screens/` and kebab-case conventions | [`structure.md`](./structure.md) |

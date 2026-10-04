@@ -18,7 +18,7 @@ type Props = {
  * Delete permanently. Archive is not offered here: it is its own button now, it writes immediately and
  * the snackbar carries the Undo (src/components/archive-undo.tsx). One dialog, one irreversible action.
  *
- * The mockup blocks Delete once a product has order or recipe history. Orders do not exist yet, and a
+ * Delete is meant to be blocked once a product has order or recipe history. Orders do not exist yet, and a
  * product used as a bundle component is refused by the database (23503), so Delete is enabled and that
  * refusal is reported below rather than pre-checked.
  */

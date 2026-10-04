@@ -1,11 +1,12 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { SymbolView } from 'expo-symbols';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
+import { PixelRatio } from 'react-native';
 import type { ColorValue } from 'react-native';
 
 /**
  * The app's icon vocabulary: one name per meaning, each with its SF Symbol and its Material Symbol
- * (instruction_mds/visual-language.md §6). Every pair was checked against `sf-symbols-typescript` and
+ * (instruction_mds/frontend.md §6). Every pair was checked against `sf-symbols-typescript` and
  * `expo-symbols/build/android/symbols.json` on 2026-09-17 — and the types check them again, because an
  * Android name that is not in the font draws a blank with no warning (`androidSymbolToString`).
  *
@@ -44,7 +45,7 @@ export const ICONS = {
   // Inventory's and Stock's category and variant group folders.
   folder: { ios: 'folder', android: 'folder' },
   bell: { ios: 'bell', android: 'notifications' },
-  // SF Symbols has no calculator glyph; the mockups' Register key reads as arithmetic either way.
+  // SF Symbols has no calculator glyph; the Register key reads as arithmetic either way.
   calculator: { ios: 'plus.forwardslash.minus', android: 'calculate' },
   clipboard: { ios: 'list.clipboard', android: 'assignment' },
   grid: { ios: 'square.grid.2x2', android: 'grid_view' },
@@ -115,8 +116,11 @@ function isIconName(name: string): name is IconName {
  * theme.
  *
  * Paper's `direction` is its own RTL flag, dropped here: SymbolView has no such prop.
- * `allowFontScaling` only reaches the fallback — SymbolView draws a fixed-size glyph on both
- * platforms, which is what an icon inside a fixed-size control needs anyway.
+ * `allowFontScaling` only reaches the fallback. On iOS SymbolView draws a fixed-size image. On Android it
+ * draws the glyph as a Text in a size × size box (expo-symbols build/SymbolView.js:35-40), and that Text
+ * follows the OS font scale, so at 200% the glyph is twice the box and clipped. The glyph is therefore
+ * asked for at size ÷ font scale, which the scale brings back to size, and the box is held at size by
+ * `style` (instruction_mds/frontend.md §7).
  */
 export function renderIcon({
   name,
@@ -132,7 +136,8 @@ export function renderIcon({
   testID?: string;
 }) {
   if (isIconName(name)) {
-    return <SymbolView name={ICONS[name]} tintColor={color} size={size} testID={testID} />;
+    const glyph = process.env.EXPO_OS === 'android' ? size / PixelRatio.getFontScale() : size;
+    return <SymbolView name={ICONS[name]} tintColor={color} size={glyph} style={{ width: size, height: size }} testID={testID} />;
   }
   return (
     <MaterialCommunityIcons

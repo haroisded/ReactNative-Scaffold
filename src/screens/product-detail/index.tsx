@@ -13,7 +13,7 @@ import { IconButton } from '../../components/icon-button';
 import { PageHeader } from '../../components/page-header';
 import { QueryState } from '../../components/query-state';
 import { LowStockBadge, NeedsPriceBadge, Thumbnail, TypeBadge } from '../../components/product-badges';
-import { AppText, Text } from '../../components/text';
+import { Text } from '../../components/text';
 import { useDuplicateProductMutation, useProductQuery, useSourceItemQuery } from '../../features/products/queries';
 import type { ProductDetail as Detail } from '../../features/products/queries';
 import { RESOURCE_ROUTE } from '../../features/products/resources';
@@ -208,7 +208,7 @@ function Summary({ product, currency, wide }: { product: Detail; currency: strin
           {product.is_low_stock ? <LowStockBadge /> : null}
           <NeedsPriceBadge product={product} />
         </View>
-        <AppText variant="amount">{formatMoney(product.selling_price, currency)}</AppText>
+        <Text variant="amount">{formatMoney(product.selling_price, currency)}</Text>
         {product.source_item_id ? <SourceItemLine itemId={product.source_item_id} /> : null}
       </View>
     </View>
@@ -412,7 +412,7 @@ function DetailCard({ title, children }: { title: string; children: ReactNode })
 
   return (
     <Card mode="outlined">
-      {/* The header strip: labelMedium in onPrimary on primary (instruction_mds/visual-language.md §5). */}
+      {/* The header strip: labelMedium in onPrimary on primary (instruction_mds/frontend.md §5). */}
       <View style={[styles.strip, { backgroundColor: colors.primary }]}>
         <Text variant="labelMedium" style={{ color: colors.onPrimary }}>
           {title}

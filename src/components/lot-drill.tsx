@@ -29,13 +29,14 @@ type Props = {
   /** Base unit name, for "12 tablets left". */
   unit: string;
   currency: string;
-  expiryAlertDays: number | null;
+  /** The item's alert date (products.expiry_alert_on): from then on a lot not yet expired reads Expiring. */
+  expiryAlertOn: string | null;
   showEmpty: boolean;
   /** A row action for a pack, like the detail's ⋮ menu. */
   packAction?: (pack: StockPack, lot: StockLot) => ReactNode;
 };
 
-export function LotDrill({ lots, nextPick, unit, currency, expiryAlertDays, showEmpty, packAction }: Props) {
+export function LotDrill({ lots, nextPick, unit, currency, expiryAlertOn, showEmpty, packAction }: Props) {
   const { colors } = useAppTheme();
   const [expanded, setExpanded] = useState<string[]>([]);
   const today = localToday();
@@ -61,20 +62,20 @@ export function LotDrill({ lots, nextPick, unit, currency, expiryAlertDays, show
           <View key={lot.id} style={styles.lot}>
             <View style={styles.lotHead}>
               <View style={styles.lotTitle}>
-                <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
+                <Text variant="titleMedium">
                   {lot.code ?? '—'}
                 </Text>
-                <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+                <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
                   {lot.expires_on ? `exp ${displayDate(lot.expires_on)}` : 'no expiry'}
                 </Text>
-                <ExpiryBadge state={expiryState(lot.expires_on, expiryAlertDays, today)} />
+                <ExpiryBadge state={expiryState(lot.expires_on, expiryAlertOn, today)} />
                 {lot.source === 'inventory' ? (
-                  <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+                  <Text variant="labelMedium" style={{ color: colors.onSurfaceMuted }}>
                     Added in Inventory
                   </Text>
                 ) : null}
               </View>
-              <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
                 {`${balance.remaining} ${unit} left · ${balance.active} active${balance.empty ? ` · ${balance.empty} empty` : ''}`}
               </Text>
             </View>

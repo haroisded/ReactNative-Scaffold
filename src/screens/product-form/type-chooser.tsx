@@ -45,7 +45,7 @@ export function TypeChooser({ title, hint, types, onPick, onBack }: Props) {
           <Pressable
             key={type}
             onPress={() => onPick(type)}
-            // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+            // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
             android_ripple={{ color: colors.ripple }}
             accessibilityRole="button"
             accessibilityLabel={TYPE_META[type].label}

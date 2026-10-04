@@ -8,7 +8,7 @@ import { TextInput } from '../../components/text-input';
 import { faceStock, useDrawableStockQuery, useRegisterProductsQuery } from '../../features/sales/queries';
 import type { RegisterProduct } from '../../features/sales/queries';
 import type { CartLine } from '../../features/sales/cart';
-import { TILE_MIN, useColumns } from '../../lib/columns';
+import { fontScaled, TILE_MIN, useColumns } from '../../lib/columns';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
 import { radius, spacing } from '../../themes';
@@ -26,7 +26,10 @@ type Props = {
  */
 export function ItemsPane({ merchantId, currency, onAdd }: Props) {
   const { colors } = useAppTheme();
-  const { columns, onLayout } = useColumns(TILE_MIN);
+  // A tile's name is titleMedium, which the Text wrapper lets grow to 1.5× (instruction_mds/frontend.md
+  // §3.1). The tile widens with it, so a large font scale means fewer, wider tiles rather than a name
+  // broken mid-word.
+  const { columns, onLayout } = useColumns(fontScaled(TILE_MIN));
   const products = useRegisterProductsQuery({ merchantId });
   const drawable = useDrawableStockQuery({ merchantId }).data;
   const [search, setSearch] = useState('');
@@ -68,7 +71,7 @@ export function ItemsPane({ merchantId, currency, onAdd }: Props) {
           data={shown}
           keyExtractor={(item) => item.id}
           numColumns={columns}
-          // instruction_mds/layout.md rule 9.
+          // instruction_mds/frontend.md §4.2.
           key={columns}
           contentContainerStyle={styles.grid}
           ListEmptyComponent={
@@ -98,14 +101,14 @@ export function ItemsPane({ merchantId, currency, onAdd }: Props) {
                   accessibilityState={{ disabled: out }}
                   style={[styles.tile, { borderColor: colors.outlineVariant, backgroundColor: colors.surface }, out && styles.faded]}
                 >
-                  <Text variant="titleMedium" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+                  <Text variant="titleMedium" numberOfLines={2}>
                     {item.name}
                   </Text>
-                  <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+                  <Text variant="bodyMedium">
                     {formatMoney(item.selling_price, currency)}
                   </Text>
                   {left === null ? null : (
-                    <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: out ? colors.error : colors.onSurfaceMuted }}>
+                    <Text variant="bodySmall" style={{ color: out ? colors.error : colors.onSurfaceMuted }}>
                       {out ? 'Out of stock' : `${left} left`}
                     </Text>
                   )}

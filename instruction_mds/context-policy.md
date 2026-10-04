@@ -37,7 +37,6 @@ history documents.
 | What this system is, end to end | `.claude/context/system-context.txt` |
 | Where a thing is implemented, what calls what | `graphify query "<question>"`, `graphify explain "<node>"`, `graphify affected "<node>"` |
 | What was decided about a convention | the `instruction_mds/` file that owns it |
-| What a mockup draws | `.claude/context/UI Reference/` — read-only |
 | What a tool's finding means here | [`false-positives.md`](./false-positives.md) |
 
 Nothing else is a context source. If an answer is not in one of these, it is not written down, and
@@ -170,9 +169,7 @@ Every file in `instruction_mds/` is Rules first, then numbered sections.
 | --- | --- |
 | [`structure.md`](./structure.md) | Which directories exist, what goes in each |
 | [`data-layer.md`](./data-layer.md) | Supabase calls, Zod, TanStack Query |
-| [`layout.md`](./layout.md) | Widths, columns, spacing, the wide/narrow threshold |
-| [`typography.md`](./typography.md) | The nine text variants |
-| [`visual-language.md`](./visual-language.md) | Colour, corners, icons, Paper piece per pattern |
+| [`frontend.md`](./frontend.md) | All UI: Paper, colour, type, corners, spacing, layout, the wide/narrow threshold, patterns, icons |
 | [`expo.md`](./expo.md) | The skill gate, SDK pinning, skill overrides |
 | [`tenancy.md`](./tenancy.md) | `merchant_id`, RLS policy shape |
 | [`migrations.md`](./migrations.md) | Migration and revert pairing |

@@ -10,7 +10,7 @@ import { CategoryPicker } from '../../components/category-picker';
 import { DiscardDialog } from '../../components/discard-dialog';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
-import { ControlledSwitch, ControlledText, Field, FieldGrid, GroupHeading, SectionHeading } from '../../components/form-fields';
+import { ControlledDate, ControlledSwitch, ControlledText, Field, FieldGrid, GroupHeading, SectionHeading, displayDate } from '../../components/form-fields';
 import { PageHeader } from '../../components/page-header';
 import { NarrowSteps, WideSections } from '../../components/section-stepper';
 import { SegmentedButtons } from '../../components/segmented-buttons';
@@ -328,9 +328,7 @@ function StockSettingsSection({ control }: { control: Control<StockItemValues> }
         <ControlledText control={control} name="storageLocation" label="Storage location" maxLength={120} placeholder="Back room, shelf 2" />
         <ControlledText control={control} name="reorderAt" label="Re-order at" hint="In base units" keyboardType="decimal-pad" suffix={base} />
         <ControlledSwitch control={control} name="hasExpiry" label="Expiry" on="Has an expiration date" off="Does not expire" />
-        {hasExpiry ? (
-          <ControlledText control={control} name="expiryAlertDays" label="Expiry alert" hint="Days before a lot expires" keyboardType="number-pad" suffix="days" />
-        ) : null}
+        {hasExpiry ? <ControlledDate control={control} name="expiryAlertOn" label="Expiry alert" hint="Date to start warning" clearable /> : null}
         <ControlledText control={control} name="description" label="Description" span="full" multiline maxLength={2000} />
       </FieldGrid>
     </>
@@ -421,7 +419,7 @@ const settingsFacts = (item: StockItemValues, base: string): Fact[] => [
   ['Storage location', item.storageLocation],
   ['Re-order at', item.reorderAt && `${item.reorderAt} ${base}`],
   ['Expiry', item.hasExpiry ? 'Has an expiration date' : 'Does not expire'],
-  ['Expiry alert', item.hasExpiry && item.expiryAlertDays ? `${item.expiryAlertDays} days` : null],
+  ['Expiry alert', item.hasExpiry && item.expiryAlertOn ? displayDate(item.expiryAlertOn) : null],
   ['Description', item.description],
 ];
 

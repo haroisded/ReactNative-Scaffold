@@ -13,7 +13,7 @@ import { Icon } from '../../../../components/icon';
 import { Surface } from '../../../../components/surface';
 import { Text } from '../../../../components/text';
 import { ShellMerchantContext, useMerchantsQuery } from '../../../../features/merchants/queries';
-import { DRAWER_WIDTH, RAIL_COLLAPSED, RAIL_EXPANDED, ShellWideContext, WIDE_MIN, useColumns } from '../../../../lib/columns';
+import { DRAWER_WIDTH, fontScaled, RAIL_COLLAPSED, RAIL_EXPANDED, useShellWide } from '../../../../lib/columns';
 import { failureMessage } from '../../../../lib/errors';
 import type { IconName } from '../../../../lib/icons';
 import { useAppTheme } from '../../../../lib/theme';
@@ -21,12 +21,12 @@ import { UnsavedGuardContext } from '../../../../lib/unsaved-guard';
 import type { LeaveGuard } from '../../../../lib/unsaved-guard';
 import { radius, spacing } from '../../../../themes';
 
-// The merchant shell (System-Context/Merchant-Page, M3-Analysis/BottomNav-NavRail.md): a header over
-// a NavigationRail on a wide container, or over an off-canvas drawer on a narrow one. Navigation is a
+// The merchant shell: a header over an M3 NavigationRail on a wide window, or over an off-canvas
+// drawer on a narrow one. Navigation is a
 // layout, not a component (instruction_mds/structure.md rule 4), so every piece of the shell lives in this file.
 //
 // One expo-router Drawer serves both widths — drawerType 'permanent' is the rail, 'front' is the
-// drawer — so the two share one route table and one destination list (instruction_mds/layout.md §9).
+// drawer — so the two share one route table and one destination list (instruction_mds/frontend.md §4.4).
 
 type Destination = { name: string; label: string; icon: IconName };
 
@@ -52,7 +52,7 @@ const RESOURCES: Destination[] = [
 ];
 
 // Rail order. `name` is the route file under this directory; icons are the app's own names, drawn as
-// each platform's symbol (src/lib/icons.tsx, instruction_mds/visual-language.md §6). An array rather than a lookup
+// each platform's symbol (src/lib/icons.tsx, instruction_mds/frontend.md §6). An array rather than a lookup
 // object, so matching the focused route is a plain comparison with no type assertion.
 const DESTINATIONS: (Destination | Group)[] = [
   { name: 'index', label: 'Home', icon: 'home' },
@@ -86,12 +86,9 @@ export default function SystemLayout() {
   const merchants = useMerchantsQuery();
   const merchant = merchants.data?.find((candidate) => candidate.id === id);
   const { colors } = useAppTheme();
-  // The shell's one width decision. useColumns with WIDE_MIN as the "card" width yields a second
-  // column exactly when the container reaches WIDE_MIN, so `columns > 1` reads as "wide". Measured
-  // here, on the shell's root, and handed down — never re-measured by a screen under it, whose pane
-  // is narrower by the rail and would flip at a different width (instruction_mds/layout.md §9).
-  const { columns, onLayout } = useColumns(WIDE_MIN);
-  const wide = columns > 1;
+  // The one width decision, made in (app)/_layout.tsx from the window (instruction_mds/frontend.md
+  // §4.1). Every destination reads the same value, so the rail and the panes beside it flip together.
+  const wide = useShellWide();
   // Only the rail collapses. The narrow drawer's open state belongs to the navigator instead.
   const [expanded, setExpanded] = useState(true);
   // Filled by a destination with unsaved changes (the product form); the rail asks it before
@@ -100,15 +97,14 @@ export default function SystemLayout() {
 
   if (!merchant) return <MissingMerchant merchants={merchants} />;
 
-  const drawerWidth = wide ? (expanded ? RAIL_EXPANDED : RAIL_COLLAPSED) : DRAWER_WIDTH;
+  // The expanded rail grows with the font scale so its labels stay whole (fontScaled).
+  const drawerWidth = wide ? (expanded ? fontScaled(RAIL_EXPANDED) : RAIL_COLLAPSED) : DRAWER_WIDTH;
 
   return (
-    <View style={styles.fill} onLayout={onLayout}>
-      {/* The width decision made above, handed to every destination so none re-measures it; and the
-          merchant, because a destination's own params do not carry the shell's id. */}
+    <View style={styles.fill}>
+      {/* The merchant, because a destination's own params do not carry the shell's id. */}
       <ShellMerchantContext value={merchant}>
       <UnsavedGuardContext value={leaveGuard}>
-      <ShellWideContext value={wide}>
       <Drawer
         // `layout` wraps the navigator itself (react-navigation/core/types.d.ts:21), which is what
         // puts the header above the rail at full width, and makes the front drawer and its scrim
@@ -156,7 +152,6 @@ export default function SystemLayout() {
           <Drawer.Screen key={route.name} name={route.name} />
         ))}
       </Drawer>
-      </ShellWideContext>
       </UnsavedGuardContext>
       </ShellMerchantContext>
     </View>
@@ -208,7 +203,7 @@ type HeaderProps = {
   onMenu: () => void;
 };
 
-// Component A. Paper picks the title's variant (instruction_mds/typography.md rule 5), so only colour is passed.
+// Component A. Paper picks the title's variant (instruction_mds/frontend.md §3.3), so only colour is passed.
 function MerchantHeader({ onMenu }: HeaderProps) {
   const { colors } = useAppTheme();
 
@@ -280,7 +275,7 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
         <Avatar.Text size={40} label={initials(name)} color={colors.primary} style={{ backgroundColor: colors.onPrimary }} />
         {labelled ? (
           <View style={styles.systemText}>
-            <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onPrimary }}>
+            <Text variant="titleMedium" numberOfLines={1} style={{ color: colors.onPrimary }}>
               {name}
             </Text>
             {wide ? null : (
@@ -395,7 +390,7 @@ type ItemProps = {
 
 // One rail or drawer row. Active: the lightened ground and the 4px accent bar. Inactive: no ground, no
 // bar, 68%. The bar is a left border on every item, transparent when inactive, so selecting an item
-// never shifts its content sideways (instruction_mds/visual-language.md §4).
+// never shifts its content sideways (instruction_mds/frontend.md §5).
 function NavItem({ label, icon, wide, labelled, active, nested, trailing, expandedState, onPress }: ItemProps) {
   const { colors } = useAppTheme();
 
@@ -421,7 +416,6 @@ function NavItem({ label, icon, wide, labelled, active, nested, trailing, expand
             <Text
               variant="labelLarge"
               numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
               style={[styles.fill, { color: colors.onPrimary }]}
             >
               {label}
@@ -440,7 +434,7 @@ const styles = StyleSheet.create({
   // `border` colour on the permanent rail, and 16-radius corners on the front drawer
   // (DrawerView.js:55, :184-206). `roundness` reaches Paper only, so both are set here from the theme:
   // the rail is chrome flush with the content beside it and keeps square edges, and the front drawer
-  // takes the radius a Dialog-sized surface gets (instruction_mds/visual-language.md rule 4).
+  // takes the radius a Dialog-sized surface gets (instruction_mds/frontend.md rule 7).
   rail: { borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   drawer: { borderRightWidth: 0, borderTopRightRadius: radius.xl, borderBottomRightRadius: radius.xl },
   systemRail: { alignItems: 'flex-start', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md },
@@ -452,10 +446,14 @@ const styles = StyleSheet.create({
   // 4 of border plus `ms` of padding puts every icon `md` from the edge, level with the badge above.
   item: { borderLeftWidth: 4, borderLeftColor: 'transparent' },
   inactive: { opacity: 0.68 },
-  railItem: { alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.ms, paddingLeft: spacing.ms, paddingRight: spacing.ms },
+  // Stretch, not flex-start: the label row under the icon needs the rail's width, or its flex: 1
+  // label measures to nothing and the rail shows icons only.
+  railItem: { alignItems: 'stretch', gap: spacing.sm, paddingVertical: spacing.ms, paddingLeft: spacing.ms, paddingRight: spacing.ms },
   // Label and chevron share a row in both anatomies: beside the icon in the drawer, under it in the
   // rail, where the item itself is a column.
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flex: 1, minWidth: 0 },
+  // flexGrow, not flex: 1 — under the rail's icon the item is a column, where flex: 1's zero basis
+  // made the row zero tall and hid every label.
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexGrow: 1, flexShrink: 1, minWidth: 0 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingLeft: spacing.ms, paddingRight: spacing.md },
   // One step in from its group row, so the Resources screens read as under it.
   nested: { paddingLeft: spacing.lg },

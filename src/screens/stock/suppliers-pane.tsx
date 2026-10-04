@@ -14,7 +14,7 @@ import { Switch } from '../../components/switch';
 import { Text } from '../../components/text';
 import { useSetSupplierActiveMutation, useSuppliersQuery } from '../../features/suppliers/queries';
 import type { Supplier } from '../../features/suppliers/queries';
-import { useShellWide } from '../../lib/columns';
+import { useShellWide, useTableFits } from '../../lib/columns';
 import { failureMessage, mutationNotice } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
@@ -28,6 +28,8 @@ type Props = {
 export function SuppliersPane({ merchantId, onCreate }: Props) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
+  // Table only wide at a readable font scale (instruction_mds/frontend.md §3.5).
+  const table = useTableFits();
   const suppliers = useSuppliersQuery({ merchantId });
   const setActive = useSetSupplierActiveMutation();
   const rows = suppliers.data ?? [];
@@ -35,7 +37,7 @@ export function SuppliersPane({ merchantId, onCreate }: Props) {
   const [deleting, setDeleting] = useState<Supplier | null>(null);
 
   // Edit is a full-page form at every width; narrow, delete is a formSheet route
-  // (instruction_mds/visual-language.md §5).
+  // (instruction_mds/frontend.md §5).
   const edit = (supplier: Supplier) => router.push({ pathname: '/forms/supplier', params: { merchantId, supplierId: supplier.id } });
   const remove = (supplier: Supplier) =>
     wide
@@ -68,7 +70,7 @@ export function SuppliersPane({ merchantId, onCreate }: Props) {
         </HelperText>
       ) : null}
 
-      {wide ? (
+      {table ? (
         <DataTable style={styles.fill}>
           <DataTable.Header style={{ borderBottomColor: colors.outlineVariant }}>
             <HeaderTitle label="Code" style={styles.codeCell} />
@@ -114,25 +116,25 @@ function TableRow({ item, onEdit, onDelete, onToggle }: RowProps) {
   return (
     <DataTable.Row onPress={onEdit} style={[styles.tableRow, { borderBottomColor: colors.surfaceVariant }]}>
       <View style={styles.codeCell}>
-        <Text variant="labelLarge" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="labelLarge" numberOfLines={1}>
           {item.code}
         </Text>
       </View>
       <View style={styles.nameCell}>
-        <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="titleMedium" numberOfLines={1}>
           {item.name}
         </Text>
-        <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={muted}>
+        <Text variant="bodySmall" numberOfLines={1} style={muted}>
           {[item.contact_person, item.type?.name].filter(Boolean).join(' · ') || 'No contact'}
         </Text>
       </View>
       <View style={styles.termsCell}>
-        <Text variant="bodyMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="bodyMedium" numberOfLines={1}>
           {item.payment_terms ?? '—'}
         </Text>
       </View>
       <View style={styles.leadCell}>
-        <Text variant="bodyMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="bodyMedium" numberOfLines={1}>
           {leadLabel(item.lead_time_days)}
         </Text>
       </View>
@@ -155,7 +157,7 @@ function CardRow({ item, onEdit, onDelete, onToggle }: RowProps) {
     <Pressable
       onPress={onEdit}
       onLongPress={onDelete}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel={item.name}
@@ -163,13 +165,13 @@ function CardRow({ item, onEdit, onDelete, onToggle }: RowProps) {
       style={[styles.cardRow, { borderBottomColor: colors.surfaceVariant }]}
     >
       <View style={styles.cardText}>
-        <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3} style={!item.active && muted}>
+        <Text variant="titleMedium" numberOfLines={1} style={!item.active && muted}>
           {item.name}
         </Text>
-        <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={muted}>
+        <Text variant="bodySmall" numberOfLines={1} style={muted}>
           {[item.code, item.contact_person].filter(Boolean).join(' · ')}
         </Text>
-        <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={muted}>
+        <Text variant="bodySmall" numberOfLines={1} style={muted}>
           {[item.payment_terms, item.lead_time_days === null ? null : `${leadLabel(item.lead_time_days)} lead`]
             .filter(Boolean)
             .join(' · ') || 'No terms set'}

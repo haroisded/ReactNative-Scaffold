@@ -106,3 +106,59 @@ screen on both.
   in the middle of the screen.
 - Phone: **Paracetamol 500mg**'s page opens on its own screen; the item form goes step by step with
   **Next** and **Skip step**; **Adjust count** fills the whole screen, the same as on the tablet.
+
+---
+
+## Added later — Normal use
+
+## Test 4 - Title: Expiry alert as a date, and the Expiring warning
+
+### What will be tested?
+On **Paracetamol 500mg**'s page in **Inventory** you will set the date the app starts warning that its
+stock is about to expire. A pass means the item's lots read **Expiring** from that date on, and stop
+when the date is cleared, so the shop sees in time which stock to sell first.
+
+### What do you need before starting?
+- Inventory and Stock tests 1–7 done (**Paracetamol 500mg** has a lot expiring in 30 days and one in 60
+  days), on a tablet held sideways.
+
+### Steps
+1. Open **Inventory** and tap **Paracetamol 500mg**'s name. Its page opens beside the list.
+2. Tap **Edit** at the top right of the page. The item form opens on **Pack**.
+3. Scroll down to **Stock settings**. Check the **Expiry** switch reads **Has an expiration date**.
+4. Tap the **Expiry alert** field below the switch. A calendar opens.
+5. Pick today's date and tap **OK**.
+6. Tap **Save item** at the top right.
+7. Look at the lots under **Lots** on the item's page, and at the item's row in the list.
+8. Tap **Edit** again, scroll to **Expiry alert**, tap **Clear** beside it, then **Save item**.
+
+### What's the expected output?
+- After step 3, the **Expiry alert** field is half the width of the form, the same width as the
+  **Re-order at** field above it — not stretched across the whole row. Before step 5 it reads
+  **Select a date**, with a calendar icon at its right.
+- After step 5, the field shows today's date, with a **Clear** button beside it.
+- After step 7, under **Lots**, each lot that has not expired shows a red **Expiring** next to its
+  **exp** date, and the item's row in the list shows red **Expiring** too. On the item's page,
+  **Expiry alert** shows today's date.
+- After step 8, the red **Expiring** words are gone from the lots and the row, and **Expiry alert** no
+  longer shows on the item's page.
+
+## Test 5 - Title: Expiry alert hidden when the item does not expire
+
+### What will be tested?
+On the **Add an inventory item** form you will turn **Expiry** off and on. A pass means the date to start
+warning only shows for items that expire.
+
+### What do you need before starting?
+- On **Inventory**, on a phone or a tablet.
+
+### Steps
+1. Tap **Add item** at the top right. The form opens on **Pack**.
+2. Scroll down to **Stock settings**, and tap the **Expiry** switch so it reads **Does not expire**.
+3. Tap the switch again so it reads **Has an expiration date**.
+4. Tap the back arrow at the top left, and **Discard** if a window asks.
+
+### What's the expected output?
+- After step 2, the **Expiry alert** field is gone.
+- After step 3, **Expiry alert** is back, reading **Select a date**.
+- After step 4, no item was added.

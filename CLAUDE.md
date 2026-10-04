@@ -8,7 +8,10 @@ be extremely concise and sacrifice
 grammar for the sake of concision
 
 # Tool Calling
-For tool calling, always use context mode 
+For tool calling, always use context mode
+
+# Supabase Interaction
+For Supabase CRUDS, dont use the CLI, use the MCP
 
 
 **Contents**
@@ -109,14 +112,12 @@ so you use it rather than build a second one:
 | [`instruction_mds/structure.md`](./instruction_mds/structure.md) | which directories may exist under `src/` — data by resource in `features/`, UI by screen in `screens/`, Paper re-exports in `components/`, kebab-case |
 | [`instruction_mds/data-layer.md`](./instruction_mds/data-layer.md) | Supabase calls, Zod, TanStack Query keys and cache |
 | [`instruction_mds/tenancy.md`](./instruction_mds/tenancy.md) | merchant scoping and the RLS shape every business table takes |
-| [`instruction_mds/layout.md`](./instruction_mds/layout.md) | phone and tablet, column counts, the one width threshold, the spacing scale |
-| [`instruction_mds/typography.md`](./instruction_mds/typography.md) | the nine Paper `Text` variants, no type at a call site |
-| [`instruction_mds/visual-language.md`](./instruction_mds/visual-language.md) | the Merchant mockups → theme colours, the accent, corners, icons, and the Paper or native piece for each pattern |
+| [`instruction_mds/frontend.md`](./instruction_mds/frontend.md) | **the one frontend source of truth** — Paper, theme colours and the accent, the type scale and `Text` wrapper, corners, spacing, phone and tablet layout, the one width threshold, the Paper or native piece for each pattern, icons |
 | [`instruction_mds/expo.md`](./instruction_mds/expo.md) | **before code**: the `expo-overview` gate for any Expo API, package, navigation or native UI; SDK 57 pinning; the Expo skill rules adopted and overridden |
 | [`instruction_mds/optimization.md`](./instruction_mds/optimization.md) | performance review: which skills are the reference, the measure-first evidence bar, what is already decided |
 | [`instruction_mds/migrations.md`](./instruction_mds/migrations.md) | revert files, and the generated all-in-one ADD / REVERT SQL |
 | [`instruction_mds/testing-workflow.md`](./instruction_mds/testing-workflow.md) | **planning and after code**: the human tests on the device and **the agent never touches the emulator** unless allowed that session; what to fix in the plan vs hand to a tester; lint, typecheck, `tools/fallow-verdict.mjs`, `/ponytail-review`, the gated skill; fixing a failure the human reports |
-| [`instruction_mds/acceptance-tests.md`](./instruction_mds/acceptance-tests.md) | writing `.claude/tests/<feature>.md` — plain-language user-acceptance scripts for non-developer testers, including account switching and outside-the-app cases (battery, network, interruptions) |
+| [`instruction_mds/acceptance-tests.md`](./instruction_mds/acceptance-tests.md) | writing `.claude/tests/<screen>.md`, one file per screen and one per relationship between screens — plain-language user-acceptance scripts for non-developer testers, including account switching and outside-the-app cases (battery, network, interruptions) |
 | [`instruction_mds/token-budget.md`](./instruction_mds/token-budget.md) | keeping a pass cheap: wrap large tool output in a script, narrow skill descriptions instead of merging, a fixed budget on every retrieval |
 | [`instruction_mds/false-positives.md`](./instruction_mds/false-positives.md) | findings that are wrong in this repo — fallow, oxlint, Supabase, ponytail, and skill rules this repo overrides — why `fallow fix` must never run here, and what to do with a finding that is not listed |
 
@@ -133,57 +134,19 @@ rejected alternative gets re-litigated.
 
 ## 3. The UI
 
-There is no local UI kit and there should not be one — no `src/styles/`, and nothing in
-`src/components/` that re-implements a primitive. That folder holds one re-export per Paper
-primitive, plus compositions a second screen needs ([`instruction_mds/structure.md`](./instruction_mds/structure.md)
-rule 6).
+Every UI rule — Paper primitives and their native exceptions, theme colours, the type scale and the
+`Text` wrapper, corners, spacing, layout, the one width threshold, patterns, icons — lives in
+[`instruction_mds/frontend.md`](./instruction_mds/frontend.md). It wins over every other doc, comment
+and skill; this section does not repeat it.
 
-Rules 4 and 5 and the icon renderer changed on 2026-09-17 (System-History 12.1), and every screen was
-moved onto them the same day (System-History 12.2).
-
-### Rules
-
-1. No custom primitives — `Text`, `Button`, `TextInput`, `Menu`, `Switch`, `SegmentedButtons`,
-   `Checkbox`, `DataTable`, `Dialog`, `Modal`, `ProgressBar` and `Icon` come from React Native Paper,
-   imported through their re-exports in `src/components/` — `npm run lint` refuses a
-   `react-native-paper` import anywhere else under `src/` (`.oxlintrc.json`). Screen pieces composed
-   from them are fine.
-   The exceptions are native pieces [`instruction_mds/visual-language.md`](./instruction_mds/visual-language.md) §5 names:
-   `Pressable` for press targets, `NativeTabs` for the `(tabs)` bar, a native `formSheet` for narrow
-   sheets.
-2. No hardcoded or inline colors — every color is a key in `src/themes.js`, read through
-   `useAppTheme()` from `src/lib/theme.ts` (Paper's `useTheme()` with the Merchant keys typed). A color the design needs and the theme lacks becomes a new key in both themes, never
-   a literal — [`instruction_mds/visual-language.md`](./instruction_mds/visual-language.md) §3.
-   `anti-slop/no-design-literals` fails `npm run lint` on color literals under `src/` outside
-   `src/themes.js`.
-3. No hardcoded or inline type — every string is a Paper `Text` with a `variant`. Never set
-   `fontSize`, `lineHeight`, `fontWeight`, `letterSpacing`, `fontFamily` or `textTransform` at a
-   call site; the same lint rule catches the first five. The scale is
-   [`instruction_mds/typography.md`](./instruction_mds/typography.md) §2, written into `src/themes.js` through one
-   `configureFonts` call.
-4. Extract a composition into `src/components/` only when a second screen needs it. Until then it
-   lives in its screen's folder in `src/screens/`.
-5. Corners are rounded by the theme: `roundness: 2` in both themes sets Paper's corners, and a
-   surface drawn by hand takes `radius.sm` / `md` / `lg` / `xl` from `src/themes.js` with
-   `borderCurve: 'continuous'`. Never write a radius number at a call site. The drawer's own corners,
-   which `roundness` cannot reach, are set from the theme in `src/app/(app)/systems/[id]/_layout.tsx`.
-   Spacing is the same kind of rule: every padding and gap is a step of `spacing` in `src/themes.js`
-   ([`instruction_mds/layout.md`](./instruction_mds/layout.md) §11). Rejected: keeping `roundness: 0` to
-   match the square mockups — the human chose rounded corners on 2026-09-17, and one theme value
-   re-rounds every Paper component.
-
-### Paper, its patch, and icons
+What it leaves to this file:
 
 - `react-native-paper` is patched by `patches/react-native-paper+5.15.3.patch`, applied by the
   `postinstall` / `patch-package` hook.
-- Paper's icons are pointed away from its default through `PaperProvider`'s `settings` prop.
-  Paper's own default goes through `react-native-vector-icons`, whose fonts nothing loads, so icons
-  would otherwise be blank boxes. `renderIcon` (`src/lib/icons.tsx`) maps each app icon name to an
-  `expo-symbols` `SymbolView` (`{ ios, android }` names, Paper's `color` as `tintColor`) and falls
-  back to MaterialCommunityIcons for Paper's internal names and the brand logos —
-  [`instruction_mds/visual-language.md`](./instruction_mds/visual-language.md) §6. A new icon gets a verified pair in
-  `ICONS` before it is used: an Android name the font lacks draws a blank with no warning.
-- `react-native-vector-icons` stays in `package.json` because Paper imports it internally either way.
+- `react-native-vector-icons` stays in `package.json` because Paper imports it internally, even though
+  `renderIcon` (`src/lib/icons.tsx`) replaces Paper's default icons (frontend.md §6).
+- `roundness: 2` was the human's choice on 2026-09-17. Rejected: `roundness: 0` for square corners —
+  one theme value re-rounds every Paper component, so either is a one-line change.
 
 ---
 
@@ -333,7 +296,8 @@ writers `save_stock_item`, `save_receipt`, `add_inventory_stock`, `draw_stock`, 
 `record_stock_movement` — with a receipt's supplier and a lot's number optional, expected and
 received packs kept apart, and shipping cost recorded but spread into no cost
 (`20260930100000_receipt_inputs.sql`) — and the Register's `sales` and `sale_lines`, select-only for
-clients, written by `record_sale` and voided by `void_sale` (`20260930110000_sales.sql`). The catalogue's
+clients, written by `record_sale` and voided by `void_sale` (`20260930110000_sales.sql`) — and an Inventory
+item's Expiry alert as a date, `products.expiry_alert_on` (`20261004120000_expiry_alert_on.sql`). The catalogue's
 policies are the first callers of `current_merchant_ids()`, which is why `authenticated` holds
 `usage` on `private` and `execute` on that function (`instruction_mds/tenancy.md` §3). Each migration has a
 revert in `supabase/reverts/` (§6.6).

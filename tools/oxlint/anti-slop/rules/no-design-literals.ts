@@ -5,13 +5,21 @@ import { defineRule } from "@oxlint/plugins";
 const colourLiteral =
   /^\s*(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgba?|hsla?)\([^)]*\))\s*$/i;
 
-// The type properties docs/typography.md rule 2 keeps out of call sites. textTransform is not here:
-// it has legitimate non-type uses, and the uppercase label lives in the theme token anyway.
-const typeKeys = new Set(["fontSize", "fontWeight", "lineHeight", "letterSpacing", "fontFamily"]);
+// The type properties instruction_mds/frontend.md rule 6 keeps out of call sites. The uppercase label and
+// tabular digits live in the theme tokens (labelMedium, amount), so a call site never needs either.
+const typeKeys = new Set([
+  "fontSize",
+  "fontWeight",
+  "lineHeight",
+  "letterSpacing",
+  "fontFamily",
+  "textTransform",
+  "fontVariant",
+]);
 
 /**
  * Ban colour literals and inline type properties. Scoped in .oxlintrc.json: on for src/**, off for
- * src/themes.js, the one file allowed to define them (CLAUDE.md §3 rules 2 and 3).
+ * src/themes.js, the one file allowed to define them (instruction_mds/frontend.md rules 5 and 6).
  */
 export const noDesignLiteralsRule = defineRule({
   meta: {
@@ -22,9 +30,9 @@ export const noDesignLiteralsRule = defineRule({
     },
     messages: {
       colour:
-        "Colour literal outside src/themes.js. Read a key from the theme; if the design needs a colour the theme lacks, add the key to both themes (docs/visual-language.md §3).",
+        "Colour literal outside src/themes.js. Read a key from the theme; if the design needs a colour the theme lacks, add the key to both themes (instruction_mds/frontend.md rule 5).",
       type:
-        "Inline `{{name}}` outside src/themes.js. Use a Paper Text variant; sizes live in the theme (docs/typography.md §2).",
+        "Inline `{{name}}` outside src/themes.js. Use a Paper Text variant; sizes live in the theme (instruction_mds/frontend.md §3.1).",
     },
   },
   createOnce(context) {

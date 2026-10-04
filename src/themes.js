@@ -1,4 +1,4 @@
-// styles/theme.js
+// The app theme: colour keys, type scale, roundness, spacing and radius (instruction_mds/frontend.md §1).
 import { MD3DarkTheme, MD3LightTheme, configureFonts } from 'react-native-paper';
 
 const lightColors = {
@@ -42,7 +42,7 @@ const lightColors = {
     level4: "#E8EDF4",
     level5: "#E4EAF2",
   },
-  // The Merchant keys, from instruction_mds/visual-language.md §3 — roles the mockups need and MD3 lacks. Read
+  // The Merchant keys (instruction_mds/frontend.md §2.2) — roles the app needs and MD3 lacks. Read
   // them through useAppTheme() (src/lib/theme.ts); Paper's plain useTheme() types colors to MD3 only.
   accent: "#EC3013",
   onAccent: "#FFFFFF",
@@ -53,7 +53,7 @@ const lightColors = {
   primaryHighlight: "rgba(255, 255, 255, 0.14)",
   // The press colour for Pressable's android_ripple on a light surface. Paper's TouchableRipple
   // derived it from the text colour at 12%; Pressable reads nothing, so it is a key
-  // (instruction_mds/visual-language.md §5). On `primary` the ripple is `primaryHighlight`.
+  // (instruction_mds/frontend.md §5). On `primary` the ripple is `primaryHighlight`.
   ripple: "rgba(30, 41, 59, 0.12)",
 };
 
@@ -100,7 +100,7 @@ const darkColors = {
     level4: "#252D3A",
     level5: "#29323F",
   },
-  // The accent stays the same red on dark, as POS Shell draws it. The rest follow the dark ramp
+  // The accent stays the same red on dark, so it reads the same in both themes. The rest follow the dark ramp
   // above; `primaryHighlight` darkens instead of lightening, because `primary` is light here.
   accent: "#EC3013",
   onAccent: "#FFFFFF",
@@ -114,44 +114,46 @@ const darkColors = {
 
 
 
-// The nine-role scale from instruction_mds/typography.md §2, shared by both themes — size does not change with
-// the palette. Keyed by variant, never flat: a config whose values are all non-objects is merged into
-// ALL fifteen variants (fonts.tsx:88-98), so `{ fontSize: 26 }` one level up would resize everything.
+// The scale from instruction_mds/frontend.md §3.1, shared by both themes — size does not change with
+// the palette. Change a row there → change it here, same pass. Keyed by variant, never flat: a config
+// whose values are all non-objects is merged into ALL fifteen variants (fonts.tsx:88-98), so
+// `{ fontSize: 26 }` one level up would resize everything. Line height stays ≥ 1.2 × size and weight
+// ≤ 700 (frontend.md §7: Android clips glyphs below that, and renders 800 as regular).
 const fonts = configureFonts({
   config: {
-    // An MD3 key merges over its default (fonts.tsx:101-110), so only what changes is named.
-    headlineMedium: { fontSize: 24, lineHeight: 28, fontWeight: '800' },
-    headlineSmall: { fontSize: 19, lineHeight: 24, fontWeight: '800' },
-    // Never typed at a call site: Appbar.Content picks it for a small header's title (§3).
-    titleLarge: { fontSize: 19, lineHeight: 24, fontWeight: '700' },
-    titleMedium: { fontSize: 14, lineHeight: 18, fontWeight: '600' },
-    bodyMedium: { fontSize: 13, lineHeight: 18, fontWeight: '400' },
-    bodySmall: { fontSize: 11, lineHeight: 15, fontWeight: '400' },
-    labelLarge: { fontSize: 12, lineHeight: 16, fontWeight: '600' },
+    // An MD3 key merges over its default (fonts.tsx:101-110). Every property is named anyway, so each
+    // row reads the same as its row in §3.1.
+    displaySmall: { fontSize: 32, lineHeight: 40, fontWeight: '700', letterSpacing: 0 },
+    headlineMedium: { fontSize: 26, lineHeight: 32, fontWeight: '700', letterSpacing: 0 },
+    headlineSmall: { fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: 0 },
+    // Never typed at a call site: Appbar.Content picks it for a small header's title (§3.3). MD3's own
+    // app-bar title size (22/28); 18 read as body text in a 64dp bar on a tablet.
+    titleLarge: { fontSize: 22, lineHeight: 28, fontWeight: '600', letterSpacing: 0 },
+    titleMedium: { fontSize: 16, lineHeight: 22, fontWeight: '600', letterSpacing: 0.1 },
+    titleSmall: { fontSize: 14, lineHeight: 20, fontWeight: '600', letterSpacing: 0.1 },
+    bodyLarge: { fontSize: 16, lineHeight: 24, fontWeight: '400', letterSpacing: 0.15 },
+    bodyMedium: { fontSize: 14, lineHeight: 20, fontWeight: '400', letterSpacing: 0.25 },
+    bodySmall: { fontSize: 12, lineHeight: 16, fontWeight: '400', letterSpacing: 0.4 },
+    labelLarge: { fontSize: 14, lineHeight: 20, fontWeight: '600', letterSpacing: 0.1 },
     // The uppercase lives in the token: Paper's Text spreads the whole variant object into the style
     // (Text.tsx:99), so copy is written in normal case and rendered in capitals.
     labelMedium: {
-      fontSize: 10,
-      lineHeight: 14,
-      fontWeight: '700',
-      letterSpacing: 1,
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
+      letterSpacing: 0.5,
       textTransform: 'uppercase',
     },
-    // New keys have no default to merge over, so each carries every property itself. Type them
-    // through AppText (src/lib/theme.ts); Paper's own Text only accepts MD3 variant names.
-    display: {
-      fontFamily: MD3LightTheme.fonts.default.fontFamily,
-      fontSize: 30,
-      lineHeight: 34,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-    },
+    labelSmall: { fontSize: 11, lineHeight: 16, fontWeight: '500', letterSpacing: 0.5 },
+    // A custom key has no default to merge over, so it carries every property itself. Typed through
+    // the Text wrapper (src/components/text.tsx). Tabular digits so amounts align in columns.
     amount: {
       fontFamily: MD3LightTheme.fonts.default.fontFamily,
       fontSize: 20,
-      lineHeight: 24,
-      fontWeight: '800',
+      lineHeight: 26,
+      fontWeight: '700',
       letterSpacing: 0,
+      fontVariant: ['tabular-nums'],
     },
   },
 });
@@ -159,12 +161,12 @@ const fonts = configureFonts({
 
 
 // Paper multiplies `roundness` into each component's corners — Button and SegmentedButtons ×5, Card
-// ×3, Dialog ×7, Chip ×2, TextInput, Menu and Snackbar ×1 (instruction_mds/visual-language.md §5) — so this one
+// ×3, Dialog ×7, Chip ×2, TextInput, Menu and Snackbar ×1 (instruction_mds/frontend.md rule 7) — so this one
 // value rounds the whole app. 2 was chosen by the human on 2026-09-17 over 1 (barely rounded) and
-// MD3's 4 (pill buttons, furthest from the mockups).
+// MD3's 4 (pill buttons).
 const ROUNDNESS = 2;
 
-// The 4-point spacing scale from instruction_mds/layout.md §11. `ms` and `ml` are the two in-between steps (12,
+// The 4-point spacing scale (instruction_mds/frontend.md §4.5). `ms` and `ml` are the two in-between steps (12,
 // 20). Exported as plain constants because StyleSheet.create runs at module scope, where no hook can
 // read the theme; the same objects ride on both themes for code that already holds the theme.
 export const spacing = { xs: 4, sm: 8, ms: 12, md: 16, ml: 20, lg: 24, xl: 32, xxl: 48 };
@@ -172,7 +174,7 @@ export const spacing = { xs: 4, sm: 8, ms: 12, md: 16, ml: 20, lg: 24, xl: 32, x
 // Radii for surfaces drawn by hand, in step with what Paper derives from ROUNDNESS: `sm` for a note
 // callout or an input-like box (×1), `md` for a badge or chip-like tag (×2), `lg` for a thumbnail or
 // card-like block (×3), `xl` for a modal surface that stands in for a Dialog (×7). Never a number at a
-// call site (instruction_mds/visual-language.md rule 4).
+// call site (instruction_mds/frontend.md rule 7).
 export const radius = { sm: ROUNDNESS, md: ROUNDNESS * 2, lg: ROUNDNESS * 3, xl: ROUNDNESS * 7 };
 
 // Both themes need every key: they are separate objects, and a key on one never reaches the other.

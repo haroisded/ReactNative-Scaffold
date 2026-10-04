@@ -350,3 +350,58 @@ to the whole app, not only the **Profile** screen.
 ### What's the expected output?
 - The list of systems in step 2, the system's home page in step 3, the side menu and the **Assets**
   list in step 4, and the asset's page in step 5 are all in the look you noted in step 1.
+
+## Test 16 - Title: Profile buttons on a tablet
+
+> Retired by profile.md Test 17.
+
+### What will be tested?
+You will open your profile on a tablet. A pass means the buttons at the bottom are button-sized and
+sit side by side, not stretched across the page one under another.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, inside a system.
+
+### Steps
+1. Tap the person icon at the top right. Your profile opens.
+2. Look at the buttons under **Preferences**.
+
+### What's the expected output?
+- **Go Back**, **Back to your systems** and the red **Sign Out** sit in one row on the left, each about as
+  wide as its words.
+- **Delete account** is under that row, in red text.
+- On a phone, the same buttons stretch across the screen one under another, as before.
+
+## Test 17 - Title: Profile opens as a window on a tablet
+
+### What will be tested?
+You will open your profile on a tablet, from **Home** and from inside a system. A pass means it opens as
+a window in the middle of the screen over the page you were on, its buttons work, and on a phone it still
+fills the screen.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, on **Home**, with at least one system. A phone signed in to the same
+  account.
+
+### Steps
+1. On the tablet, tap the person icon at the top right of **Home**. A **Profile** window opens.
+2. Look at the window and at what is behind it.
+3. Tap **Close** at the bottom right of the window.
+4. Open one of your systems, then tap the person icon at the top right of the dark bar.
+5. Tap **Back to your systems** at the bottom of the window.
+6. Open a system again and tap the person icon. Press the tablet's Back button.
+7. On the phone, tap **Account** in the bar at the bottom.
+
+### What's the expected output?
+- After step 2, the **Profile** window sits in the middle of the screen with your picture, name and email
+  at the top, an **Account Details** card, **Preferences**, and red **Delete account** text; it scrolls if
+  it does not all fit. Behind it, **Home** shows through a grey shade.
+- At the bottom right of the window: **Close** and a red **Sign Out**. There is no **Back to your
+  systems** here, because you are not inside a system, and no **Go Back** button.
+- After step 3, the window closes and **Home** is just as it was.
+- After step 4, the same window opens over the system's page, and now also has **Back to your systems**
+  between **Close** and **Sign Out**.
+- After step 5, the window closes and the list of your systems shows.
+- After step 6, the window closes and you are still inside the system, on the page you left.
+- After step 7, on the phone, **Profile** fills the whole screen, with its buttons stacked across the
+  screen as before.

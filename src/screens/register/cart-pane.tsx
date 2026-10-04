@@ -4,7 +4,7 @@ import { Button } from '../../components/button';
 import { FormNoticeText } from '../../components/form-footer';
 import { HelperText } from '../../components/helper-text';
 import { IconButton } from '../../components/icon-button';
-import { AppText, Text } from '../../components/text';
+import { Text } from '../../components/text';
 import { TextInput } from '../../components/text-input';
 import { lineTotal } from '../../features/sales/cart';
 import type { CartLine } from '../../features/sales/cart';
@@ -29,7 +29,7 @@ type Props = {
   onComplete: () => void;
 };
 
-/** The cart, its totals, and cash payment (instruction_mds/visual-language.md §4 "Register"). */
+/** The cart, its totals, and cash payment (instruction_mds/frontend.md §5). */
 export function CartPane(props: Props) {
   const { currency, lines, totals, onSetQty, onClear, tendered, onTendered, tenderError, changeDue, notice, pending, onComplete } = props;
   const { colors } = useAppTheme();
@@ -55,10 +55,10 @@ export function CartPane(props: Props) {
           lines.map((line) => (
             <View key={line.productId} style={[styles.line, { borderBottomColor: colors.surfaceVariant }]}>
               <View style={styles.fill}>
-                <Text variant="titleMedium" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+                <Text variant="titleMedium" numberOfLines={2}>
                   {line.name}
                 </Text>
-                <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+                <Text variant="bodySmall" style={muted}>
                   {`${formatMoney(line.price, currency)} each`}
                 </Text>
               </View>
@@ -71,7 +71,7 @@ export function CartPane(props: Props) {
                   onPress={() => onSetQty(line.productId, line.qty - 1)}
                   accessibilityLabel={line.qty === 1 ? `Remove ${line.name}` : `One fewer ${line.name}`}
                 />
-                <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
+                <Text variant="titleMedium">
                   {line.qty}
                 </Text>
                 <IconButton
@@ -83,7 +83,7 @@ export function CartPane(props: Props) {
                   accessibilityLabel={`One more ${line.name}`}
                 />
               </View>
-              <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={styles.amount}>
+              <Text variant="bodyMedium" style={styles.amount}>
                 {formatMoney(lineTotal(line), currency)}
               </Text>
             </View>
@@ -94,7 +94,7 @@ export function CartPane(props: Props) {
           <View style={[styles.rule, { backgroundColor: colors.onSurface }]} />
           <View style={styles.row}>
             <Text variant="titleMedium">Total</Text>
-            <AppText variant="amount">{formatMoney(totals.total, currency)}</AppText>
+            <Text variant="amount">{formatMoney(totals.total, currency)}</Text>
           </View>
           <Text variant="bodySmall" style={muted}>
             {`Includes tax ${formatMoney(totals.tax, currency)}`}
@@ -160,6 +160,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   cash: { gap: spacing.xs },
   footer: { gap: spacing.sm, padding: spacing.ms, borderTopWidth: 1 },
-  // A full-width Button centres its label (instruction_mds/visual-language.md §4 "Full-width buttons").
+  // A full-width Button centres its label (instruction_mds/frontend.md §5).
   charge: { justifyContent: 'flex-start' },
 });

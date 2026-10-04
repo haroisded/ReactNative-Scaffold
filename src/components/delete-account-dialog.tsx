@@ -84,6 +84,6 @@ export function DeleteAccountDialog({ wide, inSheet, onDismiss }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/visual-language.md §5).
+  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/frontend.md §5).
   action: { justifyContent: 'flex-start' },
 });

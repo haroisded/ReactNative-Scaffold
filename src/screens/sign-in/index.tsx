@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Button } from '../../components/button';
 import { HelperText } from '../../components/helper-text';
@@ -36,41 +36,47 @@ export function SignInScreen() {
 
   return (
     <Surface style={styles.screen}>
-      <Text variant="headlineMedium">Sign in</Text>
+      {/* A column held to a button's reading width and centred: on a tablet the buttons otherwise span the
+          whole window. The one centred column on a screen (instruction_mds/frontend.md rule 18): sign-in
+          has nothing beside it to align with. A phone is narrower than the cap, so nothing changes there. */}
+      <View style={styles.column}>
+        <Text variant="headlineMedium">Sign in</Text>
 
-      {/* disabled is load-bearing, not polish: a second signInWithOAuth overwrites the first
-          one's PKCE code verifier, and the returning single-use code would then be exchanged
-          against the wrong verifier and burned. One flow at a time.
+        {/* disabled is load-bearing, not polish: a second signInWithOAuth overwrites the first
+            one's PKCE code verifier, and the returning single-use code would then be exchanged
+            against the wrong verifier and burned. One flow at a time.
 
-          `google` and `facebook` are not in the symbol map: neither SF Symbols nor Material Symbols
-          carries brand marks, so the icon renderer draws both from MaterialCommunityIcons
-          (src/lib/icons.tsx). */}
-      <Button
-        icon="google"
-        mode="contained"
-        onPress={() => run('google')}
-        loading={busy === 'google'}
-        disabled={busy !== null}
-      >
-        Continue with Google
-      </Button>
-      <Button
-        icon="facebook"
-        mode="contained-tonal"
-        onPress={() => run('facebook')}
-        loading={busy === 'facebook'}
-        disabled={busy !== null}
-      >
-        Continue with Facebook
-      </Button>
+            `google` and `facebook` are not in the symbol map: neither SF Symbols nor Material Symbols
+            carries brand marks, so the icon renderer draws both from MaterialCommunityIcons
+            (src/lib/icons.tsx). */}
+        <Button
+          icon="google"
+          mode="contained"
+          onPress={() => run('google')}
+          loading={busy === 'google'}
+          disabled={busy !== null}
+        >
+          Continue with Google
+        </Button>
+        <Button
+          icon="facebook"
+          mode="contained-tonal"
+          onPress={() => run('facebook')}
+          loading={busy === 'facebook'}
+          disabled={busy !== null}
+        >
+          Continue with Facebook
+        </Button>
 
-      <HelperText type="error" visible={error !== null}>
-        {error}
-      </HelperText>
+        <HelperText type="error" visible={error !== null}>
+          {error}
+        </HelperText>
+      </View>
     </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, justifyContent: 'center', gap: spacing.ms, padding: spacing.lg },
+  screen: { flex: 1, justifyContent: 'center', padding: spacing.lg },
+  column: { gap: spacing.ms, width: '100%', maxWidth: 400, alignSelf: 'center' },
 });

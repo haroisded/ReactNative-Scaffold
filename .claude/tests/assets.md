@@ -278,6 +278,8 @@ the category is optional, and the asset's page names the Inventory item it sells
 
 ## Test 13 - Title: Setup's New category on a phone and a tablet
 
+> Retired by assets.md Test 14.
+
 ### What will be tested?
 From **Assets**, you will open the new category form on a tablet and on a phone. A pass means it fills
 the whole screen on both, instead of opening as a box in the middle.
@@ -295,3 +297,38 @@ the whole screen on both, instead of opening as a box in the middle.
 - After step 2, on both, the **New category** form fills the whole screen with a back arrow at the top
   left — not a box in the middle of the screen.
 - After step 3, on both, the **Setup** screen shows again.
+
+## Test 14 - Title: New category, subcategory and tax class as windows on a tablet
+
+### What will be tested?
+From **Assets** you will open the forms that make a category, a subcategory and a tax class, on a
+tablet and on a phone. A pass means each opens as a window in the middle of the tablet's screen, over the
+page you were on, and as a full page on the phone, and that what you make is picked in the field you
+came from.
+
+### What do you need before starting?
+- A phone and a tablet signed in to the same account, each on **Assets**, with at least one asset.
+
+### Steps
+1. On the tablet, tap **Setup** at the top right of **Assets**. The **Setup** screen opens.
+2. Tap **New category**. A **New category** window opens.
+3. Type `Window Drinks` and tap **Create** at the bottom right of the window.
+4. Go back to **Assets**, tap an asset's name, then **Edit** at the top right of its page. On the form
+   that opens, find the **Category** field, tap it and pick **Window Drinks**.
+5. Tap the **Subcategory** field, then **+ New subcategory** at the bottom of the list. A
+   **New subcategory** window opens, with **In Window Drinks** in small red letters above its title.
+6. Type `Window Hot` and tap **Create**.
+7. Find the **Tax class** field on the form, tap it, then **+ New tax class** at the bottom of the list.
+8. Tap **Cancel** at the bottom right of the **New tax class** window, then leave the form without
+   saving.
+9. On the phone, tap **Setup**, then **New category**, then the back arrow at the top left.
+
+### What's the expected output?
+- After steps 2, 5 and 7, each window sits in the middle of the tablet screen, with the page you came
+  from showing through a grey shade behind it, its title at the top and **Cancel** and **Create** at its
+  bottom right. It does not fill the screen.
+- After step 3, the window closes and **Window Drinks** is in **Setup**'s categories.
+- After step 6, the window closes and the **Subcategory** field reads **Window Hot**.
+- After step 8, the form shows again with the **Tax class** field as it was.
+- After step 9, on the phone, **New category** filled the whole screen with a back arrow at the top left,
+  and Back returned to **Setup**.

@@ -1,7 +1,7 @@
 import { useNavigation } from 'expo-router';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '../lib/theme';
@@ -20,15 +20,16 @@ type Props = {
    */
   inSheet?: boolean;
   /**
-   * The content of a full-page form route (src/app/(app)/forms/): a screen of its own at every width,
-   * pushed on the stack (instruction_mds/visual-language.md §5).
+   * The content of a form route (src/app/(app)/forms/, Profile). Narrow, a full page; wide, a Dialog
+   * over the screen it was opened from, the route being a transparentModal (src/app/(app)/_layout.tsx,
+   * instruction_mds/frontend.md §4.4).
    */
   asPage?: boolean;
   onDismiss: () => void;
   /** False while a request is genuinely in flight, so the backdrop and back button cannot close it. */
   dismissable?: boolean;
   kicker?: string;
-  /** `error` for a destructive confirm, `accent` otherwise (instruction_mds/visual-language.md §4). */
+  /** `error` for a destructive confirm, `accent` otherwise (instruction_mds/frontend.md §2.3). */
   kickerTone?: 'accent' | 'error';
   title: string;
   children?: ReactNode;
@@ -37,11 +38,13 @@ type Props = {
 };
 
 /**
- * A confirm, picker or small form — the fifth pair in instruction_mds/layout.md §9, in four presentations:
+ * A confirm, picker or small form — the pairs in instruction_mds/frontend.md §4.4, in five presentations:
  *
- * - **wide:** a Paper Dialog with a maximum width.
- * - **asPage:** the body of a full-page form route. The create/edit forms (category, supplier, tax
- *   class, stock movement) open that way at every width (instruction_mds/visual-language.md §5).
+ * - **wide:** a Paper Dialog with a maximum width, mounted by the screen that opened it.
+ * - **asPage, wide:** the same Dialog as the whole of a transparentModal route: the small create/edit
+ *   forms (category, supplier, tax class) and Profile on a tablet.
+ * - **asPage, narrow:** the body of a full-page route. Those forms on a phone, and stock movement at
+ *   every width.
  * - **inSheet:** the body of a native formSheet route. Narrow confirms open that way.
  * - **narrow, not in a sheet:** a Paper Modal on the bottom edge. Kept for the two exceptions that
  *   cannot be a route: the unsaved-changes prompt, which holds a navigation action the form blocked,
@@ -64,7 +67,7 @@ export function AdaptiveDialog({
   const { colors } = useAppTheme();
   const kickerColor = kickerTone === 'error' ? colors.error : colors.accent;
 
-  if (inSheet || asPage) {
+  if (inSheet || (asPage && !wide)) {
     return (
       <SheetBody page={!!asPage} dismissable={dismissable} kicker={kicker} kickerColor={kickerColor} title={title} actions={actions}>
         {children}
@@ -72,35 +75,14 @@ export function AdaptiveDialog({
     );
   }
 
-  if (wide) {
-    return (
-      <Portal>
-        <Dialog
-          visible
-          onDismiss={onDismiss}
-          dismissable={dismissable}
-          dismissableBackButton={dismissable}
-          // Dialog has no maximum width of its own (instruction_mds/layout.md rule 7).
-          style={styles.dialog}
-        >
-          {kicker ? (
-            <Text variant="labelMedium" style={[styles.dialogKicker, { color: kickerColor }]}>
-              {kicker}
-            </Text>
-          ) : null}
-          {/* No variant: Dialog.Title picks headlineSmall itself (instruction_mds/typography.md rule 5). Its own
-              top margin is Paper's, not rhythm between siblings; under a kicker it closes up. */}
-          <Dialog.Title style={kicker ? styles.titleUnderKicker : undefined}>{title}</Dialog.Title>
-          <Dialog.ScrollArea style={styles.scrollArea}>
-            <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-              {children}
-            </ScrollView>
-          </Dialog.ScrollArea>
-          <Dialog.Actions>{actions}</Dialog.Actions>
-        </Dialog>
-      </Portal>
-    );
-  }
+  const dialog = (
+    <WideDialog onDismiss={onDismiss} dismissable={dismissable} kicker={kicker} kickerColor={kickerColor} title={title} actions={actions}>
+      {children}
+    </WideDialog>
+  );
+
+  if (asPage) return <PageDialog dismissable={dismissable}>{dialog}</PageDialog>;
+  if (wide) return dialog;
 
   return (
     <Portal>
@@ -120,6 +102,74 @@ export function AdaptiveDialog({
       </Modal>
     </Portal>
   );
+}
+
+type WideDialogProps = SheetProps & { onDismiss: () => void; dismissable: boolean };
+
+function WideDialog({ onDismiss, dismissable, kicker, kickerColor, title, children, actions }: WideDialogProps) {
+  return (
+    <Portal>
+      <Dialog
+        visible
+        onDismiss={onDismiss}
+        dismissable={dismissable}
+        dismissableBackButton={dismissable}
+        // Dialog has no maximum width of its own (instruction_mds/frontend.md §7).
+        style={styles.dialog}
+      >
+        {kicker ? (
+          <Text variant="labelMedium" style={[styles.dialogKicker, { color: kickerColor }]}>
+            {kicker}
+          </Text>
+        ) : null}
+        {/* No variant: Dialog.Title picks headlineSmall itself (instruction_mds/frontend.md §3.3). Its own
+            top margin is Paper's, not rhythm between siblings; under a kicker it closes up. */}
+        <Dialog.Title style={kicker ? styles.titleUnderKicker : undefined}>{title}</Dialog.Title>
+        <Dialog.ScrollArea style={styles.scrollArea}>
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            {children}
+          </ScrollView>
+        </Dialog.ScrollArea>
+        {/* A plain row, not Dialog.Actions: that clones `compact` onto each child, and the child here is
+            the caller's Fragment. */}
+        <View style={styles.dialogActions}>{actions}</View>
+      </Dialog>
+    </Portal>
+  );
+}
+
+/**
+ * A wide form route: a transparentModal whose whole content is the Dialog, so the screen it was opened
+ * from shows under the backdrop.
+ *
+ * `Portal.Host` keeps the Dialog, and any Menu or confirm inside it, in this route: on iOS a modal is a
+ * view controller of its own, above the root host. KeyboardAvoidingView shrinks the host as the keyboard
+ * rises and the Dialog's maxHeight keeps its buttons above it — the Android build is edge-to-edge
+ * (android/gradle.properties), so the window does not resize for the keyboard.
+ */
+function PageDialog({ dismissable, children }: { dismissable: boolean; children: ReactNode }) {
+  useHoldRoute(dismissable);
+
+  return (
+    <KeyboardAvoidingView behavior="padding" style={styles.page}>
+      <Portal.Host>{children}</Portal.Host>
+    </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * While a request is in flight a route should stay put, as `dismissable={false}` keeps a Dialog.
+ * `gestureEnabled` stops the iOS swipe and the BackHandler listener stops Android's back button.
+ */
+function useHoldRoute(dismissable: boolean) {
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    navigation.setOptions({ gestureEnabled: dismissable });
+    if (dismissable) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => subscription.remove();
+  }, [navigation, dismissable]);
 }
 
 type SheetProps = {
@@ -160,11 +210,10 @@ function SheetContent({ kicker, kickerColor, title, children, actions }: SheetPr
 /**
  * The body of a formSheet or full-page route. Its own component because it needs hooks the other
  * presentations do not. A page fills the screen under the status bar, its content held to the dialog's
- * width so a tablet does not stretch four fields across the screen.
+ * width: on a tablet only stock movement opens as a page.
  *
- * While a request is in flight the sheet should stay put, as `dismissable={false}` keeps a Dialog.
- * `gestureEnabled` stops the iOS swipe and the BackHandler listener stops Android's back button. What
- * nothing stops is Android's swipe-down and scrim tap: react-native-screens makes every Android
+ * While a request is in flight the sheet holds still (useHoldRoute). What nothing stops is Android's
+ * swipe-down and scrim tap: react-native-screens makes every Android
  * formSheet hideable and draggable (SheetDelegate.kt:190-191) and dismisses it natively. The request
  * then finishes on its own, and TanStack Query drops a `mutate` callback whose component unmounted, so
  * the sheet's `onSuccess` never navigates back from the screen underneath.
@@ -173,15 +222,8 @@ function SheetContent({ kicker, kickerColor, title, children, actions }: SheetPr
  */
 function SheetBody({ page, dismissable, ...content }: SheetProps & { page: boolean; dismissable: boolean }) {
   const { colors } = useAppTheme();
-  const navigation = useNavigation();
   const { top } = useSafeAreaInsets();
-
-  useEffect(() => {
-    navigation.setOptions({ gestureEnabled: dismissable });
-    if (dismissable) return undefined;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
-    return () => subscription.remove();
-  }, [navigation, dismissable]);
+  useHoldRoute(dismissable);
 
   return (
     <Portal.Host>
@@ -201,20 +243,34 @@ function SheetBody({ page, dismissable, ...content }: SheetProps & { page: boole
 }
 
 const styles = StyleSheet.create({
-  dialog: { maxWidth: 560, width: '100%', alignSelf: 'center' },
+  // maxHeight: over a form route the rising keyboard shrinks the space the Dialog is centred in.
+  dialog: { maxWidth: 560, width: '100%', maxHeight: '90%', alignSelf: 'center' },
   dialogKicker: { paddingHorizontal: spacing.lg, paddingTop: spacing.ml },
   titleUnderKicker: { marginTop: spacing.xs },
-  // ScrollArea draws its own hairlines; the body pads itself instead.
-  scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0, maxHeight: 460 },
+  // ScrollArea draws its own hairlines; the body pads itself instead. flexShrink: the body gives up
+  // height first, so the title and buttons stay in view.
+  scrollArea: { paddingHorizontal: 0, borderTopWidth: 0, borderBottomWidth: 0, maxHeight: 460, flexShrink: 1 },
   // Level with Dialog.Title's own 24 inset on the wide Dialog, and with the sheet's header on narrow.
   body: { gap: spacing.ms, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  // Dialog.Actions' own MD3 layout: buttons at the end, inset level with the title.
+  dialogActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
   sheetBody: { gap: spacing.ms, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   sheetWrapper: { justifyContent: 'flex-end' },
-  // The 2px primary rule on the sheet's top edge (instruction_mds/visual-language.md §5, confirm or picker narrow).
+  // The 2px primary rule on the sheet's top edge (instruction_mds/frontend.md §5).
   modalSheet: { borderTopWidth: 2, maxHeight: '90%' },
   routeSheet: { borderTopWidth: 2 },
   page: { flex: 1 },
-  pageColumn: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  // Left-aligned measure, not a centred column (instruction_mds/frontend.md rule 18, §9).
+  pageColumn: { flex: 1, width: '100%', maxWidth: 560 },
   sheetHeader: { gap: spacing.xs, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   sheetActions: { gap: spacing.sm, padding: spacing.md, borderTopWidth: 1 },
 });

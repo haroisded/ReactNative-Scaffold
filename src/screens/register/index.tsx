@@ -22,7 +22,7 @@ import { ItemsPane } from './items-pane';
 type Props = { merchantId: string; merchantName: string; currency: string };
 
 /**
- * The Register (instruction_mds/layout.md §5): the items pane beside the cart when wide, an Items | Cart
+ * The Register (instruction_mds/frontend.md §4.4): the items pane beside the cart when wide, an Items | Cart
  * switch when narrow. Cash only; prices include tax. One record_sale call writes the sale, its lines and
  * every stock draw (20260930110000_sales.sql), so the cart, the payment and the idempotency key live
  * here — above the panes — where switching tabs on a phone cannot drop a sale that is in flight.
@@ -118,7 +118,7 @@ function NarrowPanes({ items, cart, count }: { items: ReactNode; cart: ReactNode
           onValueChange={(value) => setPane(value === 'cart' ? 'cart' : 'items')}
           buttons={[
             { value: 'items', label: 'Items' },
-            // The count rides in the icon slot, as an accent badge (instruction_mds/visual-language.md §4).
+            // The count rides in the icon slot, as an accent badge (instruction_mds/frontend.md §2.3).
             { value: 'cart', label: 'Cart', icon: count > 0 ? () => <CountBadge count={count} /> : undefined },
           ]}
         />
@@ -148,7 +148,7 @@ function CountBadge({ count }: { count: number }) {
   const { colors } = useAppTheme();
   return (
     <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-      <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: colors.onAccent }}>
+      <Text variant="labelMedium" style={{ color: colors.onAccent }}>
         {count}
       </Text>
     </View>

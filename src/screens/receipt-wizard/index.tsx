@@ -113,8 +113,8 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
 
   const guard = useReceiptGuard(merchantId, isDirty || editing !== null);
 
-  // Narrow, a failed save goes back to the first step at fault; wide, every step is on screen.
-  const showFailed = (failed: string[]) => setStep(firstFailedStep(steps, failed, wide) ?? step);
+  // A failed save goes back to the first step at fault, at both widths: each shows one step at a time.
+  const showFailed = (failed: string[]) => setStep(firstFailedStep(steps, failed) ?? step);
   const saveReceipt = (values: ReceiptValues) => save.mutate(values, { onSuccess: guard.setSavedId });
   const submit = () => submitForm(form, saveReceipt, showFailed);
 
@@ -127,10 +127,9 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
     <View style={styles.fill}>
       <PageHeader kicker="Stock" title="New stock receipt" meta={productCount(receipt)} onBack={() => router.back()} />
 
-      {wide ? (
-        <WideSplit steps={steps} pages={pages} notice={notice} actions={actions} />
-      ) : (
-        <NarrowSteps
+      <WideSplit wide={wide} review={pages.review} notice={notice} actions={actions}>
+        <Steps
+          wide={wide}
           step={step}
           steps={steps}
           pages={pages}
@@ -140,7 +139,7 @@ export function ReceiptWizard({ merchantId, currency }: Props) {
           onNext={() => void next()}
           onSkip={skip}
         />
-      )}
+      </WideSplit>
 
       <DiscardDialog
         guard={guard}
@@ -223,10 +222,12 @@ function useReceiptGuard(merchantId: string, dirty: boolean) {
 }
 
 /** The first step owning a field that failed validation. */
-const firstFailedStep = (steps: Step[], failed: string[], wide: boolean) =>
-  wide ? undefined : steps.find((candidate) => STEP_FIELDS[candidate].some((field) => failed.includes(field.split('.')[0])));
+const firstFailedStep = (steps: Step[], failed: string[]) =>
+  steps.find((candidate) => STEP_FIELDS[candidate].some((field) => failed.includes(field.split('.')[0])));
 
-type NarrowStepsProps = {
+type StepsProps = {
+  /** Beside the Review sidebar, which holds the review, the notice and the save buttons. */
+  wide: boolean;
   step: Step;
   steps: Step[];
   pages: Record<Step, ReactElement>;
@@ -237,9 +238,18 @@ type NarrowStepsProps = {
   onSkip: () => void;
 };
 
-/** Narrow, one step at a time: Next (and Skip tier on an optional tier) until the review, which saves. */
-function NarrowSteps({ step, steps, pages, notice, actions, onBack, onNext, onSkip }: NarrowStepsProps) {
+/**
+ * One step at a time: Next (and Skip tier on an optional tier) until the review, which saves. Narrow, the
+ * whole screen; wide, the left of WideSplit, so a tablet is not handed every tier at once.
+ */
+function Steps({ wide, step: current, steps: all, pages, notice, actions, onBack, onNext, onSkip }: StepsProps) {
+  // Wide, Review is the sidebar, so the stepper ends a step earlier; a window widened while on Review
+  // shows the step before it.
+  const steps = wide ? all.filter((candidate) => candidate !== 'review') : all;
+  const step = steps.includes(current) ? current : steps[steps.length - 1];
   const optional = OPTIONAL.includes(step);
+  const last = steps.indexOf(step) === steps.length - 1;
+
   return (
     <>
       <StepHeader
@@ -253,22 +263,31 @@ function NarrowSteps({ step, steps, pages, notice, actions, onBack, onNext, onSk
       <ScrollView key={step} style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {pages[step]}
       </ScrollView>
-      <FormFooter notice={notice}>
-        {step === 'review' ? (
-          actions
-        ) : (
-          <>
-            <Button mode="contained" icon="chevron-right" contentStyle={styles.trailingIcon} onPress={onNext}>
-              Next
-            </Button>
-            {optional ? (
-              <Button mode="text" onPress={onSkip}>
-                Skip tier
-              </Button>
-            ) : null}
-          </>
-        )}
-      </FormFooter>
+      {/* Wide, the last step has no Next: Review and Save receipt are already beside it. */}
+      {wide && last ? null : wide ? (
+        <FormFooter notice={null}>
+          <View style={styles.stepButtons}>
+            <StepButtons optional={optional} onNext={onNext} onSkip={onSkip} />
+          </View>
+        </FormFooter>
+      ) : (
+        <FormFooter notice={notice}>{step === 'review' ? actions : <StepButtons optional={optional} onNext={onNext} onSkip={onSkip} />}</FormFooter>
+      )}
+    </>
+  );
+}
+
+function StepButtons({ optional, onNext, onSkip }: { optional: boolean; onNext: () => void; onSkip: () => void }) {
+  return (
+    <>
+      <Button mode="contained" icon="chevron-right" contentStyle={styles.trailingIcon} onPress={onNext}>
+        Next
+      </Button>
+      {optional ? (
+        <Button mode="text" onPress={onSkip}>
+          Skip tier
+        </Button>
+      ) : null}
     </>
   );
 }
@@ -496,23 +515,23 @@ function LineRow({ line, currency, disabled, onEdit, onRemove }: LineRowProps) {
     <Pressable
       onPress={onEdit}
       disabled={disabled}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
+      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel={`Edit ${line.name || 'product'}`}
       style={[styles.lineRow, { borderColor: colors.outlineVariant }]}
     >
       <View style={styles.fill}>
-        <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="titleMedium" numberOfLines={1}>
           {line.name || 'New item'}
         </Text>
-        <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" numberOfLines={1} style={{ color: colors.onSurfaceMuted }}>
           {[line.sku, `${linePacks(line, null)} packs`, `${formatMoney(Number(line.costPerPack || 0), currency)}/pack`, line.restock ? '' : 'New item']
             .filter(Boolean)
             .join(' · ')}
         </Text>
       </View>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+      <Text variant="bodyMedium">
         {formatMoney(lineCost(line, null), currency)}
       </Text>
       <IconButton icon="delete" onPress={onRemove} disabled={disabled} accessibilityLabel="Remove product" style={styles.removeLine} />
@@ -520,28 +539,20 @@ function LineRow({ line, currency, disabled, onEdit, onRemove }: LineRowProps) {
   );
 }
 
-type WideSplitProps = { steps: Step[]; pages: Record<Step, ReactElement>; notice: Notice | null; actions: ReactElement };
+type WideSplitProps = { wide: boolean; children: ReactElement; review: ReactElement; notice: Notice | null; actions: ReactElement };
 
-/** Wide, every step scrolls on the left and the review stays beside them. */
-function WideSplit({ steps, pages, notice, actions }: WideSplitProps) {
+/** Wide, the stepper on the left and the review beside it, filling in as the steps do. Narrow, the stepper alone. */
+function WideSplit({ wide, children, review, notice, actions }: WideSplitProps) {
   const { colors } = useAppTheme();
+  if (!wide) return children;
 
   return (
     <View style={[styles.split, { borderTopColor: colors.outlineVariant }]}>
-      <ScrollView style={styles.fill} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {steps
-          .filter((step) => step !== 'review')
-          .map((step, index) => (
-            <View key={step} style={styles.section}>
-              <SectionHeading title={`${index + 1}. ${STEP_TITLE[step]}`} hint={OPTIONAL.includes(step) ? 'Optional' : undefined} />
-              {pages[step]}
-            </View>
-          ))}
-      </ScrollView>
+      <View style={styles.fill}>{children}</View>
       <View style={[styles.sidebar, { borderLeftColor: colors.outlineVariant, backgroundColor: colors.surfaceSubtle }]}>
         <ScrollView contentContainerStyle={styles.content}>
           <SectionHeading title="Review" />
-          {pages.review}
+          {review}
         </ScrollView>
         <View style={[styles.footer, { borderTopColor: colors.outlineVariant }]}>
           <FormNoticeText notice={notice} />
@@ -595,7 +606,6 @@ const styles = StyleSheet.create({
   split: { flex: 1, flexDirection: 'row', borderTopWidth: 1 },
   sidebar: { width: REVIEW_SIDEBAR, borderLeftWidth: 1 },
   content: { gap: spacing.md, padding: spacing.md, paddingBottom: spacing.xl },
-  section: { gap: spacing.md },
   lines: { gap: spacing.ms },
   editor: { gap: spacing.md, borderWidth: 1, borderRadius: radius.md, borderCurve: 'continuous', padding: spacing.md },
   editorActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -613,6 +623,8 @@ const styles = StyleSheet.create({
   // IconButton ships a 6dp margin of its own; zeroed so the row's gap is the only spacing.
   removeLine: { margin: 0 },
   footer: { gap: spacing.sm, padding: spacing.ms, borderTopWidth: 1 },
-  // row-reverse turns Paper's leading icon slot into a trailing one (instruction_mds/visual-language.md §4).
+  // row-reverse turns Paper's leading icon slot into a trailing one (instruction_mds/frontend.md §5).
   trailingIcon: { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
+  // Wide, Next and Skip tier hug their labels in a row (instruction_mds/frontend.md §5 Button width).
+  stepButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

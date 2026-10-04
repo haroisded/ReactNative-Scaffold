@@ -33,7 +33,7 @@ export function itemSource(item: ProductListRow): Exclude<InventorySource, 'all'
 /** The worst expiry among the lots that still hold a pack: one expired lot makes the item Expired. */
 function itemExpiry(item: ProductListRow, today: string) {
   const live = new Set(item.packs.map((pack) => pack.lot_id));
-  const states = item.lots.filter((lot) => live.has(lot.id)).map((lot) => expiryState(lot.expires_on, item.expiry_alert_days, today));
+  const states = item.lots.filter((lot) => live.has(lot.id)).map((lot) => expiryState(lot.expires_on, item.expiry_alert_on, today));
   return states.includes('expired') ? 'expired' : states.includes('soon') ? 'soon' : null;
 }
 
@@ -107,10 +107,10 @@ function NameCell({ item, today, wide, nested, selecting, highlighted, onToggle,
       accessibilityState={{ selected: highlighted }}
       style={styles.nameCell}
     >
-      <Text variant="titleMedium" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+      <Text variant="titleMedium" numberOfLines={2}>
         {rowName(item, nested)}
       </Text>
-      <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+      <Text variant="bodySmall" numberOfLines={1} style={{ color: colors.onSurfaceMuted }}>
         {`${item.sku ?? 'No SKU'} · ${conversion(item)}`}
       </Text>
       <View style={styles.badges}>
@@ -128,10 +128,10 @@ function QtyCell({ item, unit }: { item: ProductListRow; unit: string }) {
   return (
     <View style={styles.qtyCell}>
       <View style={styles.qtyLine}>
-        <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>{`${item.qty_on_hand ?? 0} ${unit}`}</Text>
+        <Text variant="titleMedium">{`${item.qty_on_hand ?? 0} ${unit}`}</Text>
         {item.is_low_stock ? <LowStockBadge /> : null}
       </View>
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+      <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
         {packInfo(item)}
       </Text>
     </View>
@@ -146,15 +146,15 @@ function WideColumns({ item, unit, currency }: { item: ProductListRow; unit: str
   return (
     <>
       <View style={styles.moneyCell}>
-        <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>{`${formatMoney(cost, currency)}/${unit} avg`}</Text>
-        <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodyMedium">{`${formatMoney(cost, currency)}/${unit} avg`}</Text>
+        <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
           {`value ${formatMoney(qty * cost, currency)}`}
         </Text>
       </View>
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={[styles.reorderCell, { color: colors.onSurfaceMuted }]}>
+      <Text variant="bodySmall" style={[styles.reorderCell, { color: colors.onSurfaceMuted }]}>
         {item.reorder_threshold === null ? '—' : `Reorder ${item.reorder_threshold}`}
       </Text>
-      <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={[styles.locationCell, { color: colors.onSurfaceMuted }]}>
+      <Text variant="bodySmall" numberOfLines={2} style={[styles.locationCell, { color: colors.onSurfaceMuted }]}>
         {item.storage_location ?? '—'}
       </Text>
     </>
@@ -212,7 +212,7 @@ function RowDrill({ item, unit, currency, showEmpty }: { item: ProductListRow; u
           nextPick={item.sell_by === 'pack' ? stock.data.nextPick.pack : stock.data.nextPick.base}
           unit={unit}
           currency={currency}
-          expiryAlertDays={item.expiry_alert_days}
+          expiryAlertOn={item.expiry_alert_on}
           showEmpty={showEmpty}
         />
       ) : stock.isPending && !stock.isPaused ? (

@@ -3,6 +3,7 @@ import * as z from 'zod';
 import { Constants } from '../../lib/database.types';
 import type { Enums } from '../../lib/database.types';
 import type { ProductDetail } from './queries';
+import { optionalDate } from './schema';
 
 // The Inventory item form (src/screens/stock-item-form/), saved through save_stock_item
 // (20260929100000_stock_items.sql §7). Form input only; reads are typed by database.types.ts.
@@ -56,7 +57,8 @@ export const stockItemSchema = z
     hasExpiry: z.boolean(),
     storageLocation: text(120, 'Storage location'),
     reorderAt: amount('Reorder at'),
-    expiryAlertDays: z.string().trim().regex(/^\d{0,4}$/, 'Days is a whole number.'),
+    /** products.expiry_alert_on, YYYY-MM-DD or '' for none: from that day its lots read Expiring. */
+    expiryAlertOn: optionalDate,
     description: text(2000, 'Description'),
     /** Quantity on hand, create only and optional: Inventory-added stock with no receipt or supplier. */
     openingPacks: z.string().trim().regex(/^\d{0,6}$/, 'Packs is a whole number.'),
@@ -109,7 +111,7 @@ export const STOCK_FIELD_SECTION = {
   storageLocation: 'pack',
   reorderAt: 'pack',
   hasExpiry: 'pack',
-  expiryAlertDays: 'pack',
+  expiryAlertOn: 'pack',
   description: 'pack',
   openingPacks: 'pack',
   openingCost: 'pack',
@@ -142,7 +144,7 @@ export const emptyStockItem: StockItemValues = {
   hasExpiry: true,
   storageLocation: '',
   reorderAt: '',
-  expiryAlertDays: '',
+  expiryAlertOn: '',
   description: '',
   openingPacks: '',
   openingLoose: '',
@@ -171,7 +173,7 @@ export function fromStockItem(product: ProductDetail): StockItemValues {
     hasExpiry: product.perishable,
     storageLocation: product.storage_location ?? '',
     reorderAt: str(product.reorder_threshold),
-    expiryAlertDays: str(product.expiry_alert_days),
+    expiryAlertOn: product.expiry_alert_on ?? '',
     description: product.description ?? '',
     openingPacks: '',
     openingLoose: '',
@@ -203,7 +205,8 @@ export function toStockItemPayload(values: StockItemValues, target: { merchantId
       tags: target.product?.tags ?? [],
       storage_location: orNull(values.storageLocation),
       reorder_threshold: numberOrNull(values.reorderAt),
-      expiry_alert_days: numberOrNull(values.expiryAlertDays),
+      // Hidden while the item does not expire, so a date left in the field is not saved.
+      expiry_alert_on: values.hasExpiry ? orNull(values.expiryAlertOn) : null,
       pack_unit_name: orNull(values.packUnit),
       ...unitColumns(values),
       stock_role: values.stockRole,
@@ -251,11 +254,12 @@ export function packsAndLoose(qty: number, unitsPerPack: number, packUnit: strin
   return loose > 0 ? `${pack} + ${loose} ${baseUnit ?? 'unit'}` : pack;
 }
 
-/** A lot inside its alert window, or past its date. No date or no window is never expiring. */
-export function expiryState(expiresOn: string | null, alertDays: number | null, today: string): 'expired' | 'soon' | null {
+/**
+ * A lot past its own date is expired; from the item's alert date on, a lot not yet expired is expiring.
+ * A lot with no date never is. All three are YYYY-MM-DD, so they compare as strings.
+ */
+export function expiryState(expiresOn: string | null, alertOn: string | null, today: string): 'expired' | 'soon' | null {
   if (!expiresOn) return null;
   if (expiresOn < today) return 'expired';
-  if (alertDays === null) return null;
-  const days = (Date.parse(expiresOn) - Date.parse(today)) / 86_400_000;
-  return days <= alertDays ? 'soon' : null;
+  return alertOn !== null && today >= alertOn ? 'soon' : null;
 }

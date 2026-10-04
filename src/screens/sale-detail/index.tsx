@@ -7,7 +7,7 @@ import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
 import { PageHeader } from '../../components/page-header';
 import { QueryState } from '../../components/query-state';
-import { AppText, Text } from '../../components/text';
+import { Text } from '../../components/text';
 import { VoidSaleDialog } from '../../components/void-sale-dialog';
 import { VoidedNotice } from '../../components/voided-notice';
 import { saleTime, useSaleQuery } from '../../features/sales/queries';
@@ -79,22 +79,25 @@ export function SaleDetailScreen({ currency, id }: Props) {
           {sale.lines.map((line) => (
             <View key={line.id} style={styles.row}>
               <View style={styles.fill}>
-                <Text variant="bodyMedium" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+                <Text variant="bodyMedium" numberOfLines={2}>
                   {line.name}
                 </Text>
-                <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+                <Text variant="bodySmall" style={muted}>
                   {`${line.qty} × ${formatMoney(line.unit_price, currency)}${line.tax_rate > 0 ? ` · tax ${line.tax_rate}%` : ''}`}
                 </Text>
               </View>
-              <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+              <Text variant="bodyMedium">
                 {formatMoney(line.line_total, currency)}
               </Text>
             </View>
           ))}
           <View style={[styles.rule, { backgroundColor: colors.onSurface }]} />
           <View style={styles.row}>
-            <Text variant="titleMedium">Total</Text>
-            <AppText variant="amount">{formatMoney(sale.total, currency)}</AppText>
+            {/* fill, so the total lines up under the line amounts at the right edge. */}
+            <Text variant="titleMedium" style={styles.fill}>
+              Total
+            </Text>
+            <Text variant="amount">{formatMoney(sale.total, currency)}</Text>
           </View>
           <Text variant="bodySmall" style={[styles.taxLine, muted]}>
             {`Includes tax ${formatMoney(sale.tax_total, currency)}`}
@@ -111,14 +114,14 @@ export function SaleDetailScreen({ currency, id }: Props) {
             {sale.movements.map((move) => (
               <View key={move.id} style={styles.row}>
                 <View style={styles.fill}>
-                  <Text variant="bodyMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+                  <Text variant="bodyMedium" numberOfLines={1}>
                     {move.product?.name ?? 'Item no longer available'}
                   </Text>
-                  <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+                  <Text variant="bodySmall" style={muted}>
                     {`${MOVEMENT_KIND_LABEL[move.kind]} · ${move.pack?.code ?? 'no pack'}`}
                   </Text>
                 </View>
-                <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+                <Text variant="bodyMedium">
                   {`${move.qty > 0 ? '+' : ''}${move.qty} ${move.product?.base_unit_name ?? 'units'}`}
                 </Text>
               </View>

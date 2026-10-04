@@ -1,41 +1,75 @@
 import { createContext, use, useState } from 'react';
+import { PixelRatio, useWindowDimensions } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 
 // ponytail: one number, tune it on a real tablet.
 //
 // Not a breakpoint. It is a card's *minimum* width, and the column count falls out of it — a phone
 // gets one or two, a small tablet three, a large one more, with no device check anywhere
-// (instruction_mds/layout.md §1).
+// (instruction_mds/frontend.md §4.2).
 const MIN_CARD = 260;
 
 // ponytail: M3's "expanded" window class. Tune it on a real tablet.
 //
-// The one width threshold (instruction_mds/layout.md §9). It picks between the merchant shell's rail and its
-// drawer, and nothing else — measured on the shell's root container, never on the window.
+// The one width threshold (instruction_mds/frontend.md §4.1). Compared against the window's width,
+// once, in src/app/(app)/_layout.tsx; every wide/narrow pair (§4.4) flips on it together.
 export const WIDE_MIN = 840;
 
-// Chrome widths, not card widths: panes are named so no screen writes its own (instruction_mds/layout.md rule 1).
-export const RAIL_EXPANDED = 116; // icons + labels
+// Chrome widths, not card widths: panes are named so no screen writes its own (instruction_mds/frontend.md §1).
+export const RAIL_EXPANDED = 128; // icons + labels; fits "Resources" and its chevron in labelLarge
 export const RAIL_COLLAPSED = 72; // icons only, after the menu action
 export const DRAWER_WIDTH = 300; // the narrow shell's off-canvas drawer
 export const SECTION_LIST = 210; // a form's section list, wide only
 export const REVIEW_SIDEBAR = 340; // a wizard's review column, wide only
 export const ITEM_PANE = 430; // the Register's items beside its cart, wide only
+// A two-segment pane switch beside a page's add button, wide only. Paper's segments are `flex: 1` and do
+// not measure their labels, so the switch takes a width; through fontScaled, so labels still fit at 1.5.
+export const PANE_SWITCH = 240;
+
+// The Home systems grid's card: three across a 1180dp tablet, four at 1440, five at 1920. A system card
+// carries two buttons under its name, so it is wider than MIN_CARD.
+export const SYSTEM_CARD = 360;
 
 // ponytail: one number, tune it on a real tablet. The Register's product tile — MIN_CARD's rule at a
 // size where a phone gets two tiles across and the wide items pane three.
 export const TILE_MIN = 140;
 
 /**
- * The shell's one width decision, handed to the screens under it (instruction_mds/layout.md §9).
+ * The one wide/narrow decision (instruction_mds/frontend.md §4.1).
  *
- * Provided by src/app/(app)/systems/[id]/_layout.tsx, which measures its root container once. A screen
- * reads this instead of measuring its own pane: the pane is narrower than the shell by the rail, so a
- * second measurement would flip the anatomy at a different width from the rail beside it.
+ * Provided by src/app/(app)/_layout.tsx from the window's width. A screen reads this instead of
+ * measuring its own pane: the pane is narrower than the window by the rail, so a second measurement
+ * would flip the anatomy at a different width from the rail beside it.
  */
 export const ShellWideContext = createContext(false);
 
 export const useShellWide = () => use(ShellWideContext);
+
+/**
+ * A width that holds text, grown with the OS font scale up to the Text wrapper's 1.5 cap on scanned
+ * labels (src/components/text.tsx). Layout, not type: the type itself is never scaled by width
+ * (instruction_mds/frontend.md rule 10). For the rail and the Register tile, whose labels would
+ * otherwise truncate or break mid-word at a large font size.
+ */
+export const fontScaled = (width: number) => width * Math.min(PixelRatio.getFontScale(), 1.5);
+
+// ponytail: one number, tune it on a real tablet. Above this OS font scale a wide table's column
+// titles truncate, so the list falls back to its narrow cards (instruction_mds/frontend.md §3.5).
+const TABLE_FONT_MAX = 1.15;
+
+/**
+ * Whether a list draws its DataTable: wide, and the font scale small enough for the columns to read.
+ * Only the table-vs-cards choice reads this; dialogs vs sheets stay on useShellWide(). fontScale, not
+ * width, so this is not a second breakpoint.
+ *
+ * Both hooks run every render: `wide && useWindowDimensions()` skipped the second while narrow, and a
+ * window widening past WIDE_MIN (rotation, split-screen) then crashed on a changed hook order.
+ */
+export function useTableFits() {
+  const wide = useShellWide();
+  const { fontScale } = useWindowDimensions();
+  return wide && fontScale <= TABLE_FONT_MAX;
+}
 
 /**
  * Column count derived from the container's measured width.

@@ -7,20 +7,14 @@ import { Icon } from '../../components/icon';
 import type { Merchant } from '../../features/merchants/queries';
 import { CATEGORY_META } from '../../features/merchants/schema';
 import { useAppTheme } from '../../lib/theme';
-import { radius } from '../../themes';
-
-// Capped at 1.3 because a card grid is *scanned*, not read: at a 200% accessibility setting an
-// uncapped four-column grid becomes one card per screen. The cap applies here and nowhere else —
-// body text, forms, dialogs and errors stay uncapped, which is where the setting does its job
-// (instruction_mds/typography.md §5, instruction_mds/layout.md §5).
-const SCAN_CAP = 1.3;
+import { radius, spacing } from '../../themes';
 
 type Props = {
   merchant: Merchant;
   /**
    * True on a one-column container. Row and grid are genuinely different anatomies rather than the
    * same card at two widths — a row card stretched across a tablet is unreadable for the same
-   * measure reason a 110-character line is (instruction_mds/layout.md §2) — so the branch lives inside this
+   * measure reason a 110-character line is (instruction_mds/frontend.md §4.3) — so the branch lives inside this
    * component instead of duplicating it into two files.
    */
   row: boolean;
@@ -42,9 +36,10 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
 
   // Remove is wired; Edit is still unticked in the Priority filter, so it renders and does nothing.
   // `error`/`onError` are read from the theme, which is the one place a colour may be chosen by
-  // hand (CLAUDE.md §3 rule 2).
+  // hand (instruction_mds/frontend.md rule 5).
   const actions = (
-    <Card.Actions>
+    // Wraps: at a large font scale the two buttons are wider than a grid card.
+    <Card.Actions style={styles.actions}>
       <Button mode="contained" icon="edit">
         Edit
       </Button>
@@ -66,7 +61,6 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
         <Card.Title
           title={merchant.name}
           titleVariant="titleMedium"
-          titleMaxFontSizeMultiplier={SCAN_CAP}
           left={(props) => <Avatar.Icon {...props} icon={meta.icon} />}
         />
         {actions}
@@ -77,9 +71,9 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
   return (
     <Card mode="contained" onPress={onPress}>
       {/*
-        Where the mockup shows a photo. Not Card.Cover: it hardcodes height 195
+        Where a photo will go. Not Card.Cover: it hardcodes height 195
         (Card/CardCover.js:61), so it neither scales with the column count nor survives a 150% font
-        scale (instruction_mds/layout.md rule 7). A fixed *ratio* does both, and it is already the right shape
+        scale (instruction_mds/frontend.md §7). A fixed *ratio* does both, and it is already the right shape
         for a real image to drop into later.
       */}
       <View style={[styles.tile, { backgroundColor: colors.surfaceVariant }]}>
@@ -88,7 +82,6 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
       <Card.Title
         title={merchant.name}
         titleVariant="titleMedium"
-        titleMaxFontSizeMultiplier={SCAN_CAP}
       />
       {actions}
     </Card>
@@ -96,10 +89,12 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
 }
 
 const styles = StyleSheet.create({
+  actions: { flexWrap: 'wrap', rowGap: spacing.sm },
   // No height. aspectRatio only, so the tile grows and shrinks with whatever width the column count
-  // gives the card. Its top corners follow the card's, which Paper rounds from `roundness` (×3).
+  // gives the card. 16:9, not square: a square placeholder made the card mostly empty grey on a
+  // tablet. Its top corners follow the card's, which Paper rounds from `roundness` (×3).
   tile: {
-    aspectRatio: 1,
+    aspectRatio: 16 / 9,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: radius.lg,

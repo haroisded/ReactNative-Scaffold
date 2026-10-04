@@ -72,7 +72,7 @@ export function AddFromInventoryDialog({ merchantId, inSheet, onDismiss }: Props
                 key={item.id}
                 onPress={() => pick(item)}
                 disabled={inFlight}
-                // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
+                // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
                 android_ripple={{ color: colors.ripple }}
                 accessibilityRole="button"
                 accessibilityLabel={`Add ${item.name}`}

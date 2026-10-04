@@ -15,7 +15,7 @@ rule.** Never read a whole file for context — see [`context-policy.md`](./cont
 | Where files go | [`structure.md`](./structure.md) |
 | Queries and forms | [`data-layer.md`](./data-layer.md) |
 | Anything Expo-touching | [`expo.md`](./expo.md) — gate before code |
-| Building the screen | [`layout.md`](./layout.md), [`typography.md`](./typography.md), [`visual-language.md`](./visual-language.md) |
+| Building the screen | [`frontend.md`](./frontend.md) — the one frontend source of truth |
 | Planning and after code | [`testing-workflow.md`](./testing-workflow.md) — the human tests on the device, the agent never touches it |
 | Writing the tester's script | [`acceptance-tests.md`](./acceptance-tests.md) — `.claude/tests/<screen>.md` |
 | Reviewing for performance | [`optimization.md`](./optimization.md) — gated, loads only when the diff triggers it |
@@ -24,9 +24,10 @@ rule.** Never read a whole file for context — see [`context-policy.md`](./cont
 
 ## Precedence
 
-1. A rule in `instruction_mds/` beats a skill, a tool finding, or a mockup.
-2. A mockup beats silence — where `instruction_mds/` says nothing, follow the mockup and add the
-   missing row in the same pass.
+1. A rule in `instruction_mds/` beats a skill or a tool finding. On the frontend,
+   [`frontend.md`](./frontend.md) beats every other doc and comment too.
+2. Where `instruction_mds/` says nothing, follow the nearest existing screen and add the missing row
+   in the same pass ([`frontend.md`](./frontend.md) rule 22).
 3. A new contradiction between a skill and a doc gets a row in the doc that owns the rule. Never a
    quiet change to the code.
 

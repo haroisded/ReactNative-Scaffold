@@ -22,7 +22,7 @@ import type { FolderEntry } from '../../features/products/folders';
 import { lotBalance } from '../../features/stock-movements/queries';
 import { RECEIPT_STATUS_LABEL, lineStatus, useLotPacksQuery, useReceiptLinesQuery } from '../../features/stock-receipts/queries';
 import type { ReceiptLineRow, ReceiptStatus } from '../../features/stock-receipts/queries';
-import { useShellWide } from '../../lib/columns';
+import { useTableFits } from '../../lib/columns';
 import { failureMessage } from '../../lib/errors';
 import { formatMoney } from '../../lib/money';
 import { useAppTheme } from '../../lib/theme';
@@ -33,7 +33,7 @@ import { spacing } from '../../themes';
 // fixed as history; the remaining counts move as stock is sold, used or written off. The lines sit in
 // Inventory's folders — category, subcategory, variant group — newest first inside each.
 
-// A line's status in the muted scale of instruction_mds/visual-language.md §3: only Partial, the one that
+// A line's status in the muted scale of instruction_mds/frontend.md §2.4: only Partial, the one that
 // is being drawn from, carries the accent.
 const STATUS_TONE = {
   full: 'onSurface',
@@ -49,7 +49,8 @@ type Props = { merchantId: string; currency: string };
 
 export function ReceiptsPane({ merchantId, currency }: Props) {
   const { colors } = useAppTheme();
-  const wide = useShellWide();
+  // Table only wide at a readable font scale (instruction_mds/frontend.md §3.5).
+  const table = useTableFits();
   const lines = useReceiptLinesQuery({ merchantId });
   const rows = lines.data ?? [];
   const [open, setOpen] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export function ReceiptsPane({ merchantId, currency }: Props) {
     return (
       <LineRow
         item={item}
-        wide={wide}
+        wide={table}
         currency={currency}
         open={open === item.id}
         onToggle={() => toggle(item.id ?? '')}
@@ -94,7 +95,7 @@ export function ReceiptsPane({ merchantId, currency }: Props) {
     />
   );
 
-  if (!wide) {
+  if (!table) {
     return (
       <View style={styles.fill}>
         {crumbs}
@@ -190,7 +191,7 @@ function LineRow({ item, wide, currency, open, onToggle, onOpenReceipt }: RowPro
     <View style={{ borderBottomColor: colors.surfaceVariant, borderBottomWidth: 1 }}>
       <Pressable
         onPress={onToggle}
-        // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
+        // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
         android_ripple={{ color: colors.ripple }}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -212,7 +213,7 @@ function StatusCell({ item }: { item: ReceiptLineRow }) {
   const { colors } = useAppTheme();
   const status = statusOf(item);
   return (
-    <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: colors[STATUS_TONE[status]] }}>
+    <Text variant="labelMedium" style={{ color: colors[STATUS_TONE[status]] }}>
       {RECEIPT_STATUS_LABEL[status]}
     </Text>
   );
@@ -228,7 +229,7 @@ function RemainingBar({ item, unit }: { item: ReceiptLineRow; unit: string }) {
       <View style={styles.barTrack}>
         <ProgressBar progress={received > 0 ? remaining / received : 0} color={colors.accent} style={styles.bar} />
       </View>
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3}>{`${remaining} / ${received} ${unit}`}</Text>
+      <Text variant="bodySmall">{`${remaining} / ${received} ${unit}`}</Text>
     </View>
   );
 }
@@ -244,21 +245,21 @@ function WideCells({ item, unit, currency, open }: CellsProps & { currency: stri
       <View style={[styles.dateCell, styles.caretCell]}>
         <Icon source={open ? 'chevron-down' : 'chevron-right'} size={18} color={colors.onSurfaceMuted} />
         <View>
-          <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+          <Text variant="bodyMedium">
             {receivedOn(item)}
           </Text>
-          <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+          <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
             {item.receipt?.code}
           </Text>
         </View>
       </View>
-      <Text variant="bodyMedium" numberOfLines={2} maxFontSizeMultiplier={1.3} style={styles.supplierCell}>
+      <Text variant="bodyMedium" numberOfLines={2} style={styles.supplierCell}>
         {item.receipt?.supplier?.name ?? '—'}
       </Text>
-      <Text variant="titleMedium" numberOfLines={2} maxFontSizeMultiplier={1.3} style={styles.itemCell}>
+      <Text variant="titleMedium" numberOfLines={2} style={styles.itemCell}>
         {itemLabel(item)}
       </Text>
-      <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.lotCell}>
+      <Text variant="bodySmall" numberOfLines={1} style={styles.lotCell}>
         {item.code ?? '—'}
       </Text>
       <View style={styles.remainingCell}>
@@ -267,13 +268,13 @@ function WideCells({ item, unit, currency, open }: CellsProps & { currency: stri
       <View style={styles.statusCell}>
         <StatusCell item={item} />
       </View>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={styles.moneyCell}>
+      <Text variant="bodyMedium" style={styles.moneyCell}>
         {formatMoney(cost, currency)}
       </Text>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={styles.moneyCell}>
+      <Text variant="bodyMedium" style={styles.moneyCell}>
         {`${formatMoney(item.unit_cost ?? 0, currency)}/${unit}`}
       </Text>
-      <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={styles.locationCell}>
+      <Text variant="bodySmall" numberOfLines={2} style={styles.locationCell}>
         {item.location ?? '—'}
       </Text>
     </>
@@ -287,10 +288,10 @@ function NarrowCells({ item, unit, open }: CellsProps) {
     <>
       <Icon source={open ? 'chevron-down' : 'chevron-right'} size={18} color={colors.onSurfaceMuted} />
       <View style={styles.cardText}>
-        <Text variant="titleMedium" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+        <Text variant="titleMedium" numberOfLines={2}>
           {itemLabel(item)}
         </Text>
-        <Text variant="bodySmall" numberOfLines={1} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" numberOfLines={1} style={{ color: colors.onSurfaceMuted }}>
           {[item.receipt?.code, receivedOn(item), item.receipt?.supplier?.name].filter(Boolean).join(' · ')}
         </Text>
         <RemainingBar item={item} unit={unit} />

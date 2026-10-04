@@ -1,6 +1,6 @@
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
 import WheelPicker from '@quidone/react-native-wheel-picker';
-import { useState } from 'react';
+import { createContext, use, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useController } from 'react-hook-form';
 import type { Control, FieldPathByValue, FieldValues } from 'react-hook-form';
@@ -46,9 +46,10 @@ export type FieldProps = {
 export function Field({ label, required, hint, action, span = 'half', error, children }: FieldProps) {
   const { colors } = useAppTheme();
   const wide = useShellWide();
+  const halfMax = use(HalfWidthContext);
 
   return (
-    <View style={wide && span === 'half' ? styles.half : styles.full}>
+    <View style={wide && span === 'half' ? [styles.half, halfMax === undefined ? null : { maxWidth: halfMax }] : styles.full}>
       <View style={styles.labelRow}>
         {/* A required field says so in words; an unmarked field is optional, so nothing says "optional". */}
         <Text variant="labelMedium">{required ? `${label} (required)` : label}</Text>
@@ -80,9 +81,22 @@ export function Field({ label, required, hint, action, span = 'half', error, chi
   );
 }
 
+/**
+ * The widest a half Field may grow: one column of its FieldGrid. Without it, a half field alone on its
+ * row (the next one is full width, or hidden) grows across the whole row; `flexGrow` cannot tell it apart
+ * from a pair. Measured, because Yoga has no `calc(50% - gap / 2)`.
+ */
+const HalfWidthContext = createContext<number | undefined>(undefined);
+
 /** The two-column field grid on a wide form; one column narrow. */
 export function FieldGrid({ children }: { children: ReactNode }) {
-  return <View style={styles.grid}>{children}</View>;
+  const [width, setWidth] = useState(0);
+
+  return (
+    <View style={styles.grid} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      <HalfWidthContext value={width > 0 ? (width - spacing.md) / 2 : undefined}>{children}</HalfWidthContext>
+    </View>
+  );
 }
 
 export function SectionHeading({ title, hint }: { title: string; hint?: string }) {
@@ -136,8 +150,9 @@ function toPickerDate(value: string, mode: PickerMode) {
     : new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(value.slice(0, 2)), Number(value.slice(3, 5)));
 }
 
-/** "14 Sep 2026" for a stored date. */
+/** "14 Sep 2026" for a stored date; '' for none, so an empty input shows its placeholder, not today. */
 export function displayDate(value: string) {
+  if (value === '') return '';
   return toPickerDate(value, 'date').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -186,7 +201,7 @@ function joinTime(hour: number, minute: number, meridiem: Meridiem) {
  * plain JavaScript on Reanimated, both already here, so this needed no native rebuild.
  *
  * `itemTextStyle` carries colour only — the wheel sizes its own rows, like every other native-ish
- * control whose colours are props (instruction_mds/visual-language.md §5).
+ * control whose colours are props (instruction_mds/frontend.md rule 2).
  */
 function TimeWheel({ value, onPick, onClose }: Omit<PickerProps, 'mode'>) {
   const { colors } = useAppTheme();
@@ -334,7 +349,7 @@ export function DateTimeInput({ mode, value, onChange, placeholder, accessibilit
       <View style={styles.pickerRow}>
         <Pressable
           onPress={() => setOpen(true)}
-          // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+          // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
           android_ripple={{ color: colors.ripple }}
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
@@ -507,7 +522,7 @@ export function ControlledSwitch<T extends FieldValues>({
   return (
     <Field {...field}>
       <View style={styles.toggleRow}>
-        {/* A switch that is on is one of the accent's places (instruction_mds/visual-language.md §4). */}
+        {/* A switch that is on is one of the accent's places (instruction_mds/frontend.md §2.3). */}
         <Switch
           // SAFETY: `name` is a FieldPathByValue<T, boolean>, so the value at it is a boolean; TypeScript
           // cannot resolve the generic path's value type inside the component.
@@ -527,7 +542,7 @@ export function ControlledSwitch<T extends FieldValues>({
 
 /**
  * SegmentedButtons in a Field, bound to one string of a react-hook-form: a choice of two or three that
- * is always visible, like Sell By (instruction_mds/visual-language.md §4, Segmented field).
+ * is always visible, like Sell By (instruction_mds/frontend.md §5).
  */
 export function ControlledSegmented<T extends FieldValues>({
   control,

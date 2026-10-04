@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native';
 import { useCreateCategoryMutation, useRenameCategoryMutation } from '../features/categories/queries';
 import type { Category } from '../features/categories/queries';
 import type { ResourceScope } from '../features/products/resources';
+import { useShellWide } from '../lib/columns';
 import { failureMessage, mutationNotice, postgrestError } from '../lib/errors';
 import { AdaptiveDialog } from './adaptive-dialog';
 import { Button } from './button';
@@ -54,11 +55,12 @@ function useCategoryWrites(merchantId: string, scope: Props['scope']) {
  * Create or rename a category. One field and one rule, so plain state rather than react-hook-form
  * (the same call RemoveSystemDialog makes). Mounted only while open, so the field starts fresh.
  *
- * The body of the full-page route src/app/(app)/forms/category.tsx, which the product form's picker and
- * the Setup screen both push at every width.
+ * The body of the route src/app/(app)/forms/category.tsx, which the product form's picker and the Setup
+ * screen both push: a full page on a phone, a Dialog on a tablet (AdaptiveDialog `asPage`).
  */
 export function CategoryDialog({ merchantId, scope, parent, category, onDismiss, onCreated }: Props) {
   const { create, rename, pending, paused, failure } = useCategoryWrites(merchantId, scope);
+  const wide = useShellWide();
   const [name, setName] = useState(category?.name ?? '');
   const [submitted, setSubmitted] = useState(false);
 
@@ -91,6 +93,7 @@ export function CategoryDialog({ merchantId, scope, parent, category, onDismiss,
   return (
     <AdaptiveDialog
       asPage
+      wide={wide}
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker={parent ? `In ${parent.name}` : 'Categories'}
@@ -126,6 +129,6 @@ export function CategoryDialog({ merchantId, scope, parent, category, onDismiss,
 }
 
 const styles = StyleSheet.create({
-  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/visual-language.md §5).
+  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/frontend.md §5).
   action: { justifyContent: 'flex-start' },
 });

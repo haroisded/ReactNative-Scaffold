@@ -7,6 +7,7 @@ import { ArchiveButton, useArchiveUndo } from '../../components/archive-undo';
 import { Button } from '../../components/button';
 import { FactGrid } from '../../components/fact-grid';
 import type { Fact } from '../../components/fact-grid';
+import { displayDate } from '../../components/form-fields';
 import { IconButton } from '../../components/icon-button';
 import { LotDrill } from '../../components/lot-drill';
 import { Menu } from '../../components/menu';
@@ -52,7 +53,7 @@ export function InventoryDetail({ merchantId, product, currency, embedded, onClo
   const base = product.base_unit_name ?? product.pack_unit_name ?? 'units';
   const perPack = product.conversion_factor ?? 1;
   const edit = () => router.push({ pathname: RESOURCE_ROUTE.inventory.edit, params: { id: merchantId, productId: product.id } });
-  // A full-page form at every width (instruction_mds/visual-language.md §5).
+  // A full-page form at every width (instruction_mds/frontend.md §5).
   const move = (next: Moving) =>
     router.push({ pathname: '/forms/stock-movement', params: { productId: product.id, kind: next.kind, packId: next.packId } });
 
@@ -137,7 +138,7 @@ function itemFacts(product: ProductDetail, base: string, perPack: number): Fact[
     ['Reorder at', product.reorder_threshold === null ? null : `${product.reorder_threshold} ${base}`],
     ['Location', product.storage_location],
     ['Expiry', product.perishable ? 'Has an expiration date' : 'Does not expire'],
-    ['Expiry alert', product.expiry_alert_days === null ? null : `${product.expiry_alert_days} days before`],
+    ['Expiry alert', product.expiry_alert_on === null ? null : displayDate(product.expiry_alert_on)],
     ['Category', [product.category?.name, product.subcategory?.name].filter(Boolean).join(' › ')],
     ['Notes', product.internal_notes],
   ];
@@ -168,16 +169,16 @@ function FacesSection({ merchantId, product, currency }: { merchantId: string; p
               onPress={() =>
                 router.push({ pathname: RESOURCE_ROUTE.products.detail, params: { id: merchantId, productId: face.id } }, { withAnchor: true })
               }
-              // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §4).
+              // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
               android_ripple={{ color: colors.ripple }}
               accessibilityRole="button"
               accessibilityLabel={`Open ${face.name}`}
               style={[styles.row, { borderBottomColor: colors.surfaceVariant }]}
             >
-              <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.fill}>
+              <Text variant="titleMedium" numberOfLines={1} style={styles.fill}>
                 {face.name}
               </Text>
-              <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: face.selling_price === null ? colors.error : colors[STATUS_META[face.status].tone] }}>
+              <Text variant="labelMedium" style={{ color: face.selling_price === null ? colors.error : colors[STATUS_META[face.status].tone] }}>
                 {face.selling_price === null ? 'Needs price' : `${STATUS_META[face.status].label} · ${formatMoney(face.selling_price, currency)}`}
               </Text>
             </Pressable>
@@ -211,7 +212,7 @@ function StockSection({ product, base, currency, onMove }: StockProps) {
           nextPick={product.sell_by === 'pack' ? stock.data.nextPick.pack : stock.data.nextPick.base}
           unit={base}
           currency={currency}
-          expiryAlertDays={product.expiry_alert_days}
+          expiryAlertOn={product.expiry_alert_on}
           showEmpty={showEmpty}
           packAction={(pack, lot) => <PackMenu pack={pack} lot={lot} onMove={onMove} />}
         />
@@ -287,14 +288,14 @@ function HistoryRow({ row, base }: { row: MovementRow; base: string }) {
   return (
     <View style={[styles.row, { borderBottomColor: colors.surfaceVariant }]}>
       <View style={styles.fill}>
-        <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
+        <Text variant="titleMedium">
           {MOVEMENT_KIND_LABEL[row.kind]}
         </Text>
-        <Text variant="bodySmall" numberOfLines={3} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" numberOfLines={3} style={{ color: colors.onSurfaceMuted }}>
           {[when, where, row.lot?.location, row.ref, row.reason, row.note].filter(Boolean).join(' · ')}
         </Text>
       </View>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3} style={{ color: row.qty < 0 ? colors.error : colors.onSurface }}>
+      <Text variant="bodyMedium" style={{ color: row.qty < 0 ? colors.error : colors.onSurface }}>
         {`${row.qty > 0 ? '+' : '−'}${Math.abs(row.qty)} ${base}`}
       </Text>
     </View>

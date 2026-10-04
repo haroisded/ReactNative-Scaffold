@@ -34,7 +34,7 @@ import type { ResourceScope } from '../../features/products/resources';
 import { usesInventory } from '../../features/products/schema';
 import type { ProductStatus } from '../../features/products/schema';
 import { localToday } from '../../features/stock-receipts/schema';
-import { useShellWide } from '../../lib/columns';
+import { useShellWide, useTableFits } from '../../lib/columns';
 import { failureMessage, mutationNotice, postgrestError } from '../../lib/errors';
 import type { IconName } from '../../lib/icons';
 import { formatMoney } from '../../lib/money';
@@ -250,11 +250,12 @@ type ListBodyProps = {
   remove: (targets: Target[]) => void;
 };
 
-/** Inventory's grouped panes, the wide table, or the narrow cards. */
+/** Inventory's grouped panes, the wide table, or the narrow cards (also wide at a large font scale). */
 function ListBody({ scope, wide, list, merchantId, currency, showEmpty, folders, onSelect, archive, remove }: ListBodyProps) {
+  const table = useTableFits();
   if (scope === 'inventory')
-    return <InventoryPanes {...list} merchantId={merchantId} currency={currency} wide={wide} showEmpty={showEmpty} folders={folders} />;
-  if (!wide) return <CardList {...list} currency={currency} />;
+    return <InventoryPanes {...list} merchantId={merchantId} currency={currency} wide={wide} table={table} showEmpty={showEmpty} folders={folders} />;
+  if (!table) return <CardList {...list} currency={currency} />;
   return (
     <ProductTable
       {...list}
@@ -301,7 +302,7 @@ function useProductRows(merchantId: string, scope: ResourceScope, search: string
   return { products, rows };
 }
 
-/** Search, Filters with how many are on, and Sort: one row, wrapping when a phone is too narrow for it. */
+/** Search, Filters with how many are on, and Sort: one row wide; narrow, the search takes a row of its own. */
 function Toolbar({
   inventory,
   search,
@@ -317,8 +318,20 @@ function Toolbar({
   onFilters: () => void;
   sort: ReactNode;
 }) {
+  // Decided, not left to flexWrap: in a wrapping row Yoga measured the search field narrow, so it grew
+  // three lines tall and Sort spilled over the list below (Assets on a phone, 2026-10-03).
+  const wide = useShellWide();
+  const buttons = (
+    <>
+      <Button mode="outlined" compact icon="filter" onPress={onFilters} accessibilityLabel={`Filters, ${activeCount} on`}>
+        {activeCount > 0 ? `Filters · ${activeCount}` : 'Filters'}
+      </Button>
+      {sort}
+    </>
+  );
+
   return (
-    <View style={styles.toolbar}>
+    <View style={wide ? styles.toolbar : styles.toolbarNarrow}>
       <TextInput
         mode="outlined"
         dense
@@ -328,12 +341,9 @@ function Toolbar({
         accessibilityLabel="Search products"
         left={<TextInput.Icon icon="search" />}
         right={search !== '' ? <TextInput.Icon icon="close" onPress={() => onSearch('')} accessibilityLabel="Clear search" /> : undefined}
-        style={styles.search}
+        style={wide ? styles.search : undefined}
       />
-      <Button mode="outlined" compact icon="filter" onPress={onFilters} accessibilityLabel={`Filters, ${activeCount} on`}>
-        {activeCount > 0 ? `Filters · ${activeCount}` : 'Filters'}
-      </Button>
-      {sort}
+      {wide ? buttons : <View style={styles.toolbarButtons}>{buttons}</View>}
     </View>
   );
 }
@@ -470,7 +480,15 @@ type ListProps = {
   empty: ReactElement;
 };
 
-type PanesProps = ListProps & { merchantId: string; currency: string; wide: boolean; showEmpty: boolean; folders: Folders | null };
+type PanesProps = ListProps & {
+  merchantId: string;
+  currency: string;
+  wide: boolean;
+  /** Rows draw table columns: wide at a readable font scale (useTableFits). */
+  table: boolean;
+  showEmpty: boolean;
+  folders: Folders | null;
+};
 
 /** Where an item sits in Inventory's folders. */
 const placeOf = (item: ProductListRow) => ({ category: item.category_id, sub: item.subcategory_id, group: item.group_id });
@@ -483,10 +501,10 @@ function inventoryEntries(rows: ProductListRow[], folders: Folders | null): Fold
 
 /**
  * Inventory's folders, or every match flat while searching. Wide, it spans the screen in columns until an item is opened, then narrows to
- * a row list beside the item (instruction_mds/layout.md §2: a row card gets a second pane, never more
+ * a row list beside the item (instruction_mds/frontend.md §4.3: a row card gets a second pane, never more
  * width). Narrow, an item opens on its own screen.
  */
-function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, currency, wide, showEmpty, folders }: PanesProps) {
+function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, currency, wide, table, showEmpty, folders }: PanesProps) {
   const { colors } = useAppTheme();
   // Rows whose lot drill is open. Held here, not in a row: FlashList recycles its cells.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -524,7 +542,7 @@ function InventoryPanes({ rows, selected, onToggle, onOpen, empty, merchantId, c
                 item={entry.item}
                 today={today}
                 currency={currency}
-                wide={wide && !paned}
+                wide={table && !paned}
                 nested={inGroup}
                 expanded={expanded.has(entry.item.id)}
                 showEmpty={showEmpty}
@@ -750,7 +768,7 @@ function CardRow({ item, currency, selecting, selected, onToggle, onOpen }: RowP
       // Long-press starts selecting; while anything is selected, a tap toggles instead of opening.
       onPress={selecting ? onToggle : onOpen}
       onLongPress={onToggle}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel={item.name}
@@ -831,9 +849,10 @@ function toggled(set: ReadonlySet<string>, id: string) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  toolbar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.ms },
-  // Takes the row; under this width it wraps the two buttons onto a line of their own.
-  search: { flexGrow: 1, flexBasis: 220 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.ms },
+  toolbarNarrow: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.ms },
+  toolbarButtons: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  search: { flex: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.ms },
   trailingIcon: { flexDirection: 'row-reverse' },
   bulkBar: {

@@ -5,7 +5,7 @@ import { useCategoriesQuery } from '../../../features/categories/queries';
 import { isResourceScope } from '../../../features/products/resources';
 import { setSheetResult } from '../../../Store/sheet-result';
 
-// Create or rename a category as a full page at every width (instruction_mds/visual-language.md §5). The rows come from
+// Create or rename a category — a full page on a phone, a Dialog over the screen on a tablet (instruction_mds/frontend.md §4.4). The rows come from
 // the query cache the picker or Setup already filled; while a row an id names is not there yet, the
 // page waits rather than rendering a create where a rename was asked for.
 export default function CategoryPage() {

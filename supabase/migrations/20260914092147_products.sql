@@ -1,4 +1,4 @@
--- Products: the first business table (System-Context/Merchant-Products-Screen), with the three
+-- Products: the first business table, behind the Assets screen, with the three
 -- per-merchant lookups its form picks from — categories, tax classes, suppliers — and the six child
 -- sets a product carries: rate tiers, operating hours, variant attributes, variants, bundle
 -- components and custom fields.

@@ -7,7 +7,7 @@ type SheetResult = { key: string; id: string } | null;
  * What a create form made, handed back to the picker that opened it.
  *
  * An inline-create is a full-page route under src/app/(app)/forms/ at every width
- * (instruction_mds/visual-language.md §5), so the picker and the form do not share a component tree to pass
+ * (instruction_mds/frontend.md §5), so the picker and the form do not share a component tree to pass
  * `onCreated` down. One slot is enough: only one create form is ever open. The key names the field that asked ("category", "subcategory", …), so a result
  * never lands in a different picker on the same form.
  *

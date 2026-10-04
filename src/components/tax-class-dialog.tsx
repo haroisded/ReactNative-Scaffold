@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { TAX_CLASS_PRESETS, useCreateTaxClassMutation } from '../features/tax-classes/queries';
 import type { TaxClass } from '../features/tax-classes/queries';
+import { useShellWide } from '../lib/columns';
 import { failureMessage, mutationNotice, postgrestError } from '../lib/errors';
 import { spacing } from '../themes';
 import { AdaptiveDialog } from './adaptive-dialog';
@@ -20,11 +21,12 @@ type Props = {
 
 /**
  * Create a tax class. Two fields and presets that fill both — still small enough for plain state.
- * The body of the full-page route src/app/(app)/forms/tax-class.tsx, pushed by the product form's
- * picker at every width.
+ * The body of the route src/app/(app)/forms/tax-class.tsx, pushed by the product form's picker: a full
+ * page on a phone, a Dialog on a tablet (AdaptiveDialog `asPage`).
  */
 export function TaxClassDialog({ merchantId, onDismiss, onCreated }: Props) {
   const create = useCreateTaxClassMutation({ merchantId });
+  const wide = useShellWide();
   const [name, setName] = useState('');
   const [rate, setRate] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -59,6 +61,7 @@ export function TaxClassDialog({ merchantId, onDismiss, onCreated }: Props) {
   return (
     <AdaptiveDialog
       asPage
+      wide={wide}
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker="Pricing"

@@ -6,7 +6,7 @@ import { Text } from '../../../components/text';
 import { useAppTheme } from '../../../lib/theme';
 import { radius, spacing } from '../../../themes';
 
-// Rendered inert: photos arrive with the image pipeline (System-Context/Image-Pipeline), which owns
+// Rendered inert: photos arrive with the image pipeline (instruction_mds/frontend.md §4.6), which owns
 // storage, resizing and products.image_file. Nothing here reads or writes.
 export function MediaSection() {
   const { colors } = useAppTheme();
@@ -41,9 +41,11 @@ export function MediaSection() {
 const styles = StyleSheet.create({
   body: { gap: spacing.ms },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.ms },
+  // Minimums, not a size: the label inside grows with the font scale (instruction_mds/frontend.md rule 17).
   tile: {
-    width: 120,
-    height: 120,
+    minWidth: 120,
+    minHeight: 120,
+    padding: spacing.sm,
     borderWidth: 1,
     borderRadius: radius.lg,
     borderCurve: 'continuous',

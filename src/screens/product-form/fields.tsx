@@ -19,7 +19,7 @@ import type { MeasureUnit, ProductFormValues } from '../../features/products/sch
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
 
-// The product form's fields, one per pattern in instruction_mds/visual-language.md §5 "Forms", laid out
+// The product form's fields, one per pattern in instruction_mds/frontend.md §5, laid out
 // with the pieces in src/components/form-fields.tsx. Every field reads the form through useFormContext,
 // so a section passes a path and nothing else — and the path types below make a misspelt or wrongly typed path a compile error at the section.
 
@@ -135,7 +135,7 @@ export function ToggleField({ name, on, off, ...field }: ToggleFieldProps) {
   return (
     <Field {...field}>
       <View style={styles.toggleRow}>
-        {/* A switch that is on is one of the accent's places (instruction_mds/visual-language.md §4). */}
+        {/* A switch that is on is one of the accent's places (instruction_mds/frontend.md §2.3). */}
         <Switch value={input.value} onValueChange={input.onChange} color={colors.accent} accessibilityLabel={field.label} />
         <Text variant="bodyMedium" style={styles.fill}>
           {input.value ? on : off}

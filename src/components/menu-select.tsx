@@ -22,7 +22,7 @@ type Props = {
 };
 
 /**
- * The Select pattern from instruction_mds/visual-language.md §5: an outlined TextInput that cannot be typed in,
+ * The Select pattern from instruction_mds/frontend.md §5: an outlined TextInput that cannot be typed in,
  * anchoring a Menu. Plain value/onChange rather than react-hook-form, so the product form, the list's
  * filters and the category manager share it; the form wraps it in a Controller.
  *
@@ -53,7 +53,7 @@ export function MenuSelect({
         <Pressable
           onPress={() => setOpen(true)}
           disabled={disabled}
-          // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+          // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
           android_ripple={{ color: colors.ripple }}
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel}
@@ -91,8 +91,8 @@ export function MenuSelect({
           <Menu.Item
             title={createLabel}
             leadingIcon="add"
-            // Inline field actions carry the accent (instruction_mds/visual-language.md §4); colour only, no type.
-            // A theme colour read at render time, so inline (instruction_mds/visual-language.md rule 9).
+            // Inline field actions carry the accent (instruction_mds/frontend.md §2.3); colour only, no type.
+            // A theme colour read at render time, so inline (instruction_mds/frontend.md rule 21).
             titleStyle={{ color: colors.accent }}
             onPress={() => {
               setOpen(false);

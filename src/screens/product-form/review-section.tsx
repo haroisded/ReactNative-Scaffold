@@ -65,7 +65,7 @@ export function ReviewSection({ sections, merchantId, scope, currency, onOpen }:
           <Pressable
             key={entry.id}
             onPress={() => onOpen(entry.id)}
-            // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+            // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
             android_ripple={{ color: colors.ripple }}
             accessibilityRole="button"
             accessibilityLabel={`${SECTION_META[entry.id].name}. ${summary[entry.id]}`}

@@ -12,7 +12,7 @@ import { Text } from './text';
 
 // The small pieces the list and the detail screen both draw.
 
-/** 1px outlineVariant border on surfaceMuted, labelMedium inside (instruction_mds/visual-language.md §5). */
+/** 1px outlineVariant border on surfaceMuted, labelMedium inside (instruction_mds/frontend.md §5). */
 export function TypeBadge({ type }: { type: ProductType }) {
   const { colors } = useAppTheme();
 
@@ -23,7 +23,7 @@ export function TypeBadge({ type }: { type: ProductType }) {
   );
 }
 
-/** The status in its colour from instruction_mds/visual-language.md §4. */
+/** The status in its colour from instruction_mds/frontend.md §2.4. */
 export function StatusText({ status }: { status: ProductStatus }) {
   const { colors } = useAppTheme();
   const meta = STATUS_META[status];

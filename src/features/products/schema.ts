@@ -52,7 +52,7 @@ export const TYPE_META = {
   },
 } satisfies Record<ProductType, { label: string; badge: string; skuPrefix: string; hint: string }>;
 
-// The status colours from instruction_mds/visual-language.md §4. Archived is not in that table; it reads as
+// The status colours from instruction_mds/frontend.md §2.4. Archived is not in that table; it reads as
 // Inactive, which is what an archived product is from a till's point of view.
 export const STATUS_META = {
   draft: { label: 'Draft', tone: 'onSurfaceMuted' },
@@ -213,7 +213,8 @@ const unitOrNone = z.union([measureUnit, z.literal('')]);
 
 const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'Pick a time.' });
 const optionalTime = z.union([timeOfDay, z.literal('')]);
-const optionalDate = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]);
+/** YYYY-MM-DD or empty: a Postgres `date` a form may leave blank. */
+export const optionalDate = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]);
 
 const rateTierSchema = z.object({
   period: ratePeriod,

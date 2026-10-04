@@ -404,6 +404,7 @@ export type Database = {
           discountable: boolean
           duration_mode: Database["public"]["Enums"]["duration_mode"] | null
           expiry_alert_days: number | null
+          expiry_alert_on: string | null
           expiry_date: string | null
           extra_unit_fee: number | null
           group_id: string | null
@@ -473,6 +474,7 @@ export type Database = {
           discountable?: boolean
           duration_mode?: Database["public"]["Enums"]["duration_mode"] | null
           expiry_alert_days?: number | null
+          expiry_alert_on?: string | null
           expiry_date?: string | null
           extra_unit_fee?: number | null
           group_id?: string | null
@@ -542,6 +544,7 @@ export type Database = {
           discountable?: boolean
           duration_mode?: Database["public"]["Enums"]["duration_mode"] | null
           expiry_alert_days?: number | null
+          expiry_alert_on?: string | null
           expiry_date?: string | null
           extra_unit_fee?: number | null
           group_id?: string | null

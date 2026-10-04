@@ -129,13 +129,13 @@ function LotCard({ lot, currency }: { lot: Lot; currency: string }) {
       >
         {hasChildren ? <Icon source={open ? 'chevron-down' : 'chevron-right'} size={20} color={colors.onSurfaceMuted} /> : null}
         <View style={styles.fill}>
-          <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+          <Text variant="titleMedium" numberOfLines={1}>
             {lot.product?.name ?? 'Item no longer available'}
           </Text>
-          <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={muted}>
+          <Text variant="bodySmall" numberOfLines={2} style={muted}>
             {`${lot.code ?? '—'} · ${summary}`}
           </Text>
-          <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+          <Text variant="bodySmall" style={muted}>
             {`${lotBalance(lot).remaining} of ${lot.qty_received ?? 0} ${base} left`}
           </Text>
         </View>
@@ -175,15 +175,15 @@ function LotMoney({ lot, currency, base }: { lot: Lot; currency: string; base: s
 
   return (
     <View style={styles.money}>
-      <Text variant="bodyMedium" maxFontSizeMultiplier={1.3}>
+      <Text variant="bodyMedium">
         {formatMoney(lot.line_cost, currency)}
       </Text>
       {lot.freight_share ? (
-        <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+        <Text variant="bodySmall" style={muted}>
           {`+ ${formatMoney(lot.freight_share, currency)} shipping`}
         </Text>
       ) : null}
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={muted}>
+      <Text variant="bodySmall" style={muted}>
         {`${formatMoney(lot.unit_cost, currency)} / ${base}`}
       </Text>
     </View>
@@ -206,10 +206,10 @@ function CaseRow({ code, left, packs, base }: { code: string; left: string; pack
         style={styles.childRow}
       >
         {packs.length > 0 ? <Icon source={open ? 'chevron-down' : 'chevron-right'} size={18} color={colors.onSurfaceMuted} /> : null}
-        <Text variant="bodyMedium" style={styles.fill} maxFontSizeMultiplier={1.3}>
+        <Text variant="bodyMedium" style={styles.fill}>
           {code}
         </Text>
-        <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
           {left}
         </Text>
       </Pressable>
@@ -229,10 +229,10 @@ function PackRow({ pack, base }: { pack: Lot['packs'][number]; base: string }) {
 
   return (
     <View style={styles.childRow}>
-      <Text variant="bodyMedium" style={styles.fill} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+      <Text variant="bodyMedium" style={styles.fill} numberOfLines={1}>
         {pack.serial ? `${pack.code} · ${pack.serial}` : pack.code}
       </Text>
-      <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+      <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
         {`${pack.qty_remaining} of ${pack.units} ${base}${pack.qty_remaining > 0 && pack.qty_remaining < pack.units ? ' · open' : ''}`}
       </Text>
     </View>

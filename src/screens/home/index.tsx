@@ -7,65 +7,49 @@ import { ActivityIndicator } from '../../components/activity-indicator';
 import { Appbar } from '../../components/appbar';
 import { Avatar } from '../../components/avatar';
 import { Button } from '../../components/button';
-import { Card } from '../../components/card';
 import { IconButton } from '../../components/icon-button';
 import { RemoveSystemDialog } from '../../components/remove-system-dialog';
 import { Surface } from '../../components/surface';
 import { Text } from '../../components/text';
 import { useMerchantsQuery } from '../../features/merchants/queries';
 import type { Merchant } from '../../features/merchants/queries';
-import { useColumns } from '../../lib/columns';
+import { SYSTEM_CARD, useColumns, useShellWide } from '../../lib/columns';
 import { failureMessage } from '../../lib/errors';
 import { spacing } from '../../themes';
+import { CreateSystemCard } from './create-system-card';
 import { SystemCard } from './system-card';
 
+/** The wide grid's first cell, ahead of the systems. */
+const CREATE = 'create';
+
 export function HomeScreen() {
-  const { columns, onLayout } = useColumns();
+  const { columns, onLayout } = useColumns(SYSTEM_CARD);
   const merchants = useMerchantsQuery();
   // The row awaiting confirmation, held here rather than in the card that opens it — a FlashList
   // cell is recycled, and this state must outlive neither the row nor the scroll position.
   const [removing, setRemoving] = useState<Merchant | null>(null);
 
-  // The single width branch this screen makes. Everything downstream reads it rather than
-  // re-deciding: one screen, one route, one measured branch (instruction_mds/layout.md §9).
-  const narrow = columns === 1;
+  // The one threshold (instruction_mds/frontend.md §4.1) picks the anatomy: row cards narrow, grid
+  // wide. The measured column count only sizes the grid.
+  const narrow = !useShellWide();
+  const numColumns = narrow ? 1 : columns;
 
-  const openAccount = () => router.navigate('/account');
+  // Wide, the tab bar is hidden, so Profile opens as a Dialog over this screen rather than as the
+  // Account tab (src/app/(app)/profile.tsx); `from` drops its "Back to your systems".
+  const openAccount = () => router.push({ pathname: '/profile', params: { from: 'home' } });
 
-  // Creating is a full-screen route at every width. Removing is a formSheet route narrow and a dialog
-  // over this screen wide (instruction_mds/visual-language.md §5).
+  // Creating is a full-screen route at every width, opened by a button narrow and by the grid's first
+  // card wide. Removing is a formSheet route narrow and a dialog over this screen wide
+  // (instruction_mds/frontend.md §5).
   const create = () => router.push('/create-system');
   const remove = (merchant: Merchant) => {
     if (narrow) router.push({ pathname: '/sheets/remove-system', params: { merchantId: merchant.id } });
     else setRemoving(merchant);
   };
 
-  const header = narrow ? (
-    <View style={styles.header}>
-      <Text variant="titleMedium">Quick Actions</Text>
-      <Button mode="contained" icon="add" onPress={create} contentStyle={styles.leading}>
-        Create New System
-      </Button>
-      <Text variant="titleMedium">Active Systems</Text>
-    </View>
-  ) : (
-    <View style={styles.header}>
-      <Text variant="headlineSmall">Your POS Systems</Text>
-      <Text variant="bodyMedium">Manage, edit, and monitor your custom point-of-sale system.</Text>
-      {/* On a wide container the create action is promoted from a button to a full card. A
-          hierarchy shift driven by available room, not by a type-scale swap — the variants below
-          are the same ones the narrow branch uses (instruction_mds/typography.md §4). */}
-      <Card mode="contained" onPress={create}>
-        <Card.Title
-          title="Create New System"
-          titleVariant="titleMedium"
-          subtitle="Make your own point-of-sale system."
-          subtitleVariant="bodySmall"
-          left={(props) => <Avatar.Icon {...props} icon="add" />}
-        />
-      </Card>
-    </View>
-  );
+  const systems = merchants.data ?? [];
+  const cells: (Merchant | typeof CREATE)[] = narrow ? systems : [CREATE, ...systems];
+  const status = <LoadStatus merchants={merchants} />;
 
   return (
     <Surface style={styles.screen}>
@@ -76,11 +60,12 @@ export function HomeScreen() {
 
             Blank because nothing in the schema carries a logo yet, and a blank logo has no features:
             no glyph, no initials. `Avatar.Text` with an empty label is Paper's own circle — avatars
-            stay circular whatever the theme's roundness (instruction_mds/visual-language.md rule 4).
+            stay circular whatever the theme's roundness (instruction_mds/frontend.md rule 7).
 
             ponytail: swap to <Avatar.Image source={{ uri }} /> the day branding carries a logo. */}
         <View style={styles.logo}>
-          <Avatar.Text label="" size={36} />
+          {/* 40, MD3's avatar beside an app-bar title, and the rail's system badge. */}
+          <Avatar.Text label="" size={40} />
         </View>
         <Appbar.Content title="Merchant" />
         {narrow ? (
@@ -98,78 +83,109 @@ export function HomeScreen() {
           never on the window. This is what survives Stage Manager and split-screen. */}
       <View style={styles.body} onLayout={onLayout}>
         <FlashList
-          data={merchants.data ?? []}
-          keyExtractor={(item) => item.id}
-          numColumns={columns}
+          data={cells}
+          keyExtractor={(item) => (item === CREATE ? CREATE : item.id)}
+          // Two recycling pools: the create card never recycles into a system card (vercel-react-native-skills
+          // list-performance-item-types).
+          getItemType={(item) => (item === CREATE ? CREATE : 'system')}
+          numColumns={numColumns}
           // FlashList recomputes its layout when numColumns changes, so the remount FlatList
-          // required (instruction_mds/layout.md rule 4) is no longer load-bearing. It is kept because the
+          // required (instruction_mds/frontend.md §4.2) is no longer load-bearing. It is kept because the
           // key only changes when the container crosses a column boundary — a rotation or a
           // resize, which is already a full relayout — and it costs nothing the rest of the time.
-          key={columns}
+          key={numColumns}
           contentContainerStyle={styles.list}
-          ListHeaderComponent={header}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              {/* Paused is checked FIRST because `isPending` is also true while paused, and the
-                  spinner would win. networkMode: 'online' (the default, with onlineManager wired in
-                  src/lib/query.ts) does not fail a query with no connection — it queues it, so
-                  `isPending` never resolves and this screen would animate forever with nothing to
-                  read and nothing to press. Verified on a device: uiautomator could not reach idle
-                  offline, and dumped the instant the network came back.
-
-                  No retry control, unlike the error branch below: a paused query resumes on its own
-                  when onlineManager reports a connection, so a button here would offer to do what
-                  is already going to happen. */}
-              {merchants.isPaused ? (
-                <View style={styles.state}>
-                  <Text variant="bodyMedium">
-                    You&apos;re offline. Your systems will load when you reconnect.
-                  </Text>
-                </View>
-              ) : merchants.isPending ? (
-                <ActivityIndicator />
-              ) : merchants.isError ? (
-                // retry is false by default, so nothing retries on its own — the user gets a result
-                // and a control rather than a spinner that silently gives up (instruction_mds/data-layer.md §5).
-                //
-                // Copy written for the user, not `merchants.error.message`: this is the whole-screen
-                // empty state, so a PostgREST string would be the most prominent text in the app on
-                // a failed load. failureMessage swaps in the offline line when that is the cause.
-                <View style={styles.state}>
-                  <Text variant="bodyMedium">
-                    {failureMessage("Couldn't load your systems. Try again.")}
-                  </Text>
-                  <Button onPress={() => merchants.refetch()}>Try again</Button>
-                </View>
-              ) : (
-                <Text variant="bodyMedium">No systems yet.</Text>
-              )}
-            </View>
-          }
+          ListHeaderComponent={<HomeHeader narrow={narrow} onCreate={create} />}
+          // Narrow, the load state stands in for an empty list. Wide, the list is never empty — the
+          // create card is always first — so the state goes under it, and the card is the empty state.
+          ListEmptyComponent={narrow ? <View style={styles.empty}>{status}</View> : null}
+          ListFooterComponent={narrow ? null : <View style={styles.empty}>{status}</View>}
           renderItem={({ item }) => (
             <View style={styles.cell}>
-              <SystemCard
-                merchant={item}
-                row={narrow}
-                onPress={() => router.push({ pathname: '/systems/[id]', params: { id: item.id } })}
-                onRemove={() => remove(item)}
-              />
+              {item === CREATE ? (
+                <CreateSystemCard onPress={create} />
+              ) : (
+                <SystemCard
+                  merchant={item}
+                  row={narrow}
+                  onPress={() => router.push({ pathname: '/systems/[id]', params: { id: item.id } })}
+                  onRemove={() => remove(item)}
+                />
+              )}
             </View>
           )}
         />
       </View>
 
-      {/* Mounted only while open, which is what makes the form fresh on every open with no reset
-          logic. Wide only: narrow opens the same form as a route. */}
-
       {/* Mounted only while a row is awaiting confirmation, which is what makes the typed-
-          confirmation field empty again on every open with no reset logic — the same reason the
-          wizard above is mounted this way. */}
+          confirmation field empty again on every open with no reset logic. */}
       {removing ? (
         <RemoveSystemDialog merchant={removing} wide onDismiss={() => setRemoving(null)} />
       ) : null}
     </Surface>
   );
+}
+
+/**
+ * Narrow: a full-width create button between two headings. Wide: the screen's title and its line; the
+ * grid's first card creates. The type does not grow with the window (instruction_mds/frontend.md rule 10);
+ * a wider window gets more cards per row instead.
+ */
+function HomeHeader({ narrow, onCreate }: { narrow: boolean; onCreate: () => void }) {
+  return narrow ? (
+    <View style={styles.header}>
+      <Text variant="titleMedium">Quick Actions</Text>
+      <Button mode="contained" icon="add" onPress={onCreate} contentStyle={styles.leading}>
+        Create New System
+      </Button>
+      <Text variant="titleMedium">Active Systems</Text>
+    </View>
+  ) : (
+    <View style={styles.headerWide}>
+      <Text variant="headlineMedium">Your POS Systems</Text>
+      <Text variant="bodyLarge">Manage, edit, and monitor your custom point-of-sale system.</Text>
+    </View>
+  );
+}
+
+/**
+ * The systems query's state while it has no rows to show. Paused is checked FIRST because `isPending`
+ * is also true while paused, and the spinner would win. networkMode: 'online' (the default, with
+ * onlineManager wired in src/lib/query.ts) does not fail a query with no connection — it queues it, so
+ * `isPending` never resolves and this screen would animate forever with nothing to read and nothing to
+ * press. Verified on a device: uiautomator could not reach idle offline, and dumped the instant the
+ * network came back.
+ *
+ * No retry control while paused, unlike the error branch: a paused query resumes on its own when
+ * onlineManager reports a connection, so a button would offer to do what is already going to happen.
+ */
+function LoadStatus({ merchants }: { merchants: ReturnType<typeof useMerchantsQuery> }) {
+  const narrow = !useShellWide();
+
+  if (merchants.isPaused) {
+    return (
+      <View style={styles.state}>
+        <Text variant="bodyMedium">You&apos;re offline. Your systems will load when you reconnect.</Text>
+      </View>
+    );
+  }
+  if (merchants.isPending) return <ActivityIndicator />;
+  if (merchants.isError) {
+    // retry is false by default, so nothing retries on its own — the user gets a result and a control
+    // rather than a spinner that silently gives up (instruction_mds/data-layer.md §5).
+    //
+    // Copy written for the user, not `merchants.error.message`: a PostgREST string would be the most
+    // prominent text on the screen on a failed load. failureMessage swaps in the offline line when that
+    // is the cause.
+    return (
+      <View style={styles.state}>
+        <Text variant="bodyMedium">{failureMessage("Couldn't load your systems. Try again.")}</Text>
+        <Button onPress={() => merchants.refetch()}>Try again</Button>
+      </View>
+    );
+  }
+  // Wide, the create card already says there is nothing yet.
+  return narrow ? <Text variant="bodyMedium">No systems yet.</Text> : null;
 }
 
 // FlashList positions every cell absolutely, so neither `columnWrapperStyle` (it has no such prop)
@@ -179,12 +195,14 @@ export function HomeScreen() {
 const GUTTER = spacing.sm;
 
 const styles = StyleSheet.create({
-  // Full-width buttons put their label at the left edge (instruction_mds/visual-language.md §5).
+  // Full-width buttons put their label at the left edge (instruction_mds/frontend.md §5).
   leading: { justifyContent: 'flex-start' },
   screen: { flex: 1 },
   body: { flex: 1 },
   list: { padding: GUTTER },
   header: { gap: spacing.ms, padding: GUTTER },
+  // Title and its line close together, and clear of the bar above and the cards below.
+  headerWide: { gap: spacing.xs, paddingHorizontal: GUTTER, paddingTop: spacing.md, paddingBottom: spacing.md },
   // No width and no height on the cell — FlashList sets the width from the column count, and
   // flex:1 lets the card fill the cell so neighbours in a row end up the same height.
   cell: { flex: 1, padding: GUTTER },

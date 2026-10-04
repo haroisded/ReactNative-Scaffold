@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button } from '../../components/button';
 import { PageHeader } from '../../components/page-header';
 import { SegmentedButtons } from '../../components/segmented-buttons';
+import { fontScaled, PANE_SWITCH, useShellWide } from '../../lib/columns';
 import { spacing } from '../../themes';
 import { ReceiptsPane } from './receipts-pane';
 import { SuppliersPane } from './suppliers-pane';
@@ -24,8 +25,22 @@ type Pane = 'receipts' | 'suppliers';
  */
 export function Stock({ merchantId, merchantName, currency }: Props) {
   const [pane, setPane] = useState<Pane>('receipts');
-  // The header's "Add supplier" and the pane's empty state open the same full-page form.
+  const wide = useShellWide();
+  // The header's "Add supplier" and the pane's empty state open the same form.
   const addSupplier = () => router.push({ pathname: '/forms/supplier', params: { merchantId } });
+
+  const paneSwitch = (
+    <SegmentedButtons
+      density="small"
+      style={wide ? { width: fontScaled(PANE_SWITCH) } : undefined}
+      value={pane}
+      onValueChange={(value) => setPane(value === 'suppliers' ? 'suppliers' : 'receipts')}
+      buttons={[
+        { value: 'receipts', label: 'Receipts' },
+        { value: 'suppliers', label: 'Suppliers' },
+      ]}
+    />
+  );
 
   return (
     <View style={styles.fill}>
@@ -34,32 +49,27 @@ export function Stock({ merchantId, merchantName, currency }: Props) {
         title="Stock"
         meta={pane === 'receipts' ? 'Receipts per item — received vs remaining, drill to case and pack' : 'Who you buy from'}
         actions={
-          pane === 'receipts' ? (
-            <Button
-              mode="contained"
-              icon="add"
-              onPress={() => router.push({ pathname: '/systems/[id]/stock/receipts/new', params: { id: merchantId } })}
-            >
-              Stock receipt
-            </Button>
-          ) : (
-            <Button mode="contained" icon="add" onPress={addSupplier}>
-              Add supplier
-            </Button>
-          )
+          <>
+            {pane === 'receipts' ? (
+              <Button
+                mode="contained"
+                icon="add"
+                onPress={() => router.push({ pathname: '/systems/[id]/stock/receipts/new', params: { id: merchantId } })}
+              >
+                Stock receipt
+              </Button>
+            ) : (
+              <Button mode="contained" icon="add" onPress={addSupplier}>
+                Add supplier
+              </Button>
+            )}
+            {/* Wide, the switch sits at the end of the title row beside the add button, rather than on a
+                row of its own across the pane. Narrow, it keeps a full-width row under the header. */}
+            {wide ? paneSwitch : null}
+          </>
         }
       />
-      <View style={styles.switch}>
-        <SegmentedButtons
-          density="small"
-          value={pane}
-          onValueChange={(value) => setPane(value === 'suppliers' ? 'suppliers' : 'receipts')}
-          buttons={[
-            { value: 'receipts', label: 'Receipts' },
-            { value: 'suppliers', label: 'Suppliers' },
-          ]}
-        />
-      </View>
+      {wide ? null : <View style={styles.switch}>{paneSwitch}</View>}
       {pane === 'receipts' ? (
         <ReceiptsPane merchantId={merchantId} currency={currency} />
       ) : (

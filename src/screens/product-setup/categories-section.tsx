@@ -23,7 +23,7 @@ import { spacing } from '../../themes';
  * (src/features/products/resources.ts).
  *
  * Create and rename open the full-page category form at every width; delete mounts its confirm here on
- * a wide shell and opens as a formSheet route on a narrow one (instruction_mds/visual-language.md §5).
+ * a wide shell and opens as a formSheet route on a narrow one (instruction_mds/frontend.md §5).
  */
 export function CategoriesSection({ merchantId, scope }: { merchantId: string; scope: ResourceScope }) {
   const { colors } = useAppTheme();

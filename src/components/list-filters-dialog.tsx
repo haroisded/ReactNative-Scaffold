@@ -49,7 +49,7 @@ type Props = {
 };
 
 /**
- * The list's Filters panel (instruction_mds/visual-language.md §4, Filter panel): every filter but search and
+ * The list's Filters panel (instruction_mds/frontend.md §5): every filter but search and
  * sort. A change applies as it is made, so the panel has Done and no Apply.
  *
  * In src/components/ because the list (wide) and the formSheet route (narrow) both mount it.

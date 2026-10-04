@@ -4,7 +4,7 @@ import { DeleteCategoryDialog } from '../../../components/delete-category-dialog
 import { childrenOf, useCategoriesQuery } from '../../../features/categories/queries';
 import { isResourceScope } from '../../../features/products/resources';
 
-// Delete a category on a narrow container (instruction_mds/visual-language.md §5). `scope` names which screen's
+// Delete a category on a narrow container (instruction_mds/frontend.md §5). `scope` names which screen's
 // list the category is in, so the cached rows this reads are the ones Setup was showing.
 export default function DeleteCategorySheet() {
   const { merchantId, scope, categoryId } = useLocalSearchParams<{

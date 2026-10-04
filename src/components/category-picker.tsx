@@ -21,7 +21,7 @@ type Props = {
 };
 
 /**
- * The inline-create picker (instruction_mds/visual-language.md §5): a Select whose last row opens the create
+ * The inline-create picker (instruction_mds/frontend.md §5): a Select whose last row opens the create
  * dialog, and whatever is created comes back selected. The merchant never leaves the form to set up a
  * category first.
  *

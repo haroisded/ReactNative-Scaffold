@@ -14,6 +14,7 @@ import { isDuplicateCode, useSaveSupplierMutation } from '../features/suppliers/
 import type { Supplier } from '../features/suppliers/queries';
 import { supplierSchema } from '../features/suppliers/schema';
 import type { SupplierFormValues } from '../features/suppliers/schema';
+import { useShellWide } from '../lib/columns';
 import { failureMessage, mutationNotice } from '../lib/errors';
 import { useAppTheme } from '../lib/theme';
 import { spacing } from '../themes';
@@ -41,13 +42,14 @@ type FieldName = Exclude<keyof SupplierFormValues, 'supplierTypeId' | 'active'>;
  * types are managed from the Type field itself — a new one is typed in place, and the selected one can
  * be deleted — so the page never has to open a second form over itself.
  *
- * The body of the full-page route src/app/(app)/forms/supplier.tsx, which Stock → Suppliers, the
- * receipt wizard and the product form's picker push at every width. Mounted only while open, so the
- * form starts fresh.
+ * The body of the route src/app/(app)/forms/supplier.tsx, which Stock → Suppliers, the receipt wizard
+ * and the product form's picker push: a full page on a phone, a Dialog on a tablet (AdaptiveDialog
+ * `asPage`). Mounted only while open, so the form starts fresh.
  */
 export function SupplierDialog({ merchantId, supplier, onDismiss, onCreated }: Props) {
   const { colors } = useAppTheme();
   const save = useSaveSupplierMutation({ merchantId });
+  const wide = useShellWide();
   const { control, handleSubmit, setValue, watch } = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
     defaultValues: supplierDefaults(supplier),
@@ -77,6 +79,7 @@ export function SupplierDialog({ merchantId, supplier, onDismiss, onCreated }: P
   return (
     <AdaptiveDialog
       asPage
+      wide={wide}
       onDismiss={onDismiss}
       dismissable={!inFlight}
       kicker={supplier ? supplier.code : 'Stock'}
@@ -284,7 +287,7 @@ function Field({ control, name, label, ...input }: FieldProps) {
 }
 
 const styles = StyleSheet.create({
-  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/visual-language.md §5).
+  // Full width on a phone's page, so the label sits at the left edge (instruction_mds/frontend.md §5).
   action: { justifyContent: 'flex-start' },
   fill: { flex: 1 },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

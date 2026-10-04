@@ -6,7 +6,7 @@ import { radius, spacing } from '../themes';
 import { Text } from './text';
 
 /**
- * A 3px left rule on surfaceMuted: accent for a note, error for a warning (instruction_mds/visual-language.md §5).
+ * A 3px left rule on surfaceMuted: accent for a note, error for a warning (instruction_mds/frontend.md §5).
  * In src/components/ because the product form and the archive dialog both draw one.
  */
 export function NoteCallout({ tone = 'accent', children }: { tone?: 'accent' | 'error'; children: ReactNode }) {

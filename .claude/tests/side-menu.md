@@ -177,3 +177,68 @@ internet — it needs none.
 
 ### What's the expected output?
 - Both groups open as in Test 4. Each screen you open from them shows its own offline message.
+
+## Test 9 - Title: Turning the tablet swaps the side bar and the menu button
+
+### What will be tested?
+On a tablet, you will turn the tablet between upright and sideways inside a system. A pass means the
+side bar and the menu all switch together, so no screen is left half in one layout and half in the
+other.
+
+### What do you need before starting?
+- Signed in, inside a system, on a tablet held sideways, with a bar down the left edge.
+- **Assets** open.
+
+### Steps
+1. Look at the left edge: a dark bar with icons and names runs down it.
+2. Turn the tablet upright.
+3. Turn the tablet sideways again.
+
+### What's the expected output?
+- After step 2, if the screen is now too narrow, the bar on the left edge is gone, and the **☰**
+  button at the top left opens the side menu sliding over the screen instead. The **Assets** list
+  shows as a list of cards, not a table.
+- After step 3 the bar is back on the left edge and **Assets** shows as a table again.
+- At no point does the bar and the slide-over menu show at the same time.
+
+## Test 10 - Title: Tablet split-screen
+
+### What will be tested?
+On a tablet, you will put the app in one half of the screen next to another app. A pass means the
+app switches to its phone layout in the narrow half, and back again when it gets the whole screen.
+
+### What do you need before starting?
+- Signed in, inside a system, on a tablet held sideways, with a bar down the left edge.
+
+### Steps
+1. Open the tablet's recent-apps view (the square button, or swipe up and hold from the bottom edge).
+2. Tap the app's icon at the top of its card and choose **Split screen**.
+3. Pick any other app for the other half.
+4. Drag the divider between the two apps so this app takes the whole screen again.
+
+### What's the expected output?
+- After step 3 this app fills half the screen, the bar on the left edge is gone, and the **☰** button
+  at the top left opens the side menu.
+- After step 4 the bar is back on the left edge.
+- No text is cut off or overlapping in either half.
+
+## Test 11 - Title: The bottom bar on the systems list hides on a tablet
+
+### What will be tested?
+On the systems list (the first screen after signing in), you will compare a phone and a tablet. A
+pass means the bar of four buttons at the bottom shows on a phone and is hidden on a wide tablet.
+
+### What do you need before starting?
+- Signed in, on the systems list, one phone and one tablet held sideways.
+
+### Steps
+1. On the phone, look at the bottom of the screen.
+2. On the tablet, look at the bottom of the screen.
+3. On the tablet, turn it upright.
+
+### What's the expected output?
+- After step 1 a bar with **Home**, **Notifications**, **Settings** and **Account** runs along the
+  bottom.
+- After step 2 there is no bar along the bottom.
+- After step 3, if the tablet upright is narrower, the bar with the four buttons appears along the
+  bottom; if not, it stays hidden. Either way, nothing on the screen jumps or flickers more than once.

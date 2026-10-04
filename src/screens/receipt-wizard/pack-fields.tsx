@@ -259,7 +259,7 @@ export function BaseUnitFields({ form, currency, receipt }: BaseUnitFieldsProps)
   );
 }
 
-/** A computed value laid out as a field (the mockup's "(auto)" boxes). */
+/** A computed value laid out as a field (an "(auto)" box). */
 export function ReadOnly({ label, value }: { label: string; value: string }) {
   const { colors } = useAppTheme();
   return (

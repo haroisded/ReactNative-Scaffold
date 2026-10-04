@@ -65,7 +65,7 @@ export default function RootLayout() {
       // here ever loads, so every icon would come out a blank box. renderIcon draws each app icon
       // name as the platform's own symbol — SF Symbols on iOS, Material Symbols on Android — and
       // falls back to MaterialCommunityIcons for Paper's internal names (src/lib/icons.tsx,
-      // instruction_mds/visual-language.md §6). Some Paper internals (the Appbar back arrow, Checkbox marks)
+      // instruction_mds/frontend.md §6). Some Paper internals (the Appbar back arrow, Checkbox marks)
       // never reach this function and keep MaterialCommunityIcons.
       //
       // The object literal is new each render; reactCompiler memoizes.

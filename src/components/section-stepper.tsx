@@ -63,7 +63,7 @@ function SectionRow({ name, optional, position, active, failed, onPress }: Secti
   return (
     <Pressable
       onPress={onPress}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel={name}
@@ -160,6 +160,6 @@ const styles = StyleSheet.create({
   // Three full-width buttons on the last step do not fit a phone-width row, so they stack.
   footerStack: { gap: spacing.sm },
   // row-reverse turns Paper's leading icon slot into the trailing one; flex-end is the LEFT edge on the
-  // reversed main axis, so a full-width button's label still starts there (instruction_mds/visual-language.md §5).
+  // reversed main axis, so a full-width button's label still starts there (instruction_mds/frontend.md §5).
   trailingIcon: { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
 });

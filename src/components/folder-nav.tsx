@@ -37,7 +37,7 @@ export function FolderRow({ name, caption, onOpen }: { name: string; caption: st
   return (
     <Pressable
       onPress={onOpen}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/visual-language.md §5).
+      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${caption}`}
@@ -46,10 +46,10 @@ export function FolderRow({ name, caption, onOpen }: { name: string; caption: st
     >
       <Icon source="folder" size={22} color={colors.onSurfaceMuted} />
       <View style={styles.text}>
-        <Text variant="titleMedium" numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        <Text variant="titleMedium" numberOfLines={1}>
           {name}
         </Text>
-        <Text variant="bodySmall" maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" style={{ color: colors.onSurfaceMuted }}>
           {caption}
         </Text>
       </View>

@@ -4,7 +4,7 @@ import { SupplierDialog } from '../../../components/supplier-dialog';
 import { useSuppliersQuery } from '../../../features/suppliers/queries';
 import { setSheetResult } from '../../../Store/sheet-result';
 
-// Create or edit a supplier as a full page at every width (instruction_mds/visual-language.md §5). A created
+// Create or edit a supplier — a full page on a phone, a Dialog over the screen on a tablet (instruction_mds/frontend.md §4.4). A created
 // row goes back to the picker that opened the page; `supplierId` opens the page on that supplier instead.
 export default function SupplierPage() {
   const { merchantId, supplierId, resultKey } = useLocalSearchParams<{

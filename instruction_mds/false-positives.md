@@ -125,7 +125,6 @@ Each is a deliberate decision, not a defect:
 | Two separate `AppState` listeners — `supabase.ts` and `query.ts` | Different jobs: token refresh start/stop, and reporting foreground to React Query |
 | `.throwOnError()` on every Supabase call | Load-bearing — without it `postgrestError()` fails its `instanceof` and every code-specific message falls back to the generic one ([`data-layer.md` §2](./data-layer.md)) |
 | `key={columns}` on a `FlashList` | Insurance; it only changes on a column-boundary crossing, already a full relayout |
-| A wrapper `View` that stays mounted with no children | Unmounting it stops it reporting a width, columns fall back to 1, and the bar reappears — a measure/render loop |
 | `profiles` is not `force row level security` | Forcing it subjects the owner to the policies, and the signup trigger inserts as the owner with no JWT |
 | Missing `persistSession`, `autoRefreshToken`, `detectSessionInUrl`, `lock` | All four are already default, `@deprecated`, or inert here |
 | No barrel files / `index.ts` re-exports | [`structure.md` §7](./structure.md) |
@@ -136,8 +135,7 @@ Each is a deliberate decision, not a defect:
 Where a skill contradicts a rule in `instruction_mds/`, the doc wins and the finding is registered, not fixed.
 The standing cases live with the rule they contradict, not here:
 
-- Frontend and styling → [`visual-language.md` §6](./visual-language.md)
-- Layout and sizing → [`layout.md` §9](./layout.md)
+- Frontend, styling, type and layout → [`frontend.md` §8](./frontend.md)
 - Expo, structure and data → [`expo.md` §3](./expo.md)
 
 A new contradiction gets a row in the relevant file in the same pass — never a quiet change to the

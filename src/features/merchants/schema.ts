@@ -90,7 +90,7 @@ export type Country = (typeof COUNTRIES)[number];
 // so the offset between them is the whole conversion.
 //
 // The M3 analysis specifies a flag `Image`. This is the same pixels with no asset pipeline, no
-// bundle weight and nothing to keep in step with the list above. instruction_mds/typography.md §6 already
+// bundle weight and nothing to keep in step with the list above. instruction_mds/frontend.md §9 already
 // records that the system font carries emoji here, which is what makes it safe.
 export function countryFlag(iso: string): string {
   return String.fromCodePoint(

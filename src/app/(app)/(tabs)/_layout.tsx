@@ -1,11 +1,9 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { StyleSheet, View } from 'react-native';
-
-import { useColumns } from '../../../lib/columns';
+import { useShellWide } from '../../../lib/columns';
 import { ICONS } from '../../../lib/icons';
 import { useAppTheme } from '../../../lib/theme';
 
-// The merchant-level tab bar: the platform's own (instruction_mds/visual-language.md §5, `vercel-react-native-skills`
+// The merchant-level tab bar: the platform's own (instruction_mds/frontend.md rule 2, `vercel-react-native-skills`
 // `navigation-native-navigators`). Four tabs, under the five Android's native bar allows
 // (react-native-screens TabsHost.kt:89) — which is also why the eight-destination merchant shell stays a
 // Drawer.
@@ -16,16 +14,16 @@ import { useAppTheme } from '../../../lib/theme';
 // { ios, android } pairs Paper's renderer draws (src/lib/icons.tsx).
 export default function TabsLayout() {
   const { colors } = useAppTheme();
-  // On a wide container the M3 tablet layout has no bottom navigation — Home moves its actions into
-  // the app bar — so the bar hides. The wrapper stays mounted either way: it is what reports the width.
-  const { columns, onLayout } = useColumns();
+  // On a wide window the M3 tablet layout has no bottom navigation — Home moves its actions into the
+  // app bar — so the bar hides, at the same threshold as everything else (instruction_mds/frontend.md §4.1).
+  const wide = useShellWide();
 
   return (
-    <View style={styles.fill} onLayout={onLayout}>
+    <>
       {/* Each trigger is declared explicitly so the tab ORDER is this list, not the order the files
           happen to be discovered in. Left to discovery, `account` would sort second instead of last. */}
       <NativeTabs
-        hidden={columns > 1}
+        hidden={wide}
         // Android's bar labels only the selected tab by default, which hid three of the four labels
         // Paper's bar used to show.
         labelVisibilityMode="labeled"
@@ -53,10 +51,6 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Label>Account</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-});

@@ -16,7 +16,7 @@ function parseProducts(raw: string | undefined) {
   }
 }
 
-// Delete products on a narrow container (instruction_mds/visual-language.md §5). The outcome goes back to the
+// Delete products on a narrow container (instruction_mds/frontend.md §5). The outcome goes back to the
 // screen that opened it: the list clears its selection, the detail leaves. Archive needs no sheet any
 // more — it writes straight away and offers Undo (src/components/archive-undo.tsx).
 export default function DeleteProductSheet() {

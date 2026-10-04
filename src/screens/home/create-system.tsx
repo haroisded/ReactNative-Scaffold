@@ -24,6 +24,7 @@ import {
 } from '../../features/merchants/schema';
 import type { Country, CreateSystemValues, StoreCategory } from '../../features/merchants/schema';
 import { useProfileQuery } from '../../features/profiles/queries';
+import { useShellWide } from '../../lib/columns';
 import { failureMessage } from '../../lib/errors';
 import { useAppTheme } from '../../lib/theme';
 import { spacing } from '../../themes';
@@ -250,7 +251,7 @@ function AddressField({ control, label }: { control: Control<CreateSystemValues>
           {/*
             The counter and the error share a row rather than stacking, so the field does not jump
             by a line the moment the limit is passed. HelperText picks its own type size — no
-            fontSize here, per instruction_mds/typography.md rule 2.
+            fontSize here, per instruction_mds/frontend.md rule 6.
           */}
           <View style={styles.counterRow}>
             <HelperText type="error" visible={!!fieldState.error}>
@@ -276,7 +277,7 @@ function CategoryField({ control, label }: { control: Control<CreateSystemValues
           {label ? <Text variant="labelMedium">{label}</Text> : null}
           {/*
             A wrapping row of fixed-width cards, not a second useColumns: it gives two per row on a
-            phone and three or more on a tablet for free (instruction_mds/layout.md §3). The cost is a ragged
+            phone and three or more on a tablet for free (instruction_mds/frontend.md §4.2). The cost is a ragged
             right edge on ten tiles, which is the cheaper trade on an internal admin screen.
           */}
           <View style={styles.categoryGrid}>
@@ -302,6 +303,8 @@ export function CreateSystem({ onDismiss }: Props) {
   const { data: profile } = useProfileQuery();
   const createSystem = useCreateSystemMutation();
   const [step, setStep] = useState(1);
+  // Wide, step buttons hug their label: a 640dp primary button reads as a banner.
+  const buttonStyle = useShellWide() ? styles.hug : undefined;
 
   // Each step gates on `trigger` over a subset of the same schema, so there are no per-step schemas to
   // keep in agreement. The component mounts only while its route is open, which is what makes the form
@@ -357,7 +360,7 @@ export function CreateSystem({ onDismiss }: Props) {
             <Text variant="bodyMedium">Add a username and an email for your account.</Text>
             <UsernameField control={control} label="Username (required)" />
             <EmailField control={control} label="Email Address (required)" />
-            <Button mode="contained" onPress={() => goToStep(['displayName', 'contactEmail'])} contentStyle={styles.leading}>
+            <Button mode="contained" style={buttonStyle} onPress={() => goToStep(['displayName', 'contactEmail'])} contentStyle={styles.leading}>
               Next
             </Button>
           </>
@@ -377,7 +380,7 @@ export function CreateSystem({ onDismiss }: Props) {
               a half-typed number should stop the step rather than surface three screens later
               as a check-constraint violation from the database.
             */}
-            <Button mode="contained" onPress={() => goToStep(['name', 'phone', 'address'])} contentStyle={styles.leading}>
+            <Button mode="contained" style={buttonStyle} onPress={() => goToStep(['name', 'phone', 'address'])} contentStyle={styles.leading}>
               Next
             </Button>
           </>
@@ -393,6 +396,7 @@ export function CreateSystem({ onDismiss }: Props) {
               // Paper's `icon` is a leading slot; row-reverse is how the same prop becomes a
               // trailing one, which is what the analysis asks for. No second component.
               icon="arrow-forward"
+              style={buttonStyle}
               contentStyle={styles.trailingIcon}
               onPress={submit}
               loading={createSystem.isPending}
@@ -419,19 +423,21 @@ export function CreateSystem({ onDismiss }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Full-width buttons put their label at the left edge (instruction_mds/visual-language.md §5).
+  // Full-width buttons put their label at the left edge (instruction_mds/frontend.md §5).
   leading: { justifyContent: 'flex-start' },
-  // Capped at the single-column measure (instruction_mds/layout.md rule 6), so a tablet's fields do not span 1000dp.
-  body: { gap: spacing.ms, padding: spacing.lg, width: '100%', maxWidth: 640, alignSelf: 'center' },
+  // Capped at the single-column measure and left-aligned (instruction_mds/frontend.md rule 18, §9), so a
+  // tablet's fields do not span 1000dp.
+  body: { gap: spacing.ms, padding: spacing.lg, width: '100%', maxWidth: 640 },
+  hug: { alignSelf: 'flex-start' },
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   // The number takes the rest of the row; the country trigger stays at its own content width.
   phoneInput: { flexGrow: 1, flexBasis: 0 },
   // row-reverse turns Paper's leading icon slot into a trailing one; flex-end is the LEFT edge on a
-  // reversed main axis, so a full-width button's label still starts there (instruction_mds/visual-language.md §5).
+  // reversed main axis, so a full-width button's label still starts there (instruction_mds/frontend.md §5).
   trailingIcon: { flexDirection: 'row-reverse', justifyContent: 'flex-end' },
   counterRow: { flexDirection: 'row', justifyContent: 'space-between' },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.ms },
   categoryCard: { width: 150 },
-  // Left-aligned like every other label (instruction_mds/visual-language.md rule 8).
+  // Left-aligned like every other label (instruction_mds/frontend.md rule 18).
   categoryBody: { alignItems: 'flex-start', gap: spacing.xs, padding: spacing.ms },
 });

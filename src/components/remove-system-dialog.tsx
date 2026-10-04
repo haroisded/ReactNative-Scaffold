@@ -34,9 +34,6 @@ type Notice = { type: 'error' | 'info'; text: string };
  * kind of state that must not live there. One dialog above the list has no recycling to survive.
  * In src/components/ because two hosts render it: Home on a wide container, the sheet route on a
  * narrow one.
- *
- * Nothing here caps the OS font scale. A card grid is scanned and gets SCAN_CAP; a dialog is read,
- * and it collects a typed value, so both instruction_mds/typography.md §5 exemptions apply at once.
  */
 export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props) {
   const { colors } = useAppTheme();
@@ -81,7 +78,7 @@ export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props
       onDismiss={onDismiss}
       dismissable={!inFlight}
       // A kicker in `error` marks the destructive confirm, as every other delete does
-      // (instruction_mds/visual-language.md §5). The title starts at the left edge: nothing is centred (rule 8).
+      // (instruction_mds/frontend.md §5). The title starts at the left edge: nothing is centred (rule 8).
       kicker="Remove system"
       kickerTone="error"
       title={`Remove ${merchant.name}?`}
@@ -120,7 +117,7 @@ export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props
 
       {/* The typed-confirmation instruction. Distinct from the body copy above it — that explains the
           consequence, this one asks for an action — so it is not more bodyMedium. Not labelMedium
-          either: that token uppercases (instruction_mds/typography.md §2), and the name shown here is the exact
+          either: that token uppercases (instruction_mds/frontend.md §3.1), and the name shown here is the exact
           string to type, case included. bodySmall is the hint role. */}
       <Text variant="bodySmall">Type {merchant.name} to confirm</Text>
 
@@ -146,6 +143,6 @@ export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props
 }
 
 const styles = StyleSheet.create({
-  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/visual-language.md §5).
+  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/frontend.md §5).
   action: { justifyContent: 'flex-start' },
 });

@@ -69,7 +69,7 @@ export function AvailabilitySection() {
 }
 
 /**
- * The weekly hours editor (instruction_mds/visual-language.md §5): one row per weekday, a switch for open, and
+ * The weekly hours editor (instruction_mds/frontend.md §5): one row per weekday, a switch for open, and
  * opening and closing times while open. The form holds only the open days — the same rows
  * product_operating_hours stores — so a closed day is the absence of a row.
  */

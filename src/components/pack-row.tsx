@@ -10,7 +10,7 @@ import { Text } from './text';
 
 // One physical pack, as the Stock row's drill and the Inventory row's drill both draw it
 // (.claude/inventory-stock/Stock_Receiving.html, Inventory.html): code, a caption, its status, and a bar of
-// what is left. Colours are instruction_mds/visual-language.md §3's status scale: Open is the accent — the
+// what is left. Colours are instruction_mds/frontend.md §2.4 status scale: Open is the accent — the
 // pack being drawn from — Sealed is ink, Empty is faint.
 
 const STATUS_TONE = {
@@ -44,22 +44,22 @@ export function PackRow({ pack, caption, nextPick, action }: Props) {
     >
       <View style={styles.text}>
         <View style={styles.headline}>
-          <Text variant="titleMedium" maxFontSizeMultiplier={1.3}>
+          <Text variant="titleMedium">
             {pack.code}
           </Text>
-          <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: colors[STATUS_TONE[status]] }}>
+          <Text variant="labelMedium" style={{ color: colors[STATUS_TONE[status]] }}>
             {PACK_STATUS_LABEL[status]}
           </Text>
           {nextPick ? <NextPickBadge /> : null}
         </View>
-        <Text variant="bodySmall" numberOfLines={2} maxFontSizeMultiplier={1.3} style={{ color: colors.onSurfaceMuted }}>
+        <Text variant="bodySmall" numberOfLines={2} style={{ color: colors.onSurfaceMuted }}>
           {caption}
         </Text>
         <View style={styles.barRow}>
           <View style={styles.barTrack}>
             <ProgressBar progress={share} color={colors.accent} style={styles.bar} />
           </View>
-          <Text variant="bodySmall" maxFontSizeMultiplier={1.3}>
+          <Text variant="bodySmall">
             {`${pack.qty_remaining}/${pack.units}`}
           </Text>
         </View>
@@ -75,7 +75,7 @@ function NextPickBadge() {
 
   return (
     <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-      <Text variant="labelMedium" maxFontSizeMultiplier={1.3} style={{ color: colors.onAccent }}>
+      <Text variant="labelMedium" style={{ color: colors.onAccent }}>
         Next pick
       </Text>
     </View>

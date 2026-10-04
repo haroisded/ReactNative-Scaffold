@@ -87,6 +87,8 @@ the clock.
 
 ## Test 3 - Title: Phone and tablet
 
+> Retired by stock.md Test 5.
+
 ### What will be tested?
 You will open **Stock**'s receipts, the receipt form and the new supplier form on a tablet and on a
 phone. A pass means the tablet shows the wide layout, the phone the narrow one, and the new supplier
@@ -109,3 +111,138 @@ form fills the whole screen on both.
   in the middle of the screen.
 - Phone: the receipts are cards; the receipt form goes step by step with **Next** and **Skip tier**;
   **New supplier** fills the whole screen, the same as on the tablet.
+
+## Test 4 - Title: Receipts and Suppliers switch on a tablet
+
+> Retired by stock.md Test 6.
+
+### What will be tested?
+You will look at the **Receipts | Suppliers** switch on a tablet. A pass means it takes about half the
+width of the page, not all of it, and still switches.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, inside a system.
+
+### Steps
+1. Open the side menu's **Resources**, tap **Stock**.
+2. Tap **Suppliers**, then **Receipts**.
+
+### What's the expected output?
+- The two-part switch under the page title starts at the left and ends about halfway across the page.
+- Both words are written out in full, not "…".
+- Each tap shows that list and highlights the part you tapped.
+
+---
+
+## Added later — Normal use
+
+## Test 5 - Title: Phone and tablet
+
+### What will be tested?
+You will open **Stock**'s receipts, the receipt form and the new supplier form on a tablet and on a
+phone. A pass means the tablet shows the wide layout, the phone the narrow one, the receipt form goes one
+step at a time on both, and **New supplier** is a window on the tablet but a full page on the phone.
+
+### What do you need before starting?
+- A phone and a tablet signed in to the same account.
+
+### Steps
+1. On the tablet, open **Stock**. The **Receipts** list shows.
+2. Tap **Stock receipt**. The receipt form opens.
+3. Tap the back arrow at the top left, and **Discard** if a window asks.
+4. Tap **Suppliers**, then **Add supplier**.
+5. Tap **Cancel** at the bottom of the form.
+6. Do steps 1–5 on the phone.
+
+### What's the expected output?
+- Tablet, step 1: the receipts are a table with columns from **Date / Receipt** to **Location**.
+- Tablet, step 2: the left of the form shows one step, **Step 1 of 5 — Supplier**, with a red progress
+  bar and a **Next** button at the bottom left. The right side is a grey **Review** column with
+  **Save receipt** and **Cancel** at its bottom.
+- Tablet, step 4: **New supplier** opens as a window in the middle of the screen, with the **Stock** page
+  showing through a grey shade behind it, and **Cancel** and **Create** at its bottom right.
+- Tablet, step 5: the window closes and the **Suppliers** list shows with nothing added.
+- Phone: the receipts are cards; the receipt form goes step by step with **Next** and **Skip tier**, with
+  **Review** as its last step; **New supplier** fills the whole screen.
+
+## Test 6 - Title: Receipts and Suppliers switch on a tablet
+
+### What will be tested?
+You will look at the **Receipts | Suppliers** switch on a tablet. A pass means it sits at the top right,
+beside the add button, at a modest width, and still switches.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, inside a system.
+
+### Steps
+1. Open the side menu's **Resources**, tap **Stock**.
+2. Tap **Suppliers** in the two-part switch, then **Receipts**.
+
+### What's the expected output?
+- The two-part switch is at the top right of the page, on the same line as the **Stock** title, just right
+  of the dark **Stock receipt** button. It is about one and a half times as wide as the button, not half
+  the page.
+- There is no switch on a row of its own under the title any more; the table starts right under the line.
+- After tapping **Suppliers**, the dark button reads **Add supplier** and the suppliers list shows; after
+  **Receipts**, it reads **Stock receipt** again. The part you tapped is highlighted.
+- Both words are written out in full, not "…".
+
+## Test 7 - Title: The receipt form one step at a time on a tablet
+
+### What will be tested?
+On a tablet you will step through a new stock receipt. A pass means the left side shows one step at a
+time, **Next** moves on, the **Review** on the right fills in as you type, and a failed save takes you to
+the step at fault.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, inside a system, on **Stock**.
+
+### Steps
+1. Tap **Stock receipt** at the top right. The receipt form opens on **Step 1 of 5 — Supplier**.
+2. Tap the **Date received** field and pick a date in the calendar that opens, then tap **OK**.
+3. Tap **Next** at the bottom left.
+4. Tap **Skip tier** beside **Next** on **Unit Load**, then on **Pallet**, then on **Case**.
+5. Look at the bottom of the left side on **Pack**.
+6. Tap **Save receipt** at the bottom right without filling in **Pack**.
+7. Tap the arrow at the left of the step name, at the top of the left side.
+8. Tap the back arrow at the top left of the page, and **Discard** in the window that asks.
+
+### What's the expected output?
+- After step 2, the **Review** on the right shows the date beside **Date received**.
+- After step 3, the left side shows **Step 2 of 5 · Optional — Unit Load** and the red bar grows.
+- After step 4, the left side is on **Step 5 of 5 — Pack**.
+- After step 5, there is no **Next** at the bottom of **Pack**: it is the last step, and **Save receipt**
+  is on the right.
+- After step 6, nothing is saved; the left side stays on (or returns to) the first step with a missing
+  field, and that field is marked in red.
+- After step 7, the left side goes back one step.
+- After step 8, **Stock** shows with no new receipt.
+
+---
+
+## Added later — Mistakes and edge cases
+
+## Test 8 - Title: New supplier window with the keyboard open, and the new supplier picked
+
+### What will be tested?
+On a tablet you will add a supplier from inside the receipt form. A pass means the **New supplier**
+window stays usable with the keyboard up, and the supplier you make is picked on the receipt straight away.
+
+### What do you need before starting?
+- Signed in on a tablet held sideways, inside a system, on **Stock**, internet on.
+
+### Steps
+1. Tap **Stock receipt**. The receipt form opens on **Supplier**.
+2. Tap the **Supplier** field, then **+ New supplier** at the bottom of the list that opens. A
+   **New supplier** window opens over the form.
+3. Tap the **Supplier name** field. The keyboard opens.
+4. Type `Window Test Supply`.
+5. Look at the window while the keyboard is open, then scroll the window's fields up and down.
+6. Tap **Create** at the bottom right of the window.
+7. Tap the back arrow at the top left of the page, and **Discard** in the window that asks.
+
+### What's the expected output?
+- After step 5, the whole window — its title, the fields and **Cancel** and **Create** — sits above the
+  keyboard. Nothing is hidden behind the keyboard; the fields scroll inside the window.
+- After step 6, the window closes and the receipt's **Supplier** field reads **Window Test Supply**.
+- After step 7, **Stock** shows. **Window Test Supply** is in the **Suppliers** list.

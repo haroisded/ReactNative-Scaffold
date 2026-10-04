@@ -53,12 +53,12 @@ and [`tenancy.md`](./tenancy.md) already cover that code's concerns.
 | React Compiler | On — `app.json` `experiments.reactCompiler: true`. Hand memoization rarely needed | `app.json` |
 | New Architecture | On (SDK 57). Controlled-`TextInput` de-sync is a legacy-architecture issue by Callstack's own account — not a finding against React Hook Form `Controller` without measured input lag | README |
 | Barrel files | Not allowed | [`structure.md`](./structure.md) §7 |
-| Long lists | FlashList 2.x past a few screens' worth; FlatList for small bounded lists | [`layout.md`](./layout.md) §1 |
-| Images | `expo-image`; request the displayed size from Supabase Storage | [`layout.md`](./layout.md) §7 |
-| Layout measurement | The container's `onLayout` | [`layout.md`](./layout.md) rule 2 |
+| Long lists | FlashList 2.x past a few screens' worth; FlatList for small bounded lists | [`frontend.md`](./frontend.md) §4.2 |
+| Images | `expo-image`; request the displayed size from Supabase Storage | [`frontend.md`](./frontend.md) §4.6 |
+| Layout measurement | Wide/narrow from the window, once; column counts from the container's `onLayout` | [`frontend.md`](./frontend.md) §4.1, §4.2 |
 | Query retries and refetch | `retry: false`, `refetchOnWindowFocus: false`, stale times from `STALE` | [`data-layer.md`](./data-layer.md) §4 |
 | Android R8 | `enableMinifyInReleaseBuilds`, `enableShrinkResourcesInReleaseBuilds` already set | `app.json` |
-| Native navigators | expo-router `Stack` is native already; `(tabs)` uses `NativeTabs` | [`visual-language.md`](./visual-language.md) §4 |
+| Native navigators | expo-router `Stack` is native already; `(tabs)` uses `NativeTabs` | [`frontend.md`](./frontend.md) rule 2, §5 Shell |
 
 ## 3. How to measure here
 
