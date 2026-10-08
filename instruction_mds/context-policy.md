@@ -117,6 +117,8 @@ which keeps them.
   there is nothing.
 - **Every bullet names a file or a thing the user can see**, not a diff. `src/lib/auth.ts` or
   "the Next button now clears the navigation bar" — never "refactored the auth module".
+- **No path under a directory of `.claude/`.** They are gitignored, so no commit holds them —
+  acceptance tests written in the pass are not a bullet.
 
 ## 3. graphify
 

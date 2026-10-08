@@ -5,9 +5,10 @@ tablet. The testers are people who will use the POS, not developers.
 
 ## Rules
 
-1. **One file per screen — `.claude/tests/<screen>.md`, kebab-case, committed.** No file per pair of
-   screens. A test that crosses screens goes in the file of the screen where its expected output is
-   checked. §0 says how to pick.
+1. **One file per screen — `.claude/tests/<screen>.md`, kebab-case, gitignored** with every directory
+   under `.claude/` (the human's call, 2026-10-08; rejected: committing them, the rule until then). No
+   file per pair of screens. A test that crosses screens goes in the file of the screen where its
+   expected output is checked. §0 says how to pick.
 2. **A change gets new tests, never a rewrite of old ones.** Add the new tests to the end of the right
    file (or a new file), numbered on from its last test. A test whose behaviour the change replaced
    keeps its steps; it gets one line under its title, `> Retired by <file> Test <n>.` — or

@@ -1,8 +1,5 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# reference material for AI agents — vendored third-party docs, not this project's
-.claude/context
-
 # dependencies
 node_modules/
 
@@ -53,12 +50,13 @@ desktop.ini
 # Claude Code local overrides (per-machine permission grants)
 .claude/settings.local.json
 
+# every directory under .claude/ — vendored docs (context/), commit-message handoffs
+# (commit-history/, instruction_mds/context-policy.md §2), acceptance tests (tests/), /teach
+# notes, references — local to each machine, never committed. Files (settings.json) stay tracked.
+.claude/*/
+
 # headroom wrap state (live pid, port, env-var ownership) — per-machine, never shared
 .claude/.headroom_wrap_*
-
-# commit messages staged for `git commit -F` — the handoff, not a second history
-# (instruction_mds/context-policy.md §2)
-.claude/commit-history/
 
 # Supabase CLI (link state, local stack scratch)
 supabase/.temp/
@@ -66,6 +64,3 @@ supabase/.branches/
 
 # graphify knowledge graph output
 graphify-out/
-
-# /teach workspaces — personal lessons and audit notes, not project docs
-.claude/teach/
