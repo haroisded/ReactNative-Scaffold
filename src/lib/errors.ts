@@ -1,4 +1,3 @@
-import { PostgrestError } from '@supabase/supabase-js';
 import { onlineManager } from '@tanstack/react-query';
 
 // What a failed action puts on screen when there is no connection. One string, because the cause is
@@ -28,17 +27,11 @@ export function failureMessage(fallback: string): string {
 /** The line under a form or confirm: an offline wait, or what went wrong. */
 export type Notice = { type: 'error' | 'info'; text: string };
 
-/** A form's own error when validation stops the save: the product form and the stock item form. */
-export const INVALID_FORM = 'Some fields need attention before this can be saved.';
-
-/** products_sku_unique (saveFailure() 'sku'): both forms that write a product can trip it. */
-export const SKU_TAKEN = 'Another product already uses this SKU. Change it, or auto-generate a new one.';
-
 /**
  * A mutation's notice. Paused before error: a write queued while offline is waiting, not failed
- * (instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects —
- * usually a refusal from postgrestError(), else failureMessage(). `fallback` is the screen's own
- * error — a failed validation — shown when the write has nothing to say.
+ * (instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects,
+ * usually from failureMessage(). `fallback` is the screen's own error — a failed validation — shown
+ * when the write has nothing to say.
  */
 export function mutationNotice(
   mutation: { isPaused: boolean; isError: boolean },
@@ -48,19 +41,4 @@ export function mutationNotice(
   if (mutation.isPaused) return { type: 'info', text: 'Waiting for a connection. This finishes on its own when you reconnect.' };
   if (mutation.isError) return { type: 'error', text: errorText };
   return fallback === null ? null : { type: 'error', text: fallback };
-}
-
-/**
- * The PostgREST error behind a failed call, so a screen can choose its copy for a case it expects —
- * `23505` a duplicate name, `23503` a row still in use — without ever rendering the message itself.
- *
- * `instanceof` rather than probing the shape, which only works because every query ends in
- * `.throwOnError()`. postgrest-js constructs the PostgrestError class only on that path
- * (dist/index.mjs:506, :526); the `error` a call returns without it is a plain object, and a thrown
- * copy of that is never an instance — which silently sent every caller to the generic copy until the
- * Products device run caught it. Anything else (a dropped connection, an Error thrown in a queryFn) is
- * correctly "not one": null, and the caller falls back to failureMessage's copy.
- */
-export function postgrestError(cause: Error | null): PostgrestError | null {
-  return cause instanceof PostgrestError ? cause : null;
 }

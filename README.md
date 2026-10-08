@@ -32,14 +32,8 @@ together and explained inline.
 - **Session handling** in one zustand store — restore, auto-refresh, sign-out
 - **Session stored in the Keychain / Keystore** via `expo-secure-store`, not plaintext AsyncStorage
 - **SQL migrations** for `profiles` and `merchants` with RLS, the tenancy seam, and in-app account deletion
-- **A merchant shell with its first business screens**, grouped on the rail as Store (Assets, Register,
-  Receipts) and Resources (Inventory, Stock) — Assets: what the Register sells, brought in through Add
-  from Inventory, with list, stepped edit form, detail, archive and delete, Setup for categories and tax
-  classes;
-  Inventory: items with a lot-and-pack drill, the next pick marked; Stock: suppliers and a seven-step
-  receipt wizard (Unit Load → Pallet → Case → Pack → Base Unit), one row per physical pack
-- **A stock ledger** with a pick order (open packs first, then closest expiry) and `draw_stock`, ready
-  for the Register to sell loose units or whole packs
+- **A systems list and a merchant shell** — create a system by name, remove it, open it onto a header
+  and a rail (tablet) or drawer (phone) whose one destination is Home, ready for the business screens
 - **React Native Paper** for the whole UI, themed from `src/themes.js`
 - **Patched dependency** via `patch-package`, applied automatically on install
 - **Lint** — oxlint with a local `anti-slop` plugin in `tools/oxlint/`, wired up in `.oxlintrc.json`
@@ -135,10 +129,10 @@ app never opens one. Leave it at whatever the project was created with.
 keyed to `auth.users` and carries its RLS policies, a trigger that creates the profile row on signup,
 and `delete_current_user()` — the function behind the **Delete account** button, since the App Store
 requires in-app account deletion (Guideline 5.1.1(v)) and no client-side key may write to
-`auth.users`. `merchants` is the tenant table — one business per row, with its currency — with its
-own policies and `private.current_merchant_ids()`, the function every business table's policies call.
-The product catalogue is the first set of them: categories, tax classes, suppliers, products and
-their child rows, saved through `save_product()` — `ARCHITECTURE.md` describes each.
+`auth.users`. `merchants` is the tenant table — one business per row, its name and owner — with its
+own policies and `private.current_merchant_ids()`, the function every business table's policies will
+call. An earlier business schema is in the history and dropped by its last migration —
+`ARCHITECTURE.md` describes each.
 
 ```bash
 supabase link --project-ref <ref>

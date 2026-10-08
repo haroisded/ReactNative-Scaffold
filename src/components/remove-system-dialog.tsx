@@ -13,9 +13,7 @@ import { TextInput } from './text-input';
 
 type Props = {
   merchant: Merchant;
-  /** Home's own width decision: a Dialog on a multi-column container. */
-  wide: boolean;
-  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/remove-system.tsx). */
+  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/remove-system.tsx); otherwise a Dialog. */
   inSheet?: boolean;
   onDismiss: () => void;
 };
@@ -35,7 +33,7 @@ type Notice = { type: 'error' | 'info'; text: string };
  * In src/components/ because two hosts render it: Home on a wide container, the sheet route on a
  * narrow one.
  */
-export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props) {
+export function RemoveSystemDialog({ merchant, inSheet, onDismiss }: Props) {
   const { colors } = useAppTheme();
   const deleteMerchant = useDeleteMerchantMutation();
   const [typed, setTyped] = useState('');
@@ -73,7 +71,6 @@ export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props
 
   return (
     <AdaptiveDialog
-      wide={wide}
       inSheet={inSheet}
       onDismiss={onDismiss}
       dismissable={!inFlight}
@@ -111,8 +108,8 @@ export function RemoveSystemDialog({ merchant, wide, inSheet, onDismiss }: Props
       }
     >
       <Text variant="bodyMedium">
-        This action is permanent and can&apos;t be reversed. Products, sales history, and employee
-        records tied to this system will be deleted.
+        This action is permanent and can&apos;t be reversed. Everything stored in this system will be
+        deleted.
       </Text>
 
       {/* The typed-confirmation instruction. Distinct from the body copy above it — that explains the

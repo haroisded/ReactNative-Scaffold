@@ -283,24 +283,16 @@ removes.
 
 ## 6. The database
 
-`supabase/migrations/` holds `public.profiles` (the person) and `public.merchants` (the tenant, with
-its `currency`) — with their policies, the signup trigger, `public.delete_current_user()`,
-`private.current_merchant_ids()`, and `private.rls_auto_enable()`, the function behind an event
-trigger that hosted Supabase will not let this project install (§6.1) — and the product catalogue,
-the first business tables: `product_categories`, `tax_classes`, `suppliers`, `products` and six
-child tables, `public.save_product()`, and `private.assert_no_bundle_cycle()` — and inventory: `supplier_types`,
-`product_groups`, the Products drafts an item is sold through (`ensure_register_faces`), the stock
-ledger (`stock_receipts`, `stock_lots`, `stock_cases`, a row per pack in `stock_packs`,
-`stock_movements`, select-only for clients; the `stock_pick_queue` and `stock_lot_lines` views), and its
-writers `save_stock_item`, `save_receipt`, `add_inventory_stock`, `draw_stock`, `void_receipt` and
-`record_stock_movement` — with a receipt's supplier and a lot's number optional, expected and
-received packs kept apart, and shipping cost recorded but spread into no cost
-(`20260930100000_receipt_inputs.sql`) — and the Register's `sales` and `sale_lines`, select-only for
-clients, written by `record_sale` and voided by `void_sale` (`20260930110000_sales.sql`) — and an Inventory
-item's Expiry alert as a date, `products.expiry_alert_on` (`20261004120000_expiry_alert_on.sql`). The catalogue's
-policies are the first callers of `current_merchant_ids()`, which is why `authenticated` holds
-`usage` on `private` and `execute` on that function (`instruction_mds/tenancy.md` §3). Each migration has a
-revert in `supabase/reverts/` (§6.6).
+`supabase/migrations/` holds `public.profiles` (the person) and `public.merchants` (the tenant:
+`id`, `owner_id`, `name`, `created_at`) — with their policies, the signup trigger,
+`public.delete_current_user()`, `private.current_merchant_ids()`, and `private.rls_auto_enable()`,
+the function behind an event trigger that hosted Supabase will not let this project install (§6.1).
+The business schema the app was built on until 2026-10-08 — the product catalogue, suppliers, the
+stock ledger, the Register's sales — is still in the migration history, and
+`20261008050254_revamp_drop_business_schema.sql` drops all of it, rows included, ahead of a rebuild on
+ERPNext's model. `authenticated` keeps `usage` on `private` and `execute` on `current_merchant_ids()`
+so the next business table's policies can call it (`instruction_mds/tenancy.md` §4). Each migration
+has a revert in `supabase/reverts/`, or a `-- no-revert:` line when it only drops (§6.6).
 `ARCHITECTURE.md` describes what they do; `instruction_mds/tenancy.md` covers the tenancy model and what is
 still ahead of it. The rules below are what must not be broken when adding to them.
 

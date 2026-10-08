@@ -21,8 +21,8 @@ How rows are scoped to a business, and the shape every RLS policy on a business 
    for now.
 6. `public.profiles` stays as it is — the person, not the membership. Do not add `merchant_id`.
 7. Do not build a permission system, a roles table, or a policy matrix now.
-8. Who creates the merchant row: an explicit onboarding step, never a trigger. `CreateSystemModal`
-   inserts it, and its step 1 also writes `profiles.display_name`.
+8. Who creates the merchant row: an explicit onboarding step, never a trigger. The create-system
+   form (`src/screens/home/create-system.tsx`) inserts it, from its name alone.
 
 ---
 
@@ -114,7 +114,8 @@ Scoped `to authenticated`, the function call wrapped in `select` so it runs once
 every `update` policy carrying both `using` and `with check` — without the second, a row can be moved
 to another merchant.
 
-Copy the shape in `20260914092147_products.sql` for the next table.
+Copy the shape in `20260914092147_products.sql` for the next table. Its tables were dropped on
+2026-10-08, but the file still shows the policy loop and the composite `(x_id, merchant_id)` keys.
 
 ## 6. When staff arrive
 

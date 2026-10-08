@@ -14,13 +14,14 @@ tablet. The testers are people who will use the POS, not developers.
    `> Retired: <why>, and nothing replaces this test.` — and nothing else. The human asked for this on 2026-10-01: a tester's report never names a test whose steps
    changed under it.
 3. **Written for a shop owner, not a developer.** No code, file, table, API, query or error-class
-   names. Name what is on the screen, in the words the screen uses ("tap **Save**", "the product list").
+   names. Name what is on the screen, in the words the screen uses ("tap **Save**", "the list of
+   systems").
 4. **Every test uses the template in §1 exactly**, numbered from 1 within the file and never renumbered. No result or
    feedback fields — testers report a failure by its test number.
 5. **Cover every group in §2, in that order.** A group that cannot apply gets one line saying why —
    a skipped group with no reason is indistinguishable from a forgotten one.
 6. **Steps are single actions, each one findable.** One tap, one typed value, one thing to look at —
-   and say where it is on the screen. A step that says "set up a product" is two tests' worth of
+   and say where it is on the screen. A step that says "set up a system" is two tests' worth of
    ambiguity. §1.1 says how much to write.
 7. **Expected output is something a person can see, described so a stranger could find it.** Text on
    screen, a screen that opens, an item that appears or disappears — named with where it is and what
@@ -37,9 +38,9 @@ tablet. The testers are people who will use the POS, not developers.
 
 | The test is about | File | Example |
 | --- | --- | --- |
-| one screen, or one sheet or dialog opened from it | `<screen>.md`, named for the screen as the side menu names it | `assets.md` |
+| one screen, or one sheet or dialog opened from it | `<screen>.md`, named for the screen as the side menu names it | `systems.md` |
 | the side menu, or anything else every screen shares | a file named for that piece | `side-menu.md` |
-| something that passes between screens — a link, Back between them, data made on one and shown on another | the file of the screen where the expected output is checked | an item added in Inventory and sold on the Register → `register.md` |
+| something that passes between screens — a link, Back between them, data made on one and shown on another | the file of the screen where the expected output is checked | a system created on the **Home** tab whose name shows in the side menu → `side-menu.md` |
 
 - Before adding a file, check `.claude/tests/` for the one that already covers that screen.
 - A screen renamed in the app keeps its file's tests; new tests go in a file under the new name, and
@@ -78,40 +79,41 @@ person.
 about to do in plain words, and say what a pass proves — the thing the shop would lose if it broke.
 No background, no history of the feature.
 
-> ❌ A write-off takes a reason and a note.
+> ❌ Removing a system needs its name typed.
 >
-> ✅ On an item's page in **Inventory**, you will remove damaged stock with **Write off**. A pass
-> means the stock count goes down and the item's **History** records why, so the shop can later see
-> where missing stock went.
+> ✅ On the **Home** tab, you will remove a system with its red **Remove** button. A pass means the
+> system is deleted for good, and only after its name is typed to confirm, so a stray tap can never
+> lose a shop's data.
 
 **Steps.** Still one action per step (rule 6), but each step says where the thing is and what it
 looks like: at the top, at the bottom, in the side menu, the **⋮** button at the right of a row, a
-switch, a field labelled **Pack name**. Use the exact words the screen shows, in bold. Give typed
+switch, a field labelled **System name**. Use the exact words the screen shows, in bold. Give typed
 values in `code`. When a tap opens a new screen or dialog, say what opens in the same step, so the
 tester knows they are in the right place before the next one:
 
-> ❌ 2. Tap **Write off**.
+> ❌ 2. Tap **Remove**.
 >
-> ✅ 2. Tap **Write off** in the menu that opens. A **Write off** dialog opens over the page.
+> ✅ 2. Tap the red **Remove** button on the system's card. A panel titled **Remove Corner Cafe?**
+> rises from the bottom.
 
 **What's the expected output?** Each bullet must make sense to someone who skipped the steps. Never
 presume the tester knows what you mean:
 
-- Say **where** to look first — which screen, which part of it (the top of the page, the **History**
-  list, the Receipts list) — then **what** is there, with the exact text in bold.
-- Never refer to something by a word the tester has not been shown: not "the dialog", "the count",
-  "the badge", "the line" on its own. Name it: "the **Write off** dialog", "the amount at the top of
-  the item's page".
-- Explain a term the first time it appears ("loose units — tablets outside a full box"); after that
+- Say **where** to look first — which screen, which part of it (the top of the page, the **Active
+  Systems** list, the side menu) — then **what** is there, with the exact text in bold.
+- Never refer to something by a word the tester has not been shown: not "the dialog", "the card",
+  "the badge", "the line" on its own. Name it: "the **Remove Corner Cafe?** panel", "the round badge
+  at the top of the side menu".
+- Explain a term the first time it appears ("a system — one shop's own set of records"); after that
   the short form is fine.
-- Say what does **not** happen when that is the point of the test ("no second receipt appears in
-  the list").
+- Say what does **not** happen when that is the point of the test ("no second **Double Tap Test**
+  card appears").
 - When a step number matters, lead with it: "After step 4, …".
 
-> ❌ The count drops by 5 tablets.
+> ❌ The system is created.
 >
-> ✅ At the top of **Paracetamol 500mg**'s page, the amount on hand is 5 tablets lower than before
-> step 1 — for example **9 box + 7 tablet** becomes **9 box + 2 tablet**.
+> ✅ The **Name your system** page closes by itself, and under **Active Systems** on the **Home** tab
+> a card named **Corner Cafe** is there, with **Edit** and **Remove** buttons under it.
 
 ## 2. Groups
 

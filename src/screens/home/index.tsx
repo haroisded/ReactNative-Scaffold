@@ -34,9 +34,9 @@ export function HomeScreen() {
   const narrow = !useShellWide();
   const numColumns = narrow ? 1 : columns;
 
-  // Wide, the tab bar is hidden, so Profile opens as a Dialog over this screen rather than as the
-  // Account tab (src/app/(app)/profile.tsx); `from` drops its "Back to your systems".
-  const openAccount = () => router.push({ pathname: '/profile', params: { from: 'home' } });
+  // Wide, the tab bar is hidden, so this is the only way to the Account tab. navigate, not push: the
+  // tab is a sibling in the same tab navigator, so it switches tabs rather than stacking a second one.
+  const openAccount = () => router.navigate('/account');
 
   // Creating is a full-screen route at every width, opened by a button narrow and by the grid's first
   // card wide. Removing is a formSheet route narrow and a dialog over this screen wide
@@ -120,7 +120,7 @@ export function HomeScreen() {
       {/* Mounted only while a row is awaiting confirmation, which is what makes the typed-
           confirmation field empty again on every open with no reset logic. */}
       {removing ? (
-        <RemoveSystemDialog merchant={removing} wide onDismiss={() => setRemoving(null)} />
+        <RemoveSystemDialog merchant={removing} onDismiss={() => setRemoving(null)} />
       ) : null}
     </Surface>
   );

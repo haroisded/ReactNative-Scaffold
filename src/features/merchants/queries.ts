@@ -1,12 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, use } from 'react';
 
 import type { Tables } from '../../lib/database.types';
 import { STALE } from '../../lib/query';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../Store/StoreUser';
-import { profileKey } from '../profiles/queries';
-import { normalizePhone } from './schema';
 import type { CreateSystemValues } from './schema';
 
 // The row type comes from the generated types, not from a hand-written interface. One less thing to
@@ -17,22 +14,21 @@ export type Merchant = Tables<'merchants'>;
 // hooks below; nothing outside this file calls supabase.from() (instruction_mds/data-layer.md rules 2-3).
 
 // Key factory, most generic to most specific, so `merchantsKey.all` invalidates everything about
-// merchants while a narrower key can still be targeted later. Args go in an OBJECT, never
-// positionally, so adding a second argument cannot silently reorder an existing call site
-// (instruction_mds/data-layer.md rule 6).
+// merchants while a narrower key can still be targeted later. When a filtered list arrives, its args
+// go in an OBJECT, never positionally, so adding a second argument cannot silently reorder an
+// existing call site (instruction_mds/data-layer.md rule 7).
 //
 // Deliberately no owner id in the key: the QueryClient itself is keyed on session.user.id in
 // src/app/_layout.tsx, so a different user gets a different cache entirely. Scoping the key too
 // would restate that and imply the cache is shared, which is exactly the impression to avoid.
-export const merchantsKey = {
+const merchantsKey = {
   all: ['merchants'],
   lists: () => [...merchantsKey.all, 'list'],
-  list: (filters: { category?: string } = {}) => [...merchantsKey.lists(), filters],
 };
 
 export function useMerchantsQuery() {
   return useQuery({
-    queryKey: merchantsKey.list(),
+    queryKey: merchantsKey.lists(),
     queryFn: async () => {
       // No owner_id filter. merchants_select_own already restricts this to the caller's rows, and
       // adding a client-side `.eq('owner_id', …)` would read as though it were the thing keeping
@@ -41,10 +37,9 @@ export function useMerchantsQuery() {
       //
       // throwOnError(), because supabase-js resolves rather than rejects on an API error. Without it
       // the failure comes back in `error` as a PLAIN OBJECT (postgrest-js dist/index.mjs:494, :513),
-      // not a PostgrestError: throwing that copy gives React Query a non-Error with no stack, and it
-      // fails the `instanceof` in postgrestError() (src/lib/errors.ts), so every screen's
-      // code-specific copy silently fell back to the generic line. throwOnError() throws the real
-      // class (:506, :526). Found on the device.
+      // not a PostgrestError: throwing that copy gives React Query a non-Error with no stack and no
+      // class to test a code against. throwOnError() throws the real class (:506, :526). Found on
+      // the device.
       const { data } = await supabase
         .from('merchants')
         .select('*')
@@ -57,24 +52,6 @@ export function useMerchantsQuery() {
   });
 }
 
-/**
- * The system the merchant shell is showing, provided by `src/app/(app)/systems/[id]/_layout.tsx` to
- * every destination under it.
- *
- * A destination cannot read the id from its own route. The rail calls `navigate('products')` with no
- * params, and `useLocalSearchParams` returns only the params of the route it is called in
- * (`expo-router/build/Route.js:36`, no merging from parents) — so a screen one navigator below the
- * shell sees no `id` and has nothing to load. The shell already holds the row, and renders nothing
- * until it has it, so it hands the row down instead.
- */
-export const ShellMerchantContext = createContext<Merchant | null>(null);
-
-export function useShellMerchant(): Merchant {
-  const merchant = use(ShellMerchantContext);
-  if (!merchant) throw new Error('useShellMerchant is only available inside the merchant shell.');
-  return merchant;
-}
-
 export function useCreateSystemMutation() {
   const queryClient = useQueryClient();
   const session = useSession();
@@ -84,34 +61,11 @@ export function useCreateSystemMutation() {
       const userId = session?.user.id;
       if (!userId) throw new Error('Not signed in.');
 
-      // ponytail: two writes, one mutationFn — promote to a security-definer RPC only if a partial
-      // state turns out to matter. They are not in one transaction: step 1's username belongs to
-      // the person (profiles) and steps 2-3 belong to the business (merchants), which are two
-      // tables and two policies. The failure mode is a display_name saved with no merchant, and
-      // retrying writes the same value, so it is idempotent rather than corrupting.
-      await supabase
-        .from('profiles')
-        .update({ display_name: values.displayName })
-        .eq('id', userId)
-        .throwOnError();
-
       const { data } = await supabase
         .from('merchants')
-        .insert({
-          // merchants_insert_own checks this against auth.uid(); sending anyone else's id is
-          // rejected by the database, not merely by this line.
-          owner_id: userId,
-          name: values.name,
-          contact_email: values.contactEmail,
-          // These two columns are nullable and their form fields are strings. '' would be a value
-          // that means "not given" without looking like one in the database.
-          //
-          // normalizePhone runs here rather than in the schema so the form validates what the user
-          // typed and the table stores E.164 — see the note on it in schema.ts.
-          phone: normalizePhone(values.phone) || null,
-          address: values.address || null,
-          category: values.category,
-        })
+        // merchants_insert_own checks owner_id against auth.uid(); sending anyone else's id is
+        // rejected by the database, not merely by this line.
+        .insert({ owner_id: userId, name: values.name })
         .select()
         .single()
         .throwOnError();
@@ -121,15 +75,9 @@ export function useCreateSystemMutation() {
 
     onSuccess: async () => {
       // Mutation then invalidation is the whole CRUD loop here. Awaiting keeps the mutation in
-      // `pending` until the refetch lands, so the modal closes onto a list that already has the new
+      // `pending` until the refetch lands, so the form closes onto a list that already has the new
       // card rather than one that pops in a moment later.
-      //
-      // Both keys, because mutationFn wrote both tables — invalidating only merchants leaves the
-      // Account screen showing the old display_name until something else happens to refetch it.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: merchantsKey.lists() }),
-        queryClient.invalidateQueries({ queryKey: profileKey.all }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: merchantsKey.lists() });
     },
   });
 }

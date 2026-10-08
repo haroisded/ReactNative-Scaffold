@@ -5,7 +5,6 @@ import { Button } from '../../components/button';
 import { Card } from '../../components/card';
 import { Icon } from '../../components/icon';
 import type { Merchant } from '../../features/merchants/queries';
-import { CATEGORY_META } from '../../features/merchants/schema';
 import { useAppTheme } from '../../lib/theme';
 import { radius, spacing } from '../../themes';
 
@@ -28,11 +27,6 @@ type Props = {
 
 export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
   const { colors } = useAppTheme();
-
-  // Indexing a Record<StoreCategory, …> with the row's own enum value. No fallback and no `as`:
-  // if the database ever holds a category the client does not know, that is a compile error at
-  // this line, which is exactly when it should be found.
-  const meta = CATEGORY_META[merchant.category];
 
   // Remove is wired; Edit is still unticked in the Priority filter, so it renders and does nothing.
   // `error`/`onError` are read from the theme, which is the one place a colour may be chosen by
@@ -61,7 +55,7 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
         <Card.Title
           title={merchant.name}
           titleVariant="titleMedium"
-          left={(props) => <Avatar.Icon {...props} icon={meta.icon} />}
+          left={(props) => <Avatar.Icon {...props} icon="storefront" />}
         />
         {actions}
       </Card>
@@ -77,7 +71,7 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
         for a real image to drop into later.
       */}
       <View style={[styles.tile, { backgroundColor: colors.surfaceVariant }]}>
-        <Icon source={meta.icon} size={48} color={colors.onSurfaceVariant} />
+        <Icon source="storefront" size={48} color={colors.onSurfaceVariant} />
       </View>
       <Card.Title
         title={merchant.name}

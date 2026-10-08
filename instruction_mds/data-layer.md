@@ -36,9 +36,8 @@ Infrastructure (client, generated types, query provider) stays in `src/lib/`.
 ## 2. Supabase calls
 
 `.throwOnError()` is load-bearing. postgrest-js constructs a real `PostgrestError` only when it is
-set; without it the returned `error` is a plain object, fails the `instanceof` check in
-`postgrestError()` (`src/lib/errors.ts`), and every code-specific message falls back to the generic
-one. It also narrows `data` to non-null.
+set; without it the returned `error` is a plain object — no stack, and no class to test an error code
+against when a screen picks its copy for a case it expects. It also narrows `data` to non-null.
 
 `src/lib/auth.ts` is exempt — auth-js returns its own error classes and keeps explicit checks.
 
@@ -110,8 +109,8 @@ user nothing, and leaks the schema. Zod messages are the exception — they alre
 
 **A form's or confirm's line under its buttons** is `mutationNotice(mutation, errorText, fallback)`
 (`src/lib/errors.ts`): the paused copy first (§5), then `errorText` on a failed write, then the
-screen's own `fallback` error (`INVALID_FORM` after a failed validation). Do not re-wrap its result.
-Copy two screens share lives there too (`SKU_TAKEN`).
+screen's own `fallback` error (a failed validation). Do not re-wrap its result. Copy two screens
+share lives in that file too.
 
 ## 5. Paused vs pending
 
@@ -121,7 +120,12 @@ It never errors and `isPending` stays true for as long as the device is offline.
 - **Every loading branch tests `isPaused` before `isPending`**, or an offline screen shows a spinner
   that never ends. The error branch is no substitute — a paused query never reaches it.
 - **"In flight" for a mutation is `isPending && !isPaused`.** Anything gated on a request being out
-  — a disabled control, a non-dismissable dialog — must exclude the paused case.
+  — a spinner, a disabled exit (Back, Cancel), a non-dismissable dialog — must exclude the paused case.
+- **The control that fires the write stays disabled on `isPending`, paused included**, and its
+  handler refuses while `isPending` (a keyboard's Done submits too). A second tap while paused queues
+  a second write, and reconnecting runs both — two systems from one form (found on the device,
+  2026-10-08). Worked examples: `src/screens/home/create-system.tsx` (`submit`), the Delete button in
+  `src/components/remove-system-dialog.tsx`.
 - **A paused state gets a line of copy and no retry control.** It resumes on its own.
 
 Worked examples: `src/app/(app)/(tabs)/index.tsx`, `src/components/remove-system-dialog.tsx`

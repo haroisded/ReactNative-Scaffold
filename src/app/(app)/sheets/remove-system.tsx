@@ -10,5 +10,5 @@ export default function RemoveSystemSheet() {
 
   if (!merchant) return null;
 
-  return <RemoveSystemDialog merchant={merchant} wide={false} inSheet onDismiss={() => router.back()} />;
+  return <RemoveSystemDialog merchant={merchant} inSheet onDismiss={() => router.back()} />;
 }

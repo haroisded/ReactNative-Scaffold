@@ -10,9 +10,7 @@ import { HelperText } from './helper-text';
 import { Text } from './text';
 
 type Props = {
-  /** Profile's own width decision: a Dialog on a multi-column container. */
-  wide: boolean;
-  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/delete-account.tsx). */
+  /** Rendered as the body of the narrow formSheet route (src/app/(app)/sheets/delete-account.tsx); otherwise a Dialog. */
   inSheet?: boolean;
   onDismiss: () => void;
 };
@@ -26,7 +24,7 @@ type Props = {
  * where the button is. There is no success path to handle. The session going null flips the root
  * layout's guard, which drops the whole (app) history — this sheet included — and lands on sign-in.
  */
-export function DeleteAccountDialog({ wide, inSheet, onDismiss }: Props) {
+export function DeleteAccountDialog({ inSheet, onDismiss }: Props) {
   const { colors } = useAppTheme();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +45,6 @@ export function DeleteAccountDialog({ wide, inSheet, onDismiss }: Props) {
 
   return (
     <AdaptiveDialog
-      wide={wide}
       inSheet={inSheet}
       onDismiss={onDismiss}
       dismissable={!busy}

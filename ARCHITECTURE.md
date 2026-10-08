@@ -26,57 +26,32 @@ src/lib/auth.ts            signInWithGoogle / signInWithFacebook / signOut / del
 src/lib/query.ts           QueryClient factory, STALE constants, onlineManager + focusManager
 src/lib/columns.ts         useColumns, the pane widths, ShellWideContext — the shell's width decision
 src/lib/errors.ts          failureMessage — the copy a failed action shows, never the provider's;
-                           postgrestError, to pick that copy by error code
-src/lib/money.ts           formatMoney / currencySymbol over Intl.NumberFormat, in merchants.currency
-src/lib/unsaved-guard.ts   the ref the shell's rail asks before switching away from unsaved changes
+                           mutationNotice, the line under a form's buttons
 src/lib/theme.ts           useAppTheme() for the Merchant colour keys
 src/lib/icons.tsx          the icon name map ({ ios, android } symbols) and Paper's icon renderer
 src/lib/database.types.ts  generated from the schema; regenerate whenever a migration lands
 src/Store/StoreUser.ts     the session handler — one onAuthStateChange subscription
-src/Store/sheet-result.ts  the row a create sheet hands back to the picker that opened it
-src/Store/list-filters.ts  a list screen's filters, shared by its folder levels and its Filters sheet
 src/themes.js              MD3 light/dark palettes + Merchant keys, roundness, spacing and radius
                            scales, the type scale
-src/features/<resource>/   data only — queries.ts and schema.ts for merchants, profiles, products
-                           (plus stock-item.ts, the Inventory item form), categories, tax-classes,
-                           suppliers, supplier-types, product-groups, stock-receipts, stock-movements,
-                           sales (plus cart.ts, the Register's cart reducer)
-src/screens/<screen>/      UI by screen — home, profile, sign-in, product-list (inventory-rows for
-                           the Inventory scope), product-form (sections/, fields), product-detail,
-                           product-setup, stock-item-form, inventory-detail, stock (the Stock
-                           destination's panes), receipt-wizard, receipt-detail, register (items and
-                           cart panes), sales (the Receipts list), sale-detail
-src/components/            one re-export per Paper primitive (text.tsx is the Text wrapper:
+src/features/<resource>/   data only — queries.ts and schema.ts for merchants and profiles
+src/screens/<screen>/      UI by screen — home (the systems list and the create-system form), profile,
+                           sign-in
+src/components/            one re-export per Paper primitive in use (text.tsx is the Text wrapper:
                            per-variant font-scale cap and iOS ramp), plus what more than one screen or a
-                           sheet route draws: page-header, adaptive-dialog, menu-select, form-fields,
-                           category-picker, lot-drill and pack-row (an item's stock, lot by lot and
-                           pack by pack), pack-fields (a receipt's Pack and Base Unit fields, which the
-                           Inventory item form shares), add-from-inventory-dialog, the confirm/create dialogs (void-receipt,
-                           void-sale — both on void-dialog — and stock-movement among them, all on confirm-dialog), discard-dialog (the
-                           unsaved-changes prompt the three forms share), form-footer, step-header
-                           (the product form and receipt wizard's narrow stepper), section-stepper
-                           (section list wide, one step at a time narrow: the product form and the
-                           Inventory item form), query-state
-                           (loading / error / retry), fact-grid, archive-undo, product-badges,
-                           note-callout, placeholder-screen
+                           sheet route draws: adaptive-dialog, remove-system-dialog,
+                           delete-account-dialog, placeholder-screen
 src/app/_layout.tsx        PaperProvider + QueryProvider + the two-state route guard
 src/app/sign-in.tsx        renders the sign-in screen
-src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, profile, create-system, the forms/ routes
-                           (create and edit forms: full pages on a phone; on a tablet the small ones and
-                           Profile are transparentModals drawn as a Dialog) and the sheets/ routes (native formSheet,
-                           confirms) beside them, anchored on tabs
+src/app/(app)/_layout.tsx  signed-in group: tabs, systems/, create-system and the sheets/ routes
+                           (native formSheet, confirms) beside them, anchored on tabs
 src/app/(app)/(tabs)/      home, notifications, settings, account + the NativeTabs bar
-src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer), Home, products/
-                           (labelled Assets), inventory/, stock/ (suppliers and receipts), rentables/
-                           (off the rail for now), the stubs
-src/app/(app)/profile.tsx  Profile pushed from inside a system (with Back to your systems), or from a
-                           tablet's Home; a Dialog over that screen on a tablet
+src/app/(app)/systems/[id]/ the merchant shell — _layout (header + rail/drawer) and Home, its one
+                           destination since the 2026-10-08 teardown
 app.config.ts              derives the Google iOS URL scheme from .env
-supabase/migrations/       profiles, merchants, the product catalogue and the stock ledger with their
-                           policies, the signup trigger, delete_current_user, current_merchant_ids,
-                           save_product, save_stock_item, save_receipt, void_receipt,
-                           record_stock_movement, and rls_auto_enable — whose event trigger hosted
-                           Supabase refuses to install
+supabase/migrations/       profiles, merchants, current_merchant_ids, the signup trigger,
+                           delete_current_user and rls_auto_enable — whose event trigger hosted
+                           Supabase refuses to install — plus the history of the business schema that
+                           20261008050254_revamp_drop_business_schema.sql dropped
 supabase/reverts/          one revert per migration, same filename — never inside migrations/
 supabase/all-in-one/       add.sql + revert.sql, generated by tools/build-migrations.mjs
 instruction_mds/           conventions for what is built on the scaffold — structure, data layer,
@@ -209,18 +184,14 @@ and `systems/[id]` sits beside it rather than inside it, so opening a system pus
 instead of becoming a fifth tab.
 
 `systems/[id]` is the merchant shell: one expo-router `Drawer`, a permanent rail on a wide window
-and an off-canvas drawer on a narrow one, around eight destinations. Two rows are groups, not
-destinations: **Store** (Assets, Register, Receipts) and **Resources** (Inventory, Stock) only open and
-close the screens under them (`NavGroup`). Back retraces visited
-destinations (`backBehavior="history"`), and leaving one pops its stack to its list
-(`popToTopOnBlur`). Every destination stack anchors on its list (`unstable_settings.anchor`), so a
-push from another destination — Inventory's **Selling as**, the Register's **View receipt** — passes
-`withAnchor: true` and Back lands on that list rather than on Home. `profile` sits beside it as
-well, so Profile opened from inside a system pushes over the shell and back returns there; its
-**Back to your systems** button is `router.dismissTo('/')`. `(app)/_layout.tsx` anchors the stack on
-`(tabs)`, so a deep link into a system still has the systems list underneath. Signing
-out or deleting the account from that Profile is the same guard flip as anywhere else — the whole
-`(app)` history goes, with no router call.
+and an off-canvas drawer on a narrow one. Since the 2026-10-08 teardown it holds one destination,
+Home, which renders nothing yet; the next destinations arrive with the rebuild. The header's
+**Your systems** action is `router.dismissTo('/')`, the way out of a system — Back alone is not
+enough, because on a phone the front drawer opens from the same left edge iOS pops a screen from.
+`(app)/_layout.tsx` anchors the stack on `(tabs)`, so a deep link into a system still has the
+systems list underneath. Profile is the Account tab only; on a tablet, where the tab bar is hidden,
+the systems list's account icon switches to it. Signing out or deleting the account there is a guard
+flip like anywhere else — the whole `(app)` history goes, with no router call.
 
 The guard is **UX, not security** — expo-router evaluates it client-side only, and the signed-in
 bundle is on the device either way. Supabase RLS is the real boundary, which is what the policies
@@ -270,10 +241,9 @@ It arrives two different ways, and both are handled.
 
 ## The database — `supabase/`
 
-`public.profiles`, the person; `public.merchants`, the tenant; the product catalogue, the first
-business tables (below); plus the event trigger that would auto-enable RLS (not installable on the hosted project — see below), and one
-migration that only drops leftovers from an unrelated
-project.
+`public.profiles`, the person; `public.merchants`, the tenant; plus the event trigger that would
+auto-enable RLS (not installable on the hosted project — see below), and two migrations that only
+drop: leftovers from an unrelated project, and the business schema (below).
 
 `public.profiles` has `id` referencing `auth.users` with `on delete cascade`, `display_name`,
 `avatar_url`, `created_at` — plus its policies, a trigger that fills the row on signup, and the
@@ -285,21 +255,16 @@ trigger to keep in step.
 
 ### `public.merchants` — the tenant
 
-`owner_id` referencing `auth.users` with `on delete cascade`, `name`, `description`, a
-`public.store_category` enum, `created_at`, and length checks on the two text columns. The cascade
-is what lets `delete_current_user()` stay one statement: deleting the `auth.users` row takes the
-profile and every merchant with it.
+`id`, `owner_id` referencing `auth.users` with `on delete cascade`, `name` (1–80 characters once
+trimmed, a check constraint) and `created_at` — nothing else since the 2026-10-08 teardown, when the
+create form became the name alone and its category, address, contact email, phone and currency
+columns were dropped. The cascade is what lets `delete_current_user()` stay one statement: deleting
+the `auth.users` row takes the profile and every merchant with it.
 
 **A merchant is a business, not a person**, and each one is what the UI calls a "system" — the cards
 on the home screen are this table. Today a merchant has exactly one user and `owner_id` *is* the
 membership; `merchant_members` and roles are still ahead, and the shape they take is in
 [instruction_mds/tenancy.md](./instruction_mds/tenancy.md).
-
-`category` is a Postgres enum rather than `text` + a check constraint, because the enum generates a
-real union in `database.types.ts`. That union is what lets `CATEGORY_META[row.category]` compile with
-no type assertion — and `.oxlintrc.json` rejects assertions. Adding a value later is
-`alter type … add value` **in a migration of its own**: Postgres will not let the same transaction
-use a value it just added.
 
 Its four policies key on `owner_id`, not on `current_merchant_ids()` below, and that is deliberate.
 The rule against `auth.uid() = row.user_id` governs *business* tables — the ones carrying a
@@ -312,9 +277,9 @@ action, not account deletion.
 
 ### `private.current_merchant_ids()` — the seam
 
-`security definer`, `stable`, returning the merchant ids the caller owns. Its first callers are the
-product catalogue's policies, and `authenticated` holds `usage` on `private` and `execute` on it for
-exactly that reason ([instruction_mds/tenancy.md §3](./instruction_mds/tenancy.md)).
+`security definer`, `stable`, returning the merchant ids the caller owns. It has no caller since the
+business schema was dropped; `authenticated` keeps `usage` on `private` and `execute` on it so the
+next business table's policies can call it ([instruction_mds/tenancy.md §4](./instruction_mds/tenancy.md)).
 It was written before any caller on purpose: every business table gets policies shaped
 `using (merchant_id in (select private.current_merchant_ids()))`, and staff support then arrives by
 rewriting this one function body — no policy rewrites, no table alterations. Writing it now is what
@@ -381,87 +346,13 @@ unexpectedly empty query result leads nowhere near it.
 The function behind it lives in `private` and is revoked from `public, anon, authenticated,
 service_role`, for the reasons in the section above.
 
-### The product catalogue — `20260914092147_products.sql`
+### The business schema, dropped — `20261008050254_revamp_drop_business_schema.sql`
 
-The first business tables: `product_categories` (two levels, through `parent_id`), `tax_classes`,
-`suppliers`, `products`, and a product's six child sets — rate tiers, operating hours, variant
-attributes, variants, components and custom fields. Every one has a `not null merchant_id`, its own
-`enable row level security` line, and four `*_own_merchant` policies calling
-`current_merchant_ids()`.
-
-- **Composite foreign keys.** Each parent carries `unique (id, merchant_id)` and every reference is
-  `(x_id, merchant_id)`, so a product cannot point at another merchant's category, tax class or
-  supplier, and a child row cannot hang off another merchant's product. The key enforces it, not a
-  policy.
-- **`public.save_product(payload jsonb)`** — `security invoker`, so RLS still gates every statement
-  inside it. One transaction writes the product row and replaces its child sets; the product form
-  saves through it. Delete-and-reinsert gives the children new ids on every save, which is fine until
-  an order references a variant — switch to keyed upserts then.
-- **`private.assert_no_bundle_cycle()`** — a trigger on `product_components` that walks the component
-  graph and refuses a row that would make a bundle contain itself (`23514`,
-  `product_components_cycle`). A product still used as a component cannot be deleted (`23503`). The
-  screens turn both codes into copy.
-- **`is_low_stock`** — a stored generated column, because PostgREST cannot compare two columns in a
-  filter.
-- **`products_price_when_sold`** — a product sold on its own needs a selling price once it leaves
-  draft.
-- **`merchants.currency`** — ISO 4217, default `PHP`. Prices render through `src/lib/money.ts`.
-
-### Suppliers, inventory items and the stock ledger — `20260928100000`, `20260928100300`, `20260929100000`, `20260929100100`, `20260930100000`, `20261004120000`
-
-- **Codes.** `private.merchant_counters` holds one counter per merchant and kind, and
-  `private.issue_code()` turns the next value into a padded code, skipping any code a merchant has
-  already typed. Suppliers (`SUP-0001`) and stock SKUs (`SKU-00001`) get theirs from the
-  `private.assign_code()` trigger when the column is left blank or empty. Receipts, lots, cases and
-  packs (`RC-`, `LOT-YYYYMMDD-`, `CS-`, `PK-`) get theirs inside the ledger's writers. A committed code
-  is never issued again.
-- **`suppliers`** gains a profile, terms, `supplier_types` (a per-merchant lookup) and `active`. A
-  supplier with receipts can only be deactivated, and only an active one can be picked on a receipt.
-- **Three layers for one sellable thing.** An **Inventory item** is a `products` row with
-  `type = 'stock'`: the master record — name, SKU (required), pack and base unit names, `sell_by`,
-  `stock_role` (Sellable / Component / Both), a `product_groups` parent and `attributes`, category.
-  `conversion_factor` means base units per pack and `perishable` means "has expiry"; `expiry_alert_on`
-  (`20261004120000_expiry_alert_on.sql`) is the date from which its lots read **Expiring** — it replaced
-  the day count `expiry_alert_days` for Inventory items, which the Assets form still writes. Its **Products
-  faces** are `flat` drafts, one per Sell By unit, linked through `source_item_id` and a one-unit
-  `product_components` row; they carry price, tax and recipe, because a pack and a tablet are priced
-  apart. The **packs** are the physical stock (below).
-- **Faces follow the item.** `private.sync_register_faces` runs after an item's role, Sell By or status
-  changes and calls `public.ensure_register_faces()`: a wanted unit without a face gets a draft; an
-  unwanted draft is deleted, an unwanted published face archived, and a wanted archived face restored
-  as a draft. So the Inventory list's inline Type menu is a plain `update`. Assets → **Add from
-  Inventory** calls the same function to bring back a face someone deleted.
-- **`save_stock_item()`** (security invoker) is the Inventory form's writer: the item, a new group,
-  and optional stock on hand, in one transaction.
-- **A variant group owns its category** (`20261001110000_group_category.sql`). `product_groups` carries
-  `category_id` / `subcategory_id`; the first categorised item saved into a group gives it one, and from
-  then on `private.group_category_to_item` overwrites a member's category with the group's, and
-  `private.group_category_to_items` moves every member when the group's changes. So a group is one folder
-  under one category, and queries filtering items by category need no join.
-- **The ledger.** `stock_receipts` (supplier optional; `received_on` falls back to today) →
-  `stock_lots` (one per receipt line, or per Inventory add with `source = 'inventory'` and no receipt;
-  the Unit Load, Pallet and Case tiers it came in; lot number, null when left blank; expiry;
-  `packs_expected` beside `packs_received`, and `units_per_pack_received`, which is recorded only;
-  `unit_cost` as typed, else line cost ÷ base units) → `stock_cases` → `stock_packs`, **one row per
-  physical pack**, each with its own `qty_remaining` and optional manufacturer serial. Sealed, open and
-  empty are derived. Loose units received are one partial pack. `stock_movements` is the append-only
-  history, one row per pack touched. Clients can only read these five tables; every write goes through
-  `save_receipt`, `add_inventory_stock`, `draw_stock`, `record_stock_movement` or `void_receipt`, each
-  security definer, granted to `authenticated`, opening with `private.assert_member()`.
-- **The pick order** lives in one place, the `stock_pick_queue` view: open packs first, then closest
-  expiry, fewest left, oldest lot, pack code; expired packs are never picked. `pick_rank` orders a
-  loose-unit draw and `whole_rank` a sale by the pack. The Inventory screens mark its first row
-  **Next pick**, and `draw_stock(product_id, qty, mode, kind)` — for the Register (`sale`) and recipes
-  (`consume`) — walks it, opening sealed packs and spilling across packs and cases, or refuses the whole
-  draw with `insufficient_stock`.
-- **Shipping cost is not spread.** `save_receipt` keeps `stock_receipts.freight` on the receipt and
-  writes `freight_share = 0` on every lot since `20260930100000_receipt_inputs.sql`; a lot saved before
-  it keeps its share. Rejected: spreading by line value — a typed cost per base unit is final.
-- **`qty_on_hand` and `cost_price` on a stock item are derived.** `private.recompute_stock()` sets them
-  from the packs: the quantity sums them in base units, and the cost is their weighted landed cost.
-  The `products_guard_stock` trigger keeps a client role from writing either, and refuses archiving or
-  a new units-per-pack while stock is on hand. An item with stock history cannot be deleted.
-- **`stock_lot_lines`** is a lot with what it has left (from its packs): the Stock screen's rows.
+The product catalogue, suppliers, the stock ledger and the Register's sales (`20260914092147` through
+`20261004120000`) were dropped on 2026-10-08, rows included, when the app was cut back to the systems
+list ahead of a rebuild on ERPNext's model. Their migrations and reverts stay as history, so
+`add.sql` still builds them on a fresh project before the drop removes them. Their design notes are in
+git (`git show 07bd7aa:ARCHITECTURE.md`).
 
 ---
 
@@ -480,66 +371,7 @@ on `src/screens/home/system-card.tsx` — plus the merchant shell, whose header 
 
 `src/app/(app)/_layout.tsx` provides `ShellWideContext` (`src/lib/columns.ts`) — the one wide/narrow
 decision, `useWindowDimensions().width >= WIDE_MIN`, read once for the shell, the `(tabs)` bar, and the
-`forms/` and `sheets/` routes alike (frontend.md §4.1). The shell
-(`src/app/(app)/systems/[id]/_layout.tsx`) hands two more things to every destination through
-context, because the screens under it are routes and receive no props from it:
-`ShellMerchantContext` (`src/features/merchants/queries.ts`) — the system being shown, since the
-rail navigates with no params and a destination's own params carry no id; and
-`UnsavedGuardContext` (`src/lib/unsaved-guard.ts`) — a ref a screen with unsaved changes fills, which
-the rail asks before switching destination, because a drawer switch removes nothing for
-`usePreventRemove` to catch.
-
-### Stock and Inventory
-
-**Stock** (`systems/[id]/stock/`) holds Suppliers and Receipts. The Receipts pane lists one row per
-receipt line — remaining against received — opening onto its cases and packs. A receipt is written once
-by the seven-step `receipt-wizard` (Supplier, Unit Load, Pallet, Case, Pack, Base Unit, Review; the tiers
-can be skipped, and Base Unit only shows while something sells by the base unit) — one step at a time at both
-widths, with Review a sidebar beside the steps on a tablet. Stock's Receipts | Suppliers switch sits beside its
-add button on a tablet. The Pack step's
-**Restock item** switch picks an existing item, which is then required; off, the line names a new item,
-optionally a variant (`src/components/variant-fields.tsx`, shared with the item form). A line's stock is its
-received packs, or its expected packs when received is left blank and read back by
-`receipt-detail`, where it can be voided while nothing has been drawn from it. **Inventory** is
-`product-list` in the `inventory` scope, browsed as folders — category, subcategory, variant group
-(`src/features/products/folders.ts`, `src/components/folder-nav.tsx`); each folder is the list route pushed
-with `category` / `sub` / `group` params, so Back climbs one, and a search lists every match flat. Stock's
-Receipts pane folds its lines the same way. Filters other than search and sort sit in a panel
-(`list-filters-dialog.tsx`, `sheets/list-filters`) whose state is `src/Store/list-filters.ts`, shared by
-every folder level. Rows from `inventory-rows.tsx` show the count in base units,
-packs and open packs, cost and value, an inline Type menu, and open onto a lot-and-pack drill
-(`src/components/lot-drill.tsx`, `pack-row.tsx`) with the next pick marked. Opening an item on a
-tablet puts `inventory-detail` beside the list; on a phone it is its own route. The detail's pack rows
-adjust, write off and return through `record_stock_movement` — the full-page `forms/stock-movement`
-at every width. The Inventory item form (`stock-item-form`) is the receipt's Pack and Base Unit steps on a
-`section-stepper` — the same fields (`src/components/pack-fields.tsx`, `itemForm` mode) on the same line
-(`itemFormSchema`), with no supplier, restock, serials or lot, plus Category and Expiry alert: Pack, Base unit
-(only when Sell by is not Pack), Review. A new item's Pack quantity is its stock on hand — a lot with no receipt
-(`add_inventory_stock`) that the Register draws like any other; an item with stock on hand locks Sell by and
-Base units qty. A picked group's category shows in Pack, locked. Inside a folder the page header's back arrow
-climbs one level, as Back does. **Assets** is `product-list` in the `products` scope —
-the route keeps its name, only the label changed — and has no create: `RESOURCE_ROUTE.products` has no
-`new`, and its one add is **Add from Inventory** (`add-from-inventory-dialog.tsx`, `sheets/add-from-inventory`).
-Flat rows made directly before that still list and stay editable. Rentables is off the rail for now; its
-routes stay. The server's refusals come back as snake_case messages, which `stockFailure()`
-(`src/features/stock-receipts/queries.ts`) reads so a screen can show its own copy.
-
-### Register and Receipts
-
-**Register** (`systems/[id]/register.tsx`, `src/screens/register/`) sells what the Assets screen
-publishes — flat, active, sold directly — and nothing from Inventory or Rentables. Cash only; prices
-include tax. Wide shows the items pane (`ITEM_PANE`) beside the cart; narrow switches Items | Cart,
-with the payment at the foot of the Cart tab. The cart, the cash typed and the idempotency key live in
-`Register` above both panes. One `record_sale` call (`20260930110000_sales.sql`) writes the sale, its
-lines and every stock draw — a face draws its item through `draw_stock` (`sale`), a recipe draws its
-components (`consume`), a plain product draws nothing — or refuses the lot; every movement carries the
-sale's `SL-` code as `ref`. A retried `client_key` returns the sale already made.
-
-**Receipts** (`systems/[id]/receipts/`, a rail destination, not Stock's Receipts pane) lists sales
-newest first (`src/screens/sales/`); `sale-detail` shows the lines, the payment, and **Stock drawn** —
-the movements with the sale's code. `void_sale` puts every unit back on the pack it came from as a
-`void` movement and marks the sale Void; it refuses a sale already void, and a pack that cannot take
-its units back. Sales and their lines are select-only for clients.
+`sheets/` routes alike (frontend.md §4.1).
 
 ### The data layer
 

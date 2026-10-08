@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { User } from '@supabase/supabase-js';
 
-import { AdaptiveDialog } from '../../components/adaptive-dialog';
 import { Appbar } from '../../components/appbar';
 import { Avatar } from '../../components/avatar';
 import { Button } from '../../components/button';
@@ -26,28 +25,13 @@ import { spacing } from '../../themes';
 import { PreferencesCard } from './preferences-card';
 
 type Props = {
-  /** The back arrow (narrow page), Go Back (wide page) and Close (dialog). Where it goes depends on the route. */
+  /** The back arrow (narrow) and Go Back (wide). */
   onBack: () => void;
-  /**
-   * Given only when Profile was opened from inside a system. Renders "Back to your systems", the one
-   * way out of a system: the shell's rail and drawer carry no switcher.
-   */
-  onExitSystem?: () => void;
-  /**
-   * A tablet's Profile: a Dialog over the screen it was opened from, the route being a transparentModal
-   * (src/app/(app)/_layout.tsx, instruction_mds/frontend.md §4.4). Otherwise a screen.
-   */
-  asDialog?: boolean;
 };
 
-// The ProfileDialog from the specs. A Dialog on a tablet, where a screen left a 560dp column on a
-// 1180dp window; a screen on a phone and on the Account tab, the one place it is a destination rather
-// than a layer over something else.
-//
-// A screen rather than a route because three routes render it: the Account tab `(tabs)/account.tsx`
-// returns to the systems list, and `(app)/profile.tsx`, pushed from a system's header or a tablet's
-// Home, returns to where it was opened (instruction_mds/structure.md §3).
-export function ProfileScreen({ onBack, onExitSystem, asDialog }: Props) {
+// The Account tab's body (`(tabs)/account.tsx`). On a tablet the tab bar is hidden, and the systems
+// list's account icon opens it instead.
+export function ProfileScreen({ onBack }: Props) {
   const session = useSession();
   const { data: profile } = useProfileQuery();
   // MD3's `error` role, read from whichever of themes.js's two palettes the root layout put in
@@ -69,90 +53,11 @@ export function ProfileScreen({ onBack, onExitSystem, asDialog }: Props) {
   const user = session.user;
   const { name, email } = identity(user, profile?.display_name);
 
-  // Narrow, the confirm is a formSheet route (instruction_mds/frontend.md §5); wide, it mounts here —
-  // inside the Dialog when Profile is one, so it lands in the same route.
+  // Narrow, the confirm is a formSheet route (instruction_mds/frontend.md §5); wide, it mounts here.
   const askDelete = () => {
     if (narrow) router.push('/sheets/delete-account');
     else setConfirmingDelete(true);
   };
-
-  const body = (
-    <>
-      <View style={styles.identity}>
-        <View>
-          <Avatar.Icon size={narrow || asDialog ? 80 : 96} icon="account" />
-          {/* Unticked: renders over the avatar, does nothing yet. */}
-          <FAB size="small" icon="camera" style={styles.avatarFab} />
-        </View>
-        <Text variant="titleMedium">{name}</Text>
-        <Text variant="bodySmall">{email}</Text>
-      </View>
-
-      <ProfileDetails narrow={narrow} name={name} email={email} user={user} />
-
-      {/* Outside the width branch on purpose: a phone and a tablet both get it. */}
-      <PreferencesCard />
-    </>
-  );
-
-  const exitButton = onExitSystem ? (
-    <Button icon="grid" mode="outlined" onPress={onExitSystem} disabled={busy} contentStyle={styles.leading}>
-      Back to your systems
-    </Button>
-  ) : null;
-
-  const signOutButton = (
-    <Button
-      icon="logout"
-      mode="contained"
-      buttonColor={colors.error}
-      textColor={colors.onError}
-      onPress={() => void signOutNow()}
-      loading={busy}
-      disabled={busy}
-      contentStyle={styles.leading}
-    >
-      Sign Out
-    </Button>
-  );
-
-  // Deleting an account has to be reachable in-app — App Store Guideline 5.1.1(v) — and it cannot be
-  // undone, so it asks first and is styled apart from the primary action.
-  const tail = (
-    <>
-      <Button icon="person-remove" mode="text" textColor={colors.error} onPress={askDelete} disabled={busy} contentStyle={styles.leading}>
-        Delete account
-      </Button>
-      <HelperText type="error" visible={error !== null}>
-        {error}
-      </HelperText>
-      {confirmingDelete ? <DeleteAccountDialog wide onDismiss={() => setConfirmingDelete(false)} /> : null}
-    </>
-  );
-
-  if (asDialog) {
-    return (
-      <AdaptiveDialog
-        asPage
-        wide
-        onDismiss={onBack}
-        dismissable={!busy}
-        title="Profile"
-        actions={
-          <>
-            <Button mode="text" onPress={onBack} disabled={busy}>
-              Close
-            </Button>
-            {exitButton}
-            {signOutButton}
-          </>
-        }
-      >
-        {body}
-        {tail}
-      </AdaptiveDialog>
-    );
-  }
 
   return (
     <Surface style={styles.screen}>
@@ -164,26 +69,58 @@ export function ProfileScreen({ onBack, onExitSystem, asDialog }: Props) {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.body}>
-        {body}
+        <View style={styles.identity}>
+          <View>
+            <Avatar.Icon size={narrow ? 80 : 96} icon="account" />
+            {/* Unticked: renders over the avatar, does nothing yet. */}
+            <FAB size="small" icon="camera" style={styles.avatarFab} />
+          </View>
+          <Text variant="titleMedium">{name}</Text>
+          <Text variant="bodySmall">{email}</Text>
+        </View>
+
+        <ProfileDetails narrow={narrow} name={name} email={email} user={user} />
+
+        {/* Outside the width branch on purpose: a phone and a tablet both get it. */}
+        <PreferencesCard />
+
         <View style={narrow ? styles.actions : styles.actionsRow}>
           {narrow ? null : (
             <Button icon="arrow-back" mode="outlined" onPress={onBack} contentStyle={styles.leading}>
               Go Back
             </Button>
           )}
-          {exitButton}
-          {signOutButton}
+          <Button
+            icon="logout"
+            mode="contained"
+            buttonColor={colors.error}
+            textColor={colors.onError}
+            onPress={() => void signOutNow()}
+            loading={busy}
+            disabled={busy}
+            contentStyle={styles.leading}
+          >
+            Sign Out
+          </Button>
         </View>
-        {tail}
+
+        {/* Deleting an account has to be reachable in-app — App Store Guideline 5.1.1(v) — and it
+            cannot be undone, so it asks first and is styled apart from the primary action. */}
+        <Button icon="person-remove" mode="text" textColor={colors.error} onPress={askDelete} disabled={busy} contentStyle={styles.leading}>
+          Delete account
+        </Button>
+        <HelperText type="error" visible={error !== null}>
+          {error}
+        </HelperText>
+        {confirmingDelete ? <DeleteAccountDialog onDismiss={() => setConfirmingDelete(false)} /> : null}
       </ScrollView>
     </Surface>
   );
 }
 
 /**
- * display_name is what the user typed in the wizard's step 1, so it wins over the OAuth full_name.
- * Facebook withholds the email when the account has no confirmed address, so the chain falls through to
- * the user id rather than rendering blank.
+ * display_name wins over the OAuth full_name when set. Facebook withholds the email when the account
+ * has no confirmed address, so the chain falls through to the user id rather than rendering blank.
  */
 function identity(user: User, displayName: string | null | undefined) {
   const email = user.email ?? user.id;

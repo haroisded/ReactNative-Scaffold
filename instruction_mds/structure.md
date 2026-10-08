@@ -34,13 +34,17 @@ src/
   lib/                    supabase, auth, secure-storage, query, database.types.ts, columns.ts, errors.ts  …
   Store/                  zustand — client state only
   features/
-    products/             queries.ts  schema.ts
-    orders/
+    merchants/            queries.ts  schema.ts
+    profiles/
   screens/
-    product-form/         index.tsx  review-section.tsx  sections/  …
-    product-list/
-  components/             text.tsx  button.tsx  page-header.tsx  adaptive-dialog.tsx  …
+    home/                 index.tsx  create-system.tsx  system-card.tsx  …
+    profile/
+    sign-in/
+  components/             text.tsx  button.tsx  adaptive-dialog.tsx  remove-system-dialog.tsx  …
 ```
+
+That is the whole tree as of 2026-10-08. A new resource of the rebuild (an ERPNext doctype such as
+`items/`) is a sibling of `merchants/`; its screens are siblings of `home/`.
 
 A directory earns its existence by naming a thing the app has, not a shape code takes. `products` is
 a thing; `modals` is a shape.
@@ -60,12 +64,9 @@ Never create a feature folder named after a page.
 | Example | Goes in |
 | --- | --- |
 | Merchants read/write, create-system schema | `src/features/merchants/` |
-| Home's SystemCard, CreateSystemModal | `src/screens/home/` |
+| Home's SystemCard, CreateSystem form | `src/screens/home/` |
 | Profile read | `src/features/profiles/`; screen in `src/screens/profile/` |
-| Products queries and schema (Assets, Rentables and Inventory all read them) | `src/features/products/` |
-| Assets / Inventory list, form, detail | `src/screens/product-list/`, `product-form/`, `product-detail/` |
-| A dialog that also opens as a sheet route (RemoveSystemDialog, the delete dialogs) | `src/components/` — the route is its second host |
-| Register cart, held sales, payment, receipt | data in `src/features/sales/`; UI in `src/screens/register/` |
+| A dialog that also opens as a sheet route (RemoveSystemDialog, DeleteAccountDialog) | `src/components/` — the route is its second host |
 | Column-count hook | `src/lib/columns.ts` |
 
 ## 3. Screen folder size
@@ -89,18 +90,13 @@ Anything with no table, schema or query key behind it.
 
 ```
 src/app/(app)/systems/[id]/_layout.tsx   the shell — expo-router Drawer, permanent when wide
-src/app/(app)/systems/[id]/index.tsx     Home
-src/app/(app)/systems/[id]/register.tsx
-src/app/(app)/systems/[id]/products/     list, detail, create, edit
-src/app/(app)/systems/[id]/discounts/
+src/app/(app)/systems/[id]/index.tsx     Home, the one destination since the 2026-10-08 teardown
 ```
 
-Rail destinations with no design yet (Dashboard, Employees, Features, Audit) stay one-line stub
-files. A stub becomes a directory when its screens are built, the way `products.tsx` became
-`products/`.
+A new destination is a route file beside `index.tsx` and a row in the shell's `DESTINATIONS`. It
+becomes a directory when it grows more than one screen (list, detail, create, edit).
 
-Sheet routes (confirms) live in `src/app/(app)/sheets/`, full-page create and edit forms in
-`src/app/(app)/forms/`, both as leaf screens of the `(app)` Stack.
+Sheet routes (confirms) live in `src/app/(app)/sheets/`, as leaf screens of the `(app)` Stack.
 
 ## 6. Build order for a new feature
 

@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import Drawer from 'expo-router/drawer';
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
-import { use, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -12,13 +12,11 @@ import { Button } from '../../../../components/button';
 import { Icon } from '../../../../components/icon';
 import { Surface } from '../../../../components/surface';
 import { Text } from '../../../../components/text';
-import { ShellMerchantContext, useMerchantsQuery } from '../../../../features/merchants/queries';
+import { useMerchantsQuery } from '../../../../features/merchants/queries';
 import { DRAWER_WIDTH, fontScaled, RAIL_COLLAPSED, RAIL_EXPANDED, useShellWide } from '../../../../lib/columns';
 import { failureMessage } from '../../../../lib/errors';
 import type { IconName } from '../../../../lib/icons';
 import { useAppTheme } from '../../../../lib/theme';
-import { UnsavedGuardContext } from '../../../../lib/unsaved-guard';
-import type { LeaveGuard } from '../../../../lib/unsaved-guard';
 import { radius, spacing } from '../../../../themes';
 
 // The merchant shell: a header over an M3 NavigationRail on a wide window, or over an off-canvas
@@ -30,43 +28,10 @@ import { radius, spacing } from '../../../../themes';
 
 type Destination = { name: string; label: string; icon: IconName };
 
-/** A row that is not a destination: it has no route and navigates nowhere, it only shows and hides its screens. */
-type Group = { group: string; label: string; icon: IconName; children: Destination[] };
-
-// Store: where a sale happens. Assets are what the Register sells — the Inventory items brought in to
-// be priced — then the Register itself, and the receipts of what it sold. The `products` route keeps
-// its name; only its label changed (rejected: renaming the route to `assets`, which moves every
-// RESOURCE_ROUTE.products caller and the typed-route map for no visible gain).
-const STORE: Destination[] = [
-  { name: 'products', label: 'Assets', icon: 'list' },
-  { name: 'register', label: 'Register', icon: 'calculator' },
-  { name: 'receipts', label: 'Receipts', icon: 'receipt' },
-];
-
-// Resources: what is counted on a shelf, then Stock, where counted things arrive (receipts) and who
-// sends them (suppliers). Rentables is switched off for now: its routes and data stay, it is only left
-// off this menu, and the Register never lists its items.
-const RESOURCES: Destination[] = [
-  { name: 'inventory', label: 'Inventory', icon: 'inventory' },
-  { name: 'stock', label: 'Stock', icon: 'truck' },
-];
-
 // Rail order. `name` is the route file under this directory; icons are the app's own names, drawn as
-// each platform's symbol (src/lib/icons.tsx, instruction_mds/frontend.md §6). An array rather than a lookup
-// object, so matching the focused route is a plain comparison with no type assertion.
-const DESTINATIONS: (Destination | Group)[] = [
-  { name: 'index', label: 'Home', icon: 'home' },
-  { group: 'store', label: 'Store', icon: 'storefront', children: STORE },
-  { name: 'dashboard', label: 'Dashboard', icon: 'bar-chart' },
-  { group: 'resources', label: 'Resources', icon: 'layers', children: RESOURCES },
-  { name: 'discounts', label: 'Discounts', icon: 'percent' },
-  { name: 'employees', label: 'Employees', icon: 'users' },
-  { name: 'features', label: 'Features', icon: 'toggle' },
-  { name: 'audit', label: 'Audit', icon: 'clipboard' },
-];
-
-/** Every route the drawer navigator holds: the rail's own destinations plus every group's screens. */
-const ROUTES: Destination[] = DESTINATIONS.flatMap((entry) => ('group' in entry ? entry.children : [entry]));
+// each platform's symbol (src/lib/icons.tsx, instruction_mds/frontend.md §6). Home is the only one
+// since the 2026-10-08 teardown; the next destinations arrive with the rebuild.
+const DESTINATIONS: Destination[] = [{ name: 'index', label: 'Home', icon: 'home' }];
 
 /** "Cafe 67" → "C6": the first letter of up to two words, for the system badge. */
 function initials(name: string) {
@@ -78,6 +43,10 @@ function initials(name: string) {
     .join('')
     .toUpperCase();
 }
+
+// dismissTo pops back to the systems list the anchor in (app)/_layout.tsx keeps under this screen,
+// rather than pushing a second copy of it.
+const exitSystem = () => router.dismissTo('/');
 
 export default function SystemLayout() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -91,9 +60,6 @@ export default function SystemLayout() {
   const wide = useShellWide();
   // Only the rail collapses. The narrow drawer's open state belongs to the navigator instead.
   const [expanded, setExpanded] = useState(true);
-  // Filled by a destination with unsaved changes (the product form); the rail asks it before
-  // switching destination. See src/lib/unsaved-guard.ts.
-  const leaveGuard = useRef<LeaveGuard | null>(null);
 
   if (!merchant) return <MissingMerchant merchants={merchants} />;
 
@@ -102,9 +68,6 @@ export default function SystemLayout() {
 
   return (
     <View style={styles.fill}>
-      {/* The merchant, because a destination's own params do not carry the shell's id. */}
-      <ShellMerchantContext value={merchant}>
-      <UnsavedGuardContext value={leaveGuard}>
       <Drawer
         // `layout` wraps the navigator itself (react-navigation/core/types.d.ts:21), which is what
         // puts the header above the rail at full width, and makes the front drawer and its scrim
@@ -123,47 +86,28 @@ export default function SystemLayout() {
             <View style={styles.fill}>{children}</View>
           </View>
         )}
-        drawerContent={(props) => (
-          <SystemNav
-            {...props}
-            name={merchant.name}
-            wide={wide}
-            expanded={expanded}
-            onExpandRail={() => setExpanded(true)}
-          />
-        )}
-        // Back retraces the destinations actually visited. The default, 'firstRoute' (TabRouter.js:96),
-        // sends Back from any destination straight to Home — so a product opened from Inventory
-        // returned to Home, not to Inventory.
-        backBehavior="history"
+        drawerContent={(props) => <SystemNav {...props} name={merchant.name} wide={wide} expanded={expanded} />}
         screenOptions={{
           headerShown: false,
-          // Leaving a destination pops its stack back to its list (DrawerView.js:68-78), so the rail
-          // never reopens on a detail left open earlier. Drawer scenes otherwise stay mounted with
-          // their whole stack (DrawerView.js:62-65).
-          popToTopOnBlur: true,
           drawerType: wide ? 'permanent' : 'front',
           drawerStyle: [wide ? styles.rail : styles.drawer, { backgroundColor: colors.primary, width: drawerWidth }],
           overlayColor: colors.backdrop,
           sceneStyle: { backgroundColor: colors.background },
         }}
       >
-        {ROUTES.map((route) => (
+        {DESTINATIONS.map((route) => (
           <Drawer.Screen key={route.name} name={route.name} />
         ))}
       </Drawer>
-      </UnsavedGuardContext>
-      </ShellMerchantContext>
     </View>
   );
 }
 
 /** The shell before its merchant: loading, offline, failed, or gone. */
 function MissingMerchant({ merchants }: { merchants: ReturnType<typeof useMerchantsQuery> }) {
-  // The exit from every state below. dismissTo pops back to the systems list the anchor in
-  // (app)/_layout.tsx keeps under this screen, rather than pushing a second copy of it.
+  // The exit from every state below.
   const exit = (
-    <Button mode="outlined" onPress={() => router.dismissTo('/')}>
+    <Button mode="outlined" onPress={exitSystem}>
       Back to your systems
     </Button>
   );
@@ -213,13 +157,9 @@ function MerchantHeader({ onMenu }: HeaderProps) {
       <Appbar.Content title="Merchant" color={colors.onPrimary} />
       {/* Rendered, not wired: there is no notifications screen inside a system yet. */}
       <Appbar.Action icon="bell" color={colors.onPrimary} accessibilityLabel="Notifications" />
-      <Appbar.Action
-        icon="account"
-        color={colors.onPrimary}
-        // Pushed over the shell, so back returns here. Profile is also the way out of a system.
-        onPress={() => router.push('/profile')}
-        accessibilityLabel="Account"
-      />
+      {/* The way out of a system. Not left to Back alone: on a phone the front drawer opens from a
+          left-edge swipe, the same edge iOS pops a screen from, and iOS has no back button. */}
+      <Appbar.Action icon="grid" color={colors.onPrimary} onPress={exitSystem} accessibilityLabel="Your systems" />
     </Appbar.Header>
   );
 }
@@ -247,27 +187,15 @@ type NavProps = DrawerContentComponentProps & {
   name: string;
   wide: boolean;
   expanded: boolean;
-  /** Tapping Resources on the icon-only rail widens the rail first, so its children are readable. */
-  onExpandRail: () => void;
 };
 
 // Components B and C: the same header, divider and destinations, laid out as a rail when wide and as
-// drawer rows when narrow. No system switcher — the way out of a system is Profile.
-function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: NavProps) {
+// drawer rows when narrow. No system switcher — the way out of a system is the header's Your systems.
+function SystemNav({ state, navigation, name, wide, expanded }: NavProps) {
   const { colors } = useAppTheme();
-  const leaveGuard = use(UnsavedGuardContext);
   const active = state.routes[state.index]?.name;
   // The drawer always shows labels; the rail shows them only while expanded.
   const labelled = !wide || expanded;
-
-  // A destination with unsaved changes gets to confirm first. Tapping the destination already open
-  // switches nothing, so it is not asked.
-  const go = (target: string) => {
-    const navigate = () => navigation.navigate(target);
-    const guard = leaveGuard.current;
-    if (guard && target !== active) guard(navigate);
-    else navigate();
-  };
 
   return (
     <View>
@@ -290,85 +218,18 @@ function SystemNav({ state, navigation, name, wide, expanded, onExpandRail }: Na
       <View style={[styles.divider, { backgroundColor: colors.onPrimary }]} />
 
       <View style={styles.items}>
-        {DESTINATIONS.map((entry) => {
-          if ('group' in entry) {
-            return (
-              <NavGroup
-                key={entry.group}
-                entry={entry}
-                active={active}
-                wide={wide}
-                labelled={labelled}
-                onOpen={() => {
-                  // On the icon-only rail the children would be unlabelled icons under an
-                  // unlabelled one, so widening the rail is the first half of opening the group.
-                  if (wide && !expanded) onExpandRail();
-                }}
-                onGo={go}
-              />
-            );
-          }
-
-          return (
-            <NavItem
-              key={entry.name}
-              label={entry.label}
-              icon={entry.icon}
-              wide={wide}
-              labelled={labelled}
-              active={entry.name === active}
-              onPress={() => go(entry.name)}
-            />
-          );
-        })}
+        {DESTINATIONS.map((entry) => (
+          <NavItem
+            key={entry.name}
+            label={entry.label}
+            icon={entry.icon}
+            wide={wide}
+            labelled={labelled}
+            active={entry.name === active}
+            onPress={() => navigation.navigate(entry.name)}
+          />
+        ))}
       </View>
-    </View>
-  );
-}
-
-type GroupProps = {
-  entry: Group;
-  active: string | undefined;
-  wide: boolean;
-  labelled: boolean;
-  onOpen: () => void;
-  onGo: (target: string) => void;
-};
-
-/** A group row and, while it is open, its screens one step in. Never "active" itself: it only opens and closes. */
-function NavGroup({ entry, active, wide, labelled, onOpen, onGo }: GroupProps) {
-  // Open when one of them is the screen being shown, so a reload into Inventory does not hide it.
-  // Initial state only: after that the merchant's last tap on the group decides.
-  const [open, setOpen] = useState(() => entry.children.some((child) => child.name === active));
-
-  return (
-    <View>
-      <NavItem
-        label={entry.label}
-        icon={entry.icon}
-        wide={wide}
-        labelled={labelled}
-        trailing={open ? 'chevron-down' : 'chevron-right'}
-        expandedState={open}
-        onPress={() => {
-          onOpen();
-          setOpen((was) => !was);
-        }}
-      />
-      {open
-        ? entry.children.map((child) => (
-            <NavItem
-              key={child.name}
-              label={child.label}
-              icon={child.icon}
-              wide={wide}
-              labelled={labelled}
-              nested
-              active={child.name === active}
-              onPress={() => onGo(child.name)}
-            />
-          ))
-        : null}
     </View>
   );
 }
@@ -379,19 +240,13 @@ type ItemProps = {
   wide: boolean;
   labelled: boolean;
   active?: boolean;
-  /** One of the screens under a group: indented, and a step smaller. */
-  nested?: boolean;
-  /** The group row's chevron. */
-  trailing?: IconName;
-  /** The group row's open state, for the screen reader. */
-  expandedState?: boolean;
   onPress: () => void;
 };
 
 // One rail or drawer row. Active: the lightened ground and the 4px accent bar. Inactive: no ground, no
 // bar, 68%. The bar is a left border on every item, transparent when inactive, so selecting an item
 // never shifts its content sideways (instruction_mds/frontend.md §5).
-function NavItem({ label, icon, wide, labelled, active, nested, trailing, expandedState, onPress }: ItemProps) {
+function NavItem({ label, icon, wide, labelled, active, onPress }: ItemProps) {
   const { colors } = useAppTheme();
 
   return (
@@ -403,13 +258,13 @@ function NavItem({ label, icon, wide, labelled, active, nested, trailing, expand
       android_ripple={{ color: colors.primaryHighlight }}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ selected: active, expanded: expandedState }}
+      accessibilityState={{ selected: active }}
       style={[
         styles.item,
         active ? { backgroundColor: colors.primaryHighlight, borderLeftColor: colors.accent } : styles.inactive,
       ]}
     >
-      <View style={[wide ? styles.railItem : styles.drawerItem, nested && styles.nested]}>
+      <View style={wide ? styles.railItem : styles.drawerItem}>
         <Icon source={icon} size={wide ? 24 : 22} color={colors.onPrimary} />
         {labelled ? (
           <View style={styles.labelRow}>
@@ -420,7 +275,6 @@ function NavItem({ label, icon, wide, labelled, active, nested, trailing, expand
             >
               {label}
             </Text>
-            {trailing ? <Icon source={trailing} size={18} color={colors.onPrimary} /> : null}
           </View>
         ) : null}
       </View>
@@ -449,13 +303,9 @@ const styles = StyleSheet.create({
   // Stretch, not flex-start: the label row under the icon needs the rail's width, or its flex: 1
   // label measures to nothing and the rail shows icons only.
   railItem: { alignItems: 'stretch', gap: spacing.sm, paddingVertical: spacing.ms, paddingLeft: spacing.ms, paddingRight: spacing.ms },
-  // Label and chevron share a row in both anatomies: beside the icon in the drawer, under it in the
-  // rail, where the item itself is a column.
   // flexGrow, not flex: 1 — under the rail's icon the item is a column, where flex: 1's zero basis
   // made the row zero tall and hid every label.
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', flexGrow: 1, flexShrink: 1, minWidth: 0 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingLeft: spacing.ms, paddingRight: spacing.md },
-  // One step in from its group row, so the Resources screens read as under it.
-  nested: { paddingLeft: spacing.lg },
   state: { gap: spacing.ms, alignItems: 'flex-start', padding: spacing.lg },
 });
