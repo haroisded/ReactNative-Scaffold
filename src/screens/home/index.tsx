@@ -29,7 +29,7 @@ export function HomeScreen() {
   // cell is recycled, and this state must outlive neither the row nor the scroll position.
   const [removing, setRemoving] = useState<Merchant | null>(null);
 
-  // The one threshold (instruction_mds/frontend.md §4.1) picks the anatomy: row cards narrow, grid
+  // The one threshold (.claude/instruction_mds/frontend.md §4.1) picks the anatomy: row cards narrow, grid
   // wide. The measured column count only sizes the grid.
   const narrow = !useShellWide();
   const numColumns = narrow ? 1 : columns;
@@ -40,7 +40,7 @@ export function HomeScreen() {
 
   // Creating is a full-screen route at every width, opened by a button narrow and by the grid's first
   // card wide. Removing is a formSheet route narrow and a dialog over this screen wide
-  // (instruction_mds/frontend.md §5).
+  // (.claude/instruction_mds/frontend.md §5).
   const create = () => router.push('/create-system');
   const remove = (merchant: Merchant) => {
     if (narrow) router.push({ pathname: '/sheets/remove-system', params: { merchantId: merchant.id } });
@@ -60,7 +60,7 @@ export function HomeScreen() {
 
             Blank because nothing in the schema carries a logo yet, and a blank logo has no features:
             no glyph, no initials. `Avatar.Text` with an empty label is Paper's own circle — avatars
-            stay circular whatever the theme's roundness (instruction_mds/frontend.md rule 7).
+            stay circular whatever the theme's roundness (.claude/instruction_mds/frontend.md rule 7).
 
             ponytail: swap to <Avatar.Image source={{ uri }} /> the day branding carries a logo. */}
         <View style={styles.logo}>
@@ -90,7 +90,7 @@ export function HomeScreen() {
           getItemType={(item) => (item === CREATE ? CREATE : 'system')}
           numColumns={numColumns}
           // FlashList recomputes its layout when numColumns changes, so the remount FlatList
-          // required (instruction_mds/frontend.md §4.2) is no longer load-bearing. It is kept because the
+          // required (.claude/instruction_mds/frontend.md §4.2) is no longer load-bearing. It is kept because the
           // key only changes when the container crosses a column boundary — a rotation or a
           // resize, which is already a full relayout — and it costs nothing the rest of the time.
           key={numColumns}
@@ -128,7 +128,7 @@ export function HomeScreen() {
 
 /**
  * Narrow: a full-width create button between two headings. Wide: the screen's title and its line; the
- * grid's first card creates. The type does not grow with the window (instruction_mds/frontend.md rule 10);
+ * grid's first card creates. The type does not grow with the window (.claude/instruction_mds/frontend.md rule 10);
  * a wider window gets more cards per row instead.
  */
 function HomeHeader({ narrow, onCreate }: { narrow: boolean; onCreate: () => void }) {
@@ -172,7 +172,7 @@ function LoadStatus({ merchants }: { merchants: ReturnType<typeof useMerchantsQu
   if (merchants.isPending) return <ActivityIndicator />;
   if (merchants.isError) {
     // retry is false by default, so nothing retries on its own — the user gets a result and a control
-    // rather than a spinner that silently gives up (instruction_mds/data-layer.md §5).
+    // rather than a spinner that silently gives up (.claude/instruction_mds/data-layer.md §5).
     //
     // Copy written for the user, not `merchants.error.message`: a PostgREST string would be the most
     // prominent text on the screen on a failed load. failureMessage swaps in the offline line when that
@@ -195,7 +195,7 @@ function LoadStatus({ merchants }: { merchants: ReturnType<typeof useMerchantsQu
 const GUTTER = spacing.sm;
 
 const styles = StyleSheet.create({
-  // Full-width buttons put their label at the left edge (instruction_mds/frontend.md §5).
+  // Full-width buttons put their label at the left edge (.claude/instruction_mds/frontend.md §5).
   leading: { justifyContent: 'flex-start' },
   screen: { flex: 1 },
   body: { flex: 1 },

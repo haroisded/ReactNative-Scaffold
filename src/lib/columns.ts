@@ -6,16 +6,16 @@ import type { LayoutChangeEvent } from 'react-native';
 //
 // Not a breakpoint. It is a card's *minimum* width, and the column count falls out of it — a phone
 // gets one or two, a small tablet three, a large one more, with no device check anywhere
-// (instruction_mds/frontend.md §4.2).
+// (.claude/instruction_mds/frontend.md §4.2).
 const MIN_CARD = 260;
 
 // ponytail: M3's "expanded" window class. Tune it on a real tablet.
 //
-// The one width threshold (instruction_mds/frontend.md §4.1). Compared against the window's width,
+// The one width threshold (.claude/instruction_mds/frontend.md §4.1). Compared against the window's width,
 // once, in src/app/(app)/_layout.tsx; every wide/narrow pair (§4.4) flips on it together.
 export const WIDE_MIN = 840;
 
-// Chrome widths, not card widths: panes are named so no screen writes its own (instruction_mds/frontend.md §1).
+// Chrome widths, not card widths: panes are named so no screen writes its own (.claude/instruction_mds/frontend.md §1).
 export const RAIL_EXPANDED = 128; // icons + labels; fits a nine-letter label in labelLarge
 export const RAIL_COLLAPSED = 72; // icons only, after the menu action
 export const DRAWER_WIDTH = 300; // the narrow shell's off-canvas drawer
@@ -25,7 +25,7 @@ export const DRAWER_WIDTH = 300; // the narrow shell's off-canvas drawer
 export const SYSTEM_CARD = 360;
 
 /**
- * The one wide/narrow decision (instruction_mds/frontend.md §4.1).
+ * The one wide/narrow decision (.claude/instruction_mds/frontend.md §4.1).
  *
  * Provided by src/app/(app)/_layout.tsx from the window's width. A screen reads this instead of
  * measuring its own pane: the pane is narrower than the window by the rail, so a second measurement
@@ -38,7 +38,7 @@ export const useShellWide = () => use(ShellWideContext);
 /**
  * A width that holds text, grown with the OS font scale up to the Text wrapper's 1.5 cap on scanned
  * labels (src/components/text.tsx). Layout, not type: the type itself is never scaled by width
- * (instruction_mds/frontend.md rule 10). For the rail, whose labels would otherwise truncate at a
+ * (.claude/instruction_mds/frontend.md rule 10). For the rail, whose labels would otherwise truncate at a
  * large font size.
  */
 export const fontScaled = (width: number) => width * Math.min(PixelRatio.getFontScale(), 1.5);

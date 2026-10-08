@@ -393,7 +393,7 @@ Press targets: `Pressable` + `android_ripple={{ color: colors.ripple }}` every t
 | Unsaved changes | `src/components/discard-dialog.tsx`† + `src/lib/unsaved-guard.ts`†. Stays a Paper bottom sheet narrow |
 | Create / edit form | full-page route (`src/app/(app)/create-system.tsx`). Wide, a small form is a Dialog (`src/app/(app)/forms/`† with `AdaptiveDialog asPage wide`†, §4.4); a created row returns through `src/Store/sheet-result.ts`† |
 | Multi-step flow | full-screen pushed route, every width |
-| Request in flight | `Dialog` `dismissable={false}`, full-page form back blocked. Sheet: `gestureEnabled` off, Android back swallowed. A paused (offline) write is not in flight — but its submit stays disabled (`instruction_mds/data-layer.md` §5) |
+| Request in flight | `Dialog` `dismissable={false}`, full-page form back blocked. Sheet: `gestureEnabled` off, Android back swallowed. A paused (offline) write is not in flight — but its submit stays disabled (`.claude/instruction_mds/data-layer.md` §5) |
 | Loading / error / retry | inline in the screen (`src/screens/home/index.tsx`, the shell in `src/app/(app)/systems/[id]/_layout.tsx`); the shared `src/components/query-state.tsx`† |
 
 ### Home

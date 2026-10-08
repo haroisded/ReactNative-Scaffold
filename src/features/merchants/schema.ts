@@ -3,7 +3,7 @@ import * as z from 'zod';
 // Zod earns its place here because this is *form input* — user-typed, untrusted, and needing
 // per-field messages. Reads are not validated with it: the generated database.types.ts already
 // expresses the schema, and a Zod mirror of a migration is the migration written twice in two
-// languages, drifting from the day it is committed (instruction_mds/data-layer.md §4).
+// languages, drifting from the day it is committed (.claude/instruction_mds/data-layer.md §4).
 //
 // One schema, shared by the form resolver and the mutation, so the thing validated and the thing
 // written cannot disagree.

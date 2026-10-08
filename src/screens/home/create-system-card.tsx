@@ -19,7 +19,7 @@ export function CreateSystemCard({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
-      // Pressable reads no theme, so the press colour is passed every time (instruction_mds/frontend.md §5).
+      // Pressable reads no theme, so the press colour is passed every time (.claude/instruction_mds/frontend.md §5).
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
       accessibilityLabel="Create New System"
@@ -27,7 +27,7 @@ export function CreateSystemCard({ onPress }: { onPress: () => void }) {
     >
       <Avatar.Icon icon="add" size={48} color={colors.onAccent} style={{ backgroundColor: colors.accent }} />
       {/* Centred, like the + above it: the card is a single target, not a column of reading
-          (instruction_mds/frontend.md rule 18). */}
+          (.claude/instruction_mds/frontend.md rule 18). */}
       <View style={styles.copy}>
         <Text variant="titleMedium" style={styles.centred}>
           Create New System

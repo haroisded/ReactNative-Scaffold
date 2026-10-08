@@ -41,7 +41,7 @@ export function RemoveSystemDialog({ merchant, inSheet, onDismiss }: Props) {
   // The whole safety mechanism, and it is one comparison — which is why this is plain state and
   // not react-hook-form with a Zod resolver like the create-system form. Zod earns its place where
   // there are fields, per-field messages and a schema shared with a mutation
-  // (instruction_mds/data-layer.md §4). Here there is one field, one rule, and no message: the control the
+  // (.claude/instruction_mds/data-layer.md §4). Here there is one field, one rule, and no message: the control the
   // user sees is the Delete button staying disabled.
   //
   // Trimmed because a trailing space from an autocorrect bar is not a different intention, and
@@ -75,7 +75,7 @@ export function RemoveSystemDialog({ merchant, inSheet, onDismiss }: Props) {
       onDismiss={onDismiss}
       dismissable={!inFlight}
       // A kicker in `error` marks the destructive confirm, as every other delete does
-      // (instruction_mds/frontend.md §5). The title starts at the left edge: nothing is centred (rule 8).
+      // (.claude/instruction_mds/frontend.md §5). The title starts at the left edge: nothing is centred (rule 8).
       kicker="Remove system"
       kickerTone="error"
       title={`Remove ${merchant.name}?`}
@@ -114,7 +114,7 @@ export function RemoveSystemDialog({ merchant, inSheet, onDismiss }: Props) {
 
       {/* The typed-confirmation instruction. Distinct from the body copy above it — that explains the
           consequence, this one asks for an action — so it is not more bodyMedium. Not labelMedium
-          either: that token uppercases (instruction_mds/frontend.md §3.1), and the name shown here is the exact
+          either: that token uppercases (.claude/instruction_mds/frontend.md §3.1), and the name shown here is the exact
           string to type, case included. bodySmall is the hint role. */}
       <Text variant="bodySmall">Type {merchant.name} to confirm</Text>
 
@@ -140,6 +140,6 @@ export function RemoveSystemDialog({ merchant, inSheet, onDismiss }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Full width in the narrow sheet, so the label sits at the left edge (instruction_mds/frontend.md §5).
+  // Full width in the narrow sheet, so the label sits at the left edge (.claude/instruction_mds/frontend.md §5).
   action: { justifyContent: 'flex-start' },
 });

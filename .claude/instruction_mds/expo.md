@@ -19,7 +19,7 @@ and where this repo overrides it.
    `process.env.EXPO_OS` over `Platform.OS`; `expo-router/react-navigation`, never
    `@react-navigation/*` directly; kebab-case files and `src/screens/`. Icons, `NativeTabs` and
    `formSheet`: [`frontend.md`](./frontend.md) rules 2 and 20.
-6. **Where an Expo skill contradicts a rule in `instruction_mds/`, the doc wins.** §3 lists the standing cases.
+6. **Where an Expo skill contradicts a rule in `.claude/instruction_mds/`, the doc wins.** §3 lists the standing cases.
    A new one gets a row there in the same pass — never a quiet change to the code.
 7. **No paid EAS step without the human.** `eas-*` skills (`eas-app-stores`, `eas-update`,
    `eas-observe`, `eas-simulator`, `eas-workflows`, `eas-hosting`) spend EAS usage. Load only on

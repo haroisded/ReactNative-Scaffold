@@ -53,7 +53,7 @@ export function ProfileScreen({ onBack }: Props) {
   const user = session.user;
   const { name, email } = identity(user, profile?.display_name);
 
-  // Narrow, the confirm is a formSheet route (instruction_mds/frontend.md §5); wide, it mounts here.
+  // Narrow, the confirm is a formSheet route (.claude/instruction_mds/frontend.md §5); wide, it mounts here.
   const askDelete = () => {
     if (narrow) router.push('/sheets/delete-account');
     else setConfirmingDelete(true);
@@ -200,11 +200,11 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  // Full-width buttons put their label at the left edge (instruction_mds/frontend.md §5).
+  // Full-width buttons put their label at the left edge (.claude/instruction_mds/frontend.md §5).
   leading: { justifyContent: 'flex-start' },
   screen: { flex: 1 },
   body: { gap: spacing.ms, padding: spacing.lg, maxWidth: 640, width: '100%' },
-  // Left-aligned like every heading and label (instruction_mds/frontend.md rule 18).
+  // Left-aligned like every heading and label (.claude/instruction_mds/frontend.md rule 18).
   identity: { alignItems: 'flex-start', gap: spacing.xs },
   // Overlaps the avatar's corner: a position, not spacing between siblings.
   avatarFab: { position: 'absolute', right: -spacing.sm, bottom: -spacing.sm },

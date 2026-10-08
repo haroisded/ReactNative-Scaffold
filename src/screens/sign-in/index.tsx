@@ -24,7 +24,7 @@ export function SignInScreen() {
       // A cancelled sign-in resolves quietly, so anything caught here is a real failure.
       //
       // The GoTrue message itself goes to the dev console only — __DEV__ is stripped from release
-      // builds — and the screen gets copy the user can act on (instruction_mds/data-layer.md §5).
+      // builds — and the screen gets copy the user can act on (.claude/instruction_mds/data-layer.md §5).
       if (__DEV__) console.warn('[sign-in]', e);
       setError(failureMessage('Sign-in failed. Try again.'));
     } finally {
@@ -37,7 +37,7 @@ export function SignInScreen() {
   return (
     <Surface style={styles.screen}>
       {/* A column held to a button's reading width and centred: on a tablet the buttons otherwise span the
-          whole window. The one centred column on a screen (instruction_mds/frontend.md rule 18): sign-in
+          whole window. The one centred column on a screen (.claude/instruction_mds/frontend.md rule 18): sign-in
           has nothing beside it to align with. A phone is narrower than the cap, so nothing changes there. */}
       <View style={styles.column}>
         <Text variant="headlineMedium">Sign in</Text>

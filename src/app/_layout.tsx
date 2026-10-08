@@ -65,7 +65,7 @@ export default function RootLayout() {
       // here ever loads, so every icon would come out a blank box. renderIcon draws each app icon
       // name as the platform's own symbol — SF Symbols on iOS, Material Symbols on Android — and
       // falls back to MaterialCommunityIcons for Paper's internal names (src/lib/icons.tsx,
-      // instruction_mds/frontend.md §6). Some Paper internals (the Appbar back arrow, Checkbox marks)
+      // .claude/instruction_mds/frontend.md §6). Some Paper internals (the Appbar back arrow, Checkbox marks)
       // never reach this function and keep MaterialCommunityIcons.
       //
       // The object literal is new each render; reactCompiler memoizes.
@@ -85,7 +85,7 @@ export default function RootLayout() {
           RLS does not help here. Cached rows are already on the device and render before any
           request goes out, so without this the next account sees the previous one's cards for a
           frame. A queryClient.clear() inside signOut is the version that gets forgotten
-          (instruction_mds/data-layer.md §6). */}
+          (.claude/instruction_mds/data-layer.md §6). */}
       <QueryProvider key={session?.user.id}>
         {/* contentStyle carries the theme background to the navigator's own screen container,
             which otherwise paints react-navigation's default and flashes white in dark mode. */}

@@ -29,7 +29,7 @@ export type Notice = { type: 'error' | 'info'; text: string };
 
 /**
  * A mutation's notice. Paused before error: a write queued while offline is waiting, not failed
- * (instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects,
+ * (.claude/instruction_mds/data-layer.md §5). `errorText` is the caller's copy for the failure it expects,
  * usually from failureMessage(). `fallback` is the screen's own error — a failed validation — shown
  * when the write has nothing to say.
  */

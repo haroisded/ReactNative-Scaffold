@@ -11,7 +11,7 @@ import { toggleThemeMode } from '../../Store/StoreTheme';
  *
  * Its own file rather than inline in index.tsx: the screen is already the longest in `src/screens/`
  * and `node tools/fallow-verdict.mjs` fails it on complexity. A block with no props and no state of
- * its own is the cheapest thing to lift out (instruction_mds/structure.md §6 — it stays in the
+ * its own is the cheapest thing to lift out (.claude/instruction_mds/structure.md §6 — it stays in the
  * screen's folder until a second screen wants it).
  */
 export function PreferencesCard() {

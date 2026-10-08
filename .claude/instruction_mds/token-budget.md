@@ -1,7 +1,7 @@
 # Token budget
 
 Three places a diff's token cost balloons independent of the diff's size, and the fix for each. This
-file exists because none of the other `instruction_mds/` files own this concern on their own —
+file exists because none of the other `.claude/instruction_mds/` files own this concern on their own —
 [`testing-workflow.md`](./testing-workflow.md) owns the review steps, this file owns their cost.
 
 ## Rules
@@ -63,7 +63,7 @@ description as the exact situation, not the general topic:
 - Not: *"Helps with React Native lists."*
 
 The narrowed descriptions in use, and how to re-apply them after `npx skills update`, are in
-[`TOOLING.md`](../TOOLING.md#narrowed-skill-descriptions).
+[`TOOLING.md`](../../TOOLING.md#narrowed-skill-descriptions).
 
 **Verify before trusting a narrowed description:** start a fresh session, give the agent a task that
 should match, and confirm the intended skill loads — and only that one. A skill that silently stops

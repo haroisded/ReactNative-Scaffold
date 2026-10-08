@@ -15,10 +15,10 @@ history documents.
 3. **The graph updates itself.** `graphify hook install` (one-time, human's terminal) fires
    `graphify update .` automatically on every commit. Nothing to run mid-pass, nothing for the agent
    to remember.
-4. **Read the Rules block of an `instruction_mds/` file, not the whole file.** Read a numbered
+4. **Read the Rules block of an `.claude/instruction_mds/` file, not the whole file.** Read a numbered
    section only when overriding the rule it explains, or when the rule points at it by number.
 5. **Load a skill only when its trigger applies** ([`expo.md`](./expo.md) rule 1). Do not load a
-   skill to confirm a rule an `instruction_mds/` file already states. Token cost of tools, skills and
+   skill to confirm a rule an `.claude/instruction_mds/` file already states. Token cost of tools, skills and
    retrieval is [`token-budget.md`](./token-budget.md).
 6. **Do not open `.claude/context/Documentations-for-AI-Agents/` unless a rule names the file.**
    Those are reference volumes, not reading material.
@@ -36,11 +36,11 @@ history documents.
 | What changed, when, and why | `git log` / `git show` |
 | What this system is, end to end | `.claude/context/system-context.txt` |
 | Where a thing is implemented, what calls what | `graphify query "<question>"`, `graphify explain "<node>"`, `graphify affected "<node>"` |
-| What was decided about a convention | the `instruction_mds/` file that owns it |
+| What was decided about a convention | the `.claude/instruction_mds/` file that owns it |
 | What a tool's finding means here | [`false-positives.md`](./false-positives.md) |
 
 Nothing else is a context source. If an answer is not in one of these, it is not written down, and
-writing it down means updating the owning `instruction_mds/` file — not creating a new document.
+writing it down means updating the owning `.claude/instruction_mds/` file — not creating a new document.
 
 ## 2. Commit as the history record
 
@@ -117,8 +117,8 @@ which keeps them.
   there is nothing.
 - **Every bullet names a file or a thing the user can see**, not a diff. `src/lib/auth.ts` or
   "the Next button now clears the navigation bar" — never "refactored the auth module".
-- **No path under a directory of `.claude/`.** They are gitignored, so no commit holds them —
-  acceptance tests written in the pass are not a bullet.
+- **No path under a gitignored directory of `.claude/`** — every one but `instruction_mds/`. No
+  commit holds them, so acceptance tests written in the pass are not a bullet.
 
 ## 3. graphify
 
@@ -158,14 +158,14 @@ and ask the human to run it — do not run `graphify update` as a workaround, an
 `graphify extract` on the agent's own initiative — that spends real LLM tokens against a backend the
 agent did not choose.
 
-## 4. Reading `instruction_mds/`
+## 4. Reading `.claude/instruction_mds/`
 
-Every file in `instruction_mds/` is Rules first, then numbered sections.
+Every file in `.claude/instruction_mds/` is Rules first, then numbered sections.
 
 - **Default:** read the Rules block. It is the instruction.
 - **Read a section** when following the rule requires the detail it holds (a constant, a code shape,
   a command) or when you intend to override the rule.
-- **Never read a whole `instruction_mds/` file to "get context".** That is what §1 is for.
+- **Never read a whole `.claude/instruction_mds/` file to "get context".** That is what §1 is for.
 
 | File | Owns |
 | --- | --- |
@@ -188,7 +188,7 @@ Every file in `instruction_mds/` is Rules first, then numbered sections.
 
 - **Prune what this repo does not use.** A skill that has never been loaded on this project is cost
   with no return. Review the list periodically with `/context`.
-- **Load a skill for its trigger, not for reassurance.** The `instruction_mds/` files already state
+- **Load a skill for its trigger, not for reassurance.** The `.claude/instruction_mds/` files already state
   this repo's decisions; a skill read that only confirms one is wasted. Where a skill contradicts a
   doc, the doc wins and the contradiction is registered, never fixed in code.
 

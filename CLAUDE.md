@@ -62,7 +62,7 @@ Phones and tablets only. `npm run web` is gone, `app.json` has no `web` key, and
 `localhost` redirect URL, or a "works on web too" note to any document.
 
 `react-native-web` and `react-dom` stay installed as optional peers of the Expo packages — kept, not
-required ([`instruction_mds/false-positives.md`](./instruction_mds/false-positives.md) §1).
+required ([`.claude/instruction_mds/false-positives.md`](./.claude/instruction_mds/false-positives.md) §1).
 
 **The system browser is not the web target.** Facebook sign-in opens the *device's* browser through
 `expo-web-browser` and comes back on `mobilemerchant://`. That path is native, it is load-bearing,
@@ -102,30 +102,30 @@ Three files at the root, and a change usually touches more than one:
 | `ARCHITECTURE.md` | the file map and how the session flows through it |
 | `CLAUDE.md` | this file: the rules, and findings that contradict published docs |
 
-`instruction_mds/` holds the conventions for the code built on top of the scaffold. **Read the relevant one
+`.claude/instruction_mds/` holds the conventions for the code built on top of the scaffold. **Read the relevant one
 before writing in its area** — each opens with its rules, and the rest of the file is the reasoning
 behind them. Where a rule is already satisfied by something in the tree, the file names what exists
 so you use it rather than build a second one:
 
 | File | Governs |
 | --- | --- |
-| [`instruction_mds/structure.md`](./instruction_mds/structure.md) | which directories may exist under `src/` — data by resource in `features/`, UI by screen in `screens/`, Paper re-exports in `components/`, kebab-case |
-| [`instruction_mds/data-layer.md`](./instruction_mds/data-layer.md) | Supabase calls, Zod, TanStack Query keys and cache |
-| [`instruction_mds/tenancy.md`](./instruction_mds/tenancy.md) | merchant scoping and the RLS shape every business table takes |
-| [`instruction_mds/frontend.md`](./instruction_mds/frontend.md) | **the one frontend source of truth** — Paper, theme colours and the accent, the type scale and `Text` wrapper, corners, spacing, phone and tablet layout, the one width threshold, the Paper or native piece for each pattern, icons |
-| [`instruction_mds/expo.md`](./instruction_mds/expo.md) | **before code**: the `expo-overview` gate for any Expo API, package, navigation or native UI; SDK 57 pinning; the Expo skill rules adopted and overridden |
-| [`instruction_mds/optimization.md`](./instruction_mds/optimization.md) | performance review: which skills are the reference, the measure-first evidence bar, what is already decided |
-| [`instruction_mds/migrations.md`](./instruction_mds/migrations.md) | revert files, and the generated all-in-one ADD / REVERT SQL |
-| [`instruction_mds/testing-workflow.md`](./instruction_mds/testing-workflow.md) | **planning and after code**: the human tests on the device and **the agent never touches the emulator** unless allowed that session; what to fix in the plan vs hand to a tester; lint, typecheck, `tools/fallow-verdict.mjs`, `/ponytail-review`, the gated skill; fixing a failure the human reports |
-| [`instruction_mds/acceptance-tests.md`](./instruction_mds/acceptance-tests.md) | writing `.claude/tests/<screen>.md`, one file per screen — plain-language user-acceptance scripts for non-developer testers, including account switching and outside-the-app cases (battery, network, interruptions) |
-| [`instruction_mds/token-budget.md`](./instruction_mds/token-budget.md) | keeping a pass cheap: wrap large tool output in a script, narrow skill descriptions instead of merging, a fixed budget on every retrieval |
-| [`instruction_mds/false-positives.md`](./instruction_mds/false-positives.md) | findings that are wrong in this repo — fallow, oxlint, Supabase, ponytail, and skill rules this repo overrides — why `fallow fix` must never run here, and what to do with a finding that is not listed |
+| [`.claude/instruction_mds/structure.md`](./.claude/instruction_mds/structure.md) | which directories may exist under `src/` — data by resource in `features/`, UI by screen in `screens/`, Paper re-exports in `components/`, kebab-case |
+| [`.claude/instruction_mds/data-layer.md`](./.claude/instruction_mds/data-layer.md) | Supabase calls, Zod, TanStack Query keys and cache |
+| [`.claude/instruction_mds/tenancy.md`](./.claude/instruction_mds/tenancy.md) | merchant scoping and the RLS shape every business table takes |
+| [`.claude/instruction_mds/frontend.md`](./.claude/instruction_mds/frontend.md) | **the one frontend source of truth** — Paper, theme colours and the accent, the type scale and `Text` wrapper, corners, spacing, phone and tablet layout, the one width threshold, the Paper or native piece for each pattern, icons |
+| [`.claude/instruction_mds/expo.md`](./.claude/instruction_mds/expo.md) | **before code**: the `expo-overview` gate for any Expo API, package, navigation or native UI; SDK 57 pinning; the Expo skill rules adopted and overridden |
+| [`.claude/instruction_mds/optimization.md`](./.claude/instruction_mds/optimization.md) | performance review: which skills are the reference, the measure-first evidence bar, what is already decided |
+| [`.claude/instruction_mds/migrations.md`](./.claude/instruction_mds/migrations.md) | revert files, and the generated all-in-one ADD / REVERT SQL |
+| [`.claude/instruction_mds/testing-workflow.md`](./.claude/instruction_mds/testing-workflow.md) | **planning and after code**: the human tests on the device and **the agent never touches the emulator** unless allowed that session; what to fix in the plan vs hand to a tester; lint, typecheck, `tools/fallow-verdict.mjs`, `/ponytail-review`, the gated skill; fixing a failure the human reports |
+| [`.claude/instruction_mds/acceptance-tests.md`](./.claude/instruction_mds/acceptance-tests.md) | writing `.claude/tests/<screen>.md`, one file per screen — plain-language user-acceptance scripts for non-developer testers, including account switching and outside-the-app cases (battery, network, interruptions) |
+| [`.claude/instruction_mds/token-budget.md`](./.claude/instruction_mds/token-budget.md) | keeping a pass cheap: wrap large tool output in a script, narrow skill descriptions instead of merging, a fixed budget on every retrieval |
+| [`.claude/instruction_mds/false-positives.md`](./.claude/instruction_mds/false-positives.md) | findings that are wrong in this repo — fallow, oxlint, Supabase, ponytail, and skill rules this repo overrides — why `fallow fix` must never run here, and what to do with a finding that is not listed |
 
 **Skills and these docs.** The React Native and Expo skills (`expo-*`, `vercel-react-native-skills`,
-`vercel-react-best-practices`, Callstack `react-native-best-practices`) govern everything `instruction_mds/`
-does not rule on. Where a skill contradicts a rule in `instruction_mds/` or this file, the doc wins, and the
-standing cases are registered in `instruction_mds/false-positives.md` §7. A skill fires from its description;
-do not add "load skill X" reminders — `instruction_mds/optimization.md` §1 is the one gate table.
+`vercel-react-best-practices`, Callstack `react-native-best-practices`) govern everything `.claude/instruction_mds/`
+does not rule on. Where a skill contradicts a rule in `.claude/instruction_mds/` or this file, the doc wins, and the
+standing cases are registered in `.claude/instruction_mds/false-positives.md` §7. A skill fires from its description;
+do not add "load skill X" reminders — `.claude/instruction_mds/optimization.md` §1 is the one gate table.
 
 Record a rejected option alongside the chosen one wherever the reasoning lives. A rule without its
 rejected alternative gets re-litigated.
@@ -136,7 +136,7 @@ rejected alternative gets re-litigated.
 
 Every UI rule — Paper primitives and their native exceptions, theme colours, the type scale and the
 `Text` wrapper, corners, spacing, layout, the one width threshold, patterns, icons — lives in
-[`instruction_mds/frontend.md`](./instruction_mds/frontend.md). It wins over every other doc, comment
+[`.claude/instruction_mds/frontend.md`](./.claude/instruction_mds/frontend.md). It wins over every other doc, comment
 and skill; this section does not repeat it.
 
 What it leaves to this file:
@@ -291,9 +291,9 @@ The business schema the app was built on until 2026-10-08 — the product catalo
 stock ledger, the Register's sales — is still in the migration history, and
 `20261008050254_revamp_drop_business_schema.sql` drops all of it, rows included, ahead of a rebuild on
 ERPNext's model. `authenticated` keeps `usage` on `private` and `execute` on `current_merchant_ids()`
-so the next business table's policies can call it (`instruction_mds/tenancy.md` §4). Each migration
+so the next business table's policies can call it (`.claude/instruction_mds/tenancy.md` §4). Each migration
 has a revert in `supabase/reverts/`, or a `-- no-revert:` line when it only drops (§6.6).
-`ARCHITECTURE.md` describes what they do; `instruction_mds/tenancy.md` covers the tenancy model and what is
+`ARCHITECTURE.md` describes what they do; `.claude/instruction_mds/tenancy.md` covers the tenancy model and what is
 still ahead of it. The rules below are what must not be broken when adding to them.
 
 ### 6.1 Every new table needs its own RLS line
@@ -366,7 +366,7 @@ Whenever you add or change a file in `supabase/migrations/`, in the same change:
 line), then run `npm run build:migrations` and `npm run check:migrations`. That regenerates
 `supabase/all-in-one/add.sql` and `revert.sql` — never edit those two by hand, and never put a revert
 inside `migrations/`, where `supabase db push` would apply it. The rules and the reasoning are in
-[`instruction_mds/migrations.md`](./instruction_mds/migrations.md).
+[`.claude/instruction_mds/migrations.md`](./.claude/instruction_mds/migrations.md).
 
 ## graphify
 

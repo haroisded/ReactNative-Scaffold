@@ -11,7 +11,7 @@ import { radius } from '../../themes';
 // expo-router at getRoutesCore.js:655.
 export const unstable_settings = { anchor: '(tabs)' };
 
-// Every narrow confirm, as a native sheet (instruction_mds/frontend.md §5). Declared here, as leaf
+// Every narrow confirm, as a native sheet (.claude/instruction_mds/frontend.md §5). Declared here, as leaf
 // routes of this stack, because an Android formSheet cannot host a nested stack
 // (react-native-screens types.d.ts:470). The route files are in ./sheets/.
 //
@@ -32,7 +32,7 @@ const SHEETS = ['sheets/delete-account', 'sheets/remove-system'];
 // - `sheets/*` are the native sheets above.
 export default function AppLayout() {
   const { colors } = useAppTheme();
-  // The one wide/narrow decision (instruction_mds/frontend.md §4.1). The window, not a container:
+  // The one wide/narrow decision (.claude/instruction_mds/frontend.md §4.1). The window, not a container:
   // synchronous, so no zero-width first frame, and it follows rotation and split-screen. Read here
   // rather than in the shell because (tabs) and sheets/ sit beside the shell, not under it.
   const wide = useWindowDimensions().width >= WIDE_MIN;
@@ -53,7 +53,7 @@ export default function AppLayout() {
             // (BottomSheetBehaviorExt.kt:89).
             sheetAllowedDetents: 'fitToContents',
             // The OS draws the sheet's frame, so its corners are passed from the theme like any
-            // other native view (instruction_mds/frontend.md rule 7).
+            // other native view (.claude/instruction_mds/frontend.md rule 7).
             sheetCornerRadius: radius.xl,
             contentStyle: { backgroundColor: colors.surface },
           }}

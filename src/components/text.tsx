@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import type { TextProps } from 'react-native';
 import { customText } from 'react-native-paper';
 
-// The Cap and iOS ramp columns of instruction_mds/frontend.md §3.1, one row per variant the app
+// The Cap and iOS ramp columns of .claude/instruction_mds/frontend.md §3.1, one row per variant the app
 // uses. Scanned and hero text caps at 1.5; body text is read, so it is never capped. Change a row
 // there → change it here, same pass. The variants Paper defines and §3.1 leaves out
 // (displayLarge, displayMedium, headlineLarge) have no row, so they do not type-check at a call site.
@@ -24,11 +24,11 @@ const SCALE = {
 
 // Paper's own Text, typed to the variants above — `amount` included, which is the theme's custom
 // key. customText is a cast of the same component (Text.tsx:185), not a second primitive
-// (instruction_mds/frontend.md rule 1).
+// (.claude/instruction_mds/frontend.md rule 1).
 const PaperText = customText<keyof typeof SCALE>();
 
 /**
- * The one Text (instruction_mds/frontend.md §3.2). A call site passes `variant` only; the font-scale
+ * The one Text (.claude/instruction_mds/frontend.md §3.2). A call site passes `variant` only; the font-scale
  * cap and the iOS Dynamic Type ramp come from the variant, after the caller's props, so no call site
  * can set its own.
  */

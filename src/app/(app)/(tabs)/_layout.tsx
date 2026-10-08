@@ -3,7 +3,7 @@ import { useShellWide } from '../../../lib/columns';
 import { ICONS } from '../../../lib/icons';
 import { useAppTheme } from '../../../lib/theme';
 
-// The merchant-level tab bar: the platform's own (instruction_mds/frontend.md rule 2, `vercel-react-native-skills`
+// The merchant-level tab bar: the platform's own (.claude/instruction_mds/frontend.md rule 2, `vercel-react-native-skills`
 // `navigation-native-navigators`). Four tabs, under the five Android's native bar allows
 // (react-native-screens TabsHost.kt:89) — which is also why the eight-destination merchant shell stays a
 // Drawer.
@@ -15,7 +15,7 @@ import { useAppTheme } from '../../../lib/theme';
 export default function TabsLayout() {
   const { colors } = useAppTheme();
   // On a wide window the M3 tablet layout has no bottom navigation — Home moves its actions into the
-  // app bar — so the bar hides, at the same threshold as everything else (instruction_mds/frontend.md §4.1).
+  // app bar — so the bar hides, at the same threshold as everything else (.claude/instruction_mds/frontend.md §4.1).
   const wide = useShellWide();
 
   return (

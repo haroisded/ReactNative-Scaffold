@@ -35,13 +35,13 @@ How performance is reviewed. Runs as the gated last row of
 ## 1. Gated triggers
 
 Rows do not overlap: one diff area, one skill. The wording matches the skills' narrowed descriptions
-([`TOOLING.md`](../TOOLING.md#narrowed-skill-descriptions)).
+([`TOOLING.md`](../../TOOLING.md#narrowed-skill-descriptions)).
 
 | Skill | Load when the diff changes | Read |
 | --- | --- | --- |
 | `vercel-react-native-skills` | FlatList/FlashList props, item renderers or list keys; Reanimated or gesture code; navigator/tab setup; native-module calls | `SKILL.md`, then only the matching `rules/*.md` |
 | `vercel-react-best-practices` | component render logic, hooks, effects or state shape — outside the row above (rule 2 exclusions apply) | `SKILL.md`, then only the matching rule |
-| `react-native-best-practices` (Callstack) | does not load on this machine ([`TOOLING.md`](../TOOLING.md#building-react-native-apps-does-not-load-on-windows)) — nothing to gate | — |
+| `react-native-best-practices` (Callstack) | does not load on this machine ([`TOOLING.md`](../../TOOLING.md#building-react-native-apps-does-not-load-on-windows)) — nothing to gate | — |
 
 A diff touching only `schema.ts` or a Supabase migration loads none of these — [`data-layer.md`](./data-layer.md)
 and [`tenancy.md`](./tenancy.md) already cover that code's concerns.

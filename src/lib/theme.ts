@@ -12,6 +12,6 @@ type AppTheme = typeof LightTheme;
 /**
  * Paper's useTheme() with the Merchant keys typed. Paper types `theme.colors` to MD3's roles only, so
  * `colors.accent` does not compile through the plain hook. A generic, not a type assertion, so it
- * passes .oxlintrc.json (instruction_mds/frontend.md rule 5).
+ * passes .oxlintrc.json (.claude/instruction_mds/frontend.md rule 5).
  */
 export const useAppTheme = () => useTheme<AppTheme>();

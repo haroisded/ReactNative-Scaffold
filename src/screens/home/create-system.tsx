@@ -25,7 +25,7 @@ export function CreateSystem({ onDismiss }: Props) {
   // Wide, the button hugs its label: a 640dp primary button reads as a banner.
   const buttonStyle = useShellWide() ? styles.hug : undefined;
   // A paused write is queued, not in flight: it must not hold the button in its spinner while the
-  // device is offline (instruction_mds/data-layer.md §5). The button still stays disabled (below).
+  // device is offline (.claude/instruction_mds/data-layer.md §5). The button still stays disabled (below).
   const inFlight = createSystem.isPending && !createSystem.isPaused;
   const notice = mutationNotice(createSystem, failureMessage("Couldn't create this system. Try again."));
 
@@ -100,9 +100,9 @@ export function CreateSystem({ onDismiss }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Full-width buttons put their label at the left edge (instruction_mds/frontend.md §5).
+  // Full-width buttons put their label at the left edge (.claude/instruction_mds/frontend.md §5).
   leading: { justifyContent: 'flex-start' },
-  // Capped at the single-column measure and left-aligned (instruction_mds/frontend.md rule 18, §9), so a
+  // Capped at the single-column measure and left-aligned (.claude/instruction_mds/frontend.md rule 18, §9), so a
   // tablet's field does not span 1000dp.
   body: { gap: spacing.ms, padding: spacing.lg, width: '100%', maxWidth: 640 },
   hug: { alignSelf: 'flex-start' },

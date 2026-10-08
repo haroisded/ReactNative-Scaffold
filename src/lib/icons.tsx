@@ -6,7 +6,7 @@ import type { ColorValue } from 'react-native';
 
 /**
  * The app's icon vocabulary: one name per meaning, each with its SF Symbol and its Material Symbol
- * (instruction_mds/frontend.md §6). Every pair was checked against `sf-symbols-typescript` and
+ * (.claude/instruction_mds/frontend.md §6). Every pair was checked against `sf-symbols-typescript` and
  * `expo-symbols/build/android/symbols.json` on 2026-09-17 — and the types check them again, because an
  * Android name that is not in the font draws a blank with no warning (`androidSymbolToString`).
  *
@@ -75,7 +75,7 @@ function isIconName(name: string): name is IconName {
  * draws the glyph as a Text in a size × size box (expo-symbols build/SymbolView.js:35-40), and that Text
  * follows the OS font scale, so at 200% the glyph is twice the box and clipped. The glyph is therefore
  * asked for at size ÷ font scale, which the scale brings back to size, and the box is held at size by
- * `style` (instruction_mds/frontend.md §7).
+ * `style` (.claude/instruction_mds/frontend.md §7).
  */
 export function renderIcon({
   name,

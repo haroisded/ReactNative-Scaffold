@@ -21,15 +21,15 @@ import { radius, spacing } from '../../../../themes';
 
 // The merchant shell: a header over an M3 NavigationRail on a wide window, or over an off-canvas
 // drawer on a narrow one. Navigation is a
-// layout, not a component (instruction_mds/structure.md rule 4), so every piece of the shell lives in this file.
+// layout, not a component (.claude/instruction_mds/structure.md rule 4), so every piece of the shell lives in this file.
 //
 // One expo-router Drawer serves both widths — drawerType 'permanent' is the rail, 'front' is the
-// drawer — so the two share one route table and one destination list (instruction_mds/frontend.md §4.4).
+// drawer — so the two share one route table and one destination list (.claude/instruction_mds/frontend.md §4.4).
 
 type Destination = { name: string; label: string; icon: IconName };
 
 // Rail order. `name` is the route file under this directory; icons are the app's own names, drawn as
-// each platform's symbol (src/lib/icons.tsx, instruction_mds/frontend.md §6). Home is the only one
+// each platform's symbol (src/lib/icons.tsx, .claude/instruction_mds/frontend.md §6). Home is the only one
 // since the 2026-10-08 teardown; the next destinations arrive with the rebuild.
 const DESTINATIONS: Destination[] = [{ name: 'index', label: 'Home', icon: 'home' }];
 
@@ -55,7 +55,7 @@ export default function SystemLayout() {
   const merchants = useMerchantsQuery();
   const merchant = merchants.data?.find((candidate) => candidate.id === id);
   const { colors } = useAppTheme();
-  // The one width decision, made in (app)/_layout.tsx from the window (instruction_mds/frontend.md
+  // The one width decision, made in (app)/_layout.tsx from the window (.claude/instruction_mds/frontend.md
   // §4.1). Every destination reads the same value, so the rail and the panes beside it flip together.
   const wide = useShellWide();
   // Only the rail collapses. The narrow drawer's open state belongs to the navigator instead.
@@ -115,7 +115,7 @@ function MissingMerchant({ merchants }: { merchants: ReturnType<typeof useMercha
   return (
     <ShellState>
       {/* Paused first: a query with no connection is queued, not failed, and isPending stays true
-          the whole time, so checking isPending first would spin forever (instruction_mds/data-layer.md §5).
+          the whole time, so checking isPending first would spin forever (.claude/instruction_mds/data-layer.md §5).
           No retry control on this branch — the query resumes on its own when the device
           reconnects. */}
       {merchants.isPaused ? (
@@ -147,7 +147,7 @@ type HeaderProps = {
   onMenu: () => void;
 };
 
-// Component A. Paper picks the title's variant (instruction_mds/frontend.md §3.3), so only colour is passed.
+// Component A. Paper picks the title's variant (.claude/instruction_mds/frontend.md §3.3), so only colour is passed.
 function MerchantHeader({ onMenu }: HeaderProps) {
   const { colors } = useAppTheme();
 
@@ -245,7 +245,7 @@ type ItemProps = {
 
 // One rail or drawer row. Active: the lightened ground and the 4px accent bar. Inactive: no ground, no
 // bar, 68%. The bar is a left border on every item, transparent when inactive, so selecting an item
-// never shifts its content sideways (instruction_mds/frontend.md §5).
+// never shifts its content sideways (.claude/instruction_mds/frontend.md §5).
 function NavItem({ label, icon, wide, labelled, active, onPress }: ItemProps) {
   const { colors } = useAppTheme();
 
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   // `border` colour on the permanent rail, and 16-radius corners on the front drawer
   // (DrawerView.js:55, :184-206). `roundness` reaches Paper only, so both are set here from the theme:
   // the rail is chrome flush with the content beside it and keeps square edges, and the front drawer
-  // takes the radius a Dialog-sized surface gets (instruction_mds/frontend.md rule 7).
+  // takes the radius a Dialog-sized surface gets (.claude/instruction_mds/frontend.md rule 7).
   rail: { borderRightWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   drawer: { borderRightWidth: 0, borderTopRightRadius: radius.xl, borderBottomRightRadius: radius.xl },
   systemRail: { alignItems: 'flex-start', gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md },

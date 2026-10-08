@@ -11,12 +11,12 @@ import type { CreateSystemValues } from './schema';
 export type Merchant = Tables<'merchants'>;
 
 // This is the only file in the app that knows the table is called `merchants`. Screens import the
-// hooks below; nothing outside this file calls supabase.from() (instruction_mds/data-layer.md rules 2-3).
+// hooks below; nothing outside this file calls supabase.from() (.claude/instruction_mds/data-layer.md rules 2-3).
 
 // Key factory, most generic to most specific, so `merchantsKey.all` invalidates everything about
 // merchants while a narrower key can still be targeted later. When a filtered list arrives, its args
 // go in an OBJECT, never positionally, so adding a second argument cannot silently reorder an
-// existing call site (instruction_mds/data-layer.md rule 7).
+// existing call site (.claude/instruction_mds/data-layer.md rule 7).
 //
 // Deliberately no owner id in the key: the QueryClient itself is keyed on session.user.id in
 // src/app/_layout.tsx, so a different user gets a different cache entirely. Scoping the key too

@@ -13,7 +13,7 @@ type Props = {
   /**
    * True on a one-column container. Row and grid are genuinely different anatomies rather than the
    * same card at two widths — a row card stretched across a tablet is unreadable for the same
-   * measure reason a 110-character line is (instruction_mds/frontend.md §4.3) — so the branch lives inside this
+   * measure reason a 110-character line is (.claude/instruction_mds/frontend.md §4.3) — so the branch lives inside this
    * component instead of duplicating it into two files.
    */
   row: boolean;
@@ -30,7 +30,7 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
 
   // Remove is wired; Edit is still unticked in the Priority filter, so it renders and does nothing.
   // `error`/`onError` are read from the theme, which is the one place a colour may be chosen by
-  // hand (instruction_mds/frontend.md rule 5).
+  // hand (.claude/instruction_mds/frontend.md rule 5).
   const actions = (
     // Wraps: at a large font scale the two buttons are wider than a grid card.
     <Card.Actions style={styles.actions}>
@@ -67,7 +67,7 @@ export function SystemCard({ merchant, row, onPress, onRemove }: Props) {
       {/*
         Where a photo will go. Not Card.Cover: it hardcodes height 195
         (Card/CardCover.js:61), so it neither scales with the column count nor survives a 150% font
-        scale (instruction_mds/frontend.md §7). A fixed *ratio* does both, and it is already the right shape
+        scale (.claude/instruction_mds/frontend.md §7). A fixed *ratio* does both, and it is already the right shape
         for a real image to drop into later.
       */}
       <View style={[styles.tile, { backgroundColor: colors.surfaceVariant }]}>

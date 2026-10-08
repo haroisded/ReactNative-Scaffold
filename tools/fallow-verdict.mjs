@@ -3,7 +3,7 @@
 // `fallow review --format json` returns the whole gate report — ~15 KB even on a clean tree — and an
 // agent that runs it directly pays for all of it in context on every pass. This script is the only
 // thing that should call it: it parses the report here and prints the verdict plus the top findings
-// (instruction_mds/token-budget.md §1). Coverage is unchanged — every finding still counts toward the
+// (.claude/instruction_mds/token-budget.md §1). Coverage is unchanged — every finding still counts toward the
 // verdict and the total, only the listing is capped.
 //
 // It runs the audit brief, not `--walkthrough-guide`: the guide carries the decision surface and the
@@ -19,7 +19,7 @@ import { execSync } from 'node:child_process';
 
 const TOP = Number(process.argv[2]) || 5;
 
-// Registered in instruction_mds/false-positives.md §1 — collapsed to one line, never listed.
+// Registered in .claude/instruction_mds/false-positives.md §1 — collapsed to one line, never listed.
 const REGISTERED_DEPS = new Set([
   'expo-build-properties', 'expo-image', 'expo-glass-effect', 'expo-symbols',
   'react-native-gesture-handler', 'react-native-reanimated', 'react-native-worklets',

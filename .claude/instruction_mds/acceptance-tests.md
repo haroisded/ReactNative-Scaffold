@@ -6,7 +6,8 @@ tablet. The testers are people who will use the POS, not developers.
 ## Rules
 
 1. **One file per screen — `.claude/tests/<screen>.md`, kebab-case, gitignored** with every directory
-   under `.claude/` (the human's call, 2026-10-08; rejected: committing them, the rule until then). No
+   under `.claude/` but `instruction_mds/` (the human's call, 2026-10-08; rejected: committing them,
+   the rule until then). No
    file per pair of screens. A test that crosses screens goes in the file of the screen where its
    expected output is checked. §0 says how to pick.
 2. **A change gets new tests, never a rewrite of old ones.** Add the new tests to the end of the right
@@ -175,6 +176,11 @@ which numbers are still owed rather than treating the file as complete.
 The agent reads this file and works from it ([`testing-workflow.md`](./testing-workflow.md) rule 5).
 It does not write into it, does not tick anything off in it, and does not reproduce the failure on a
 device — it traces the reported steps through the code.
+
+The one exception: when the human lets the agent run the tests on a device that session
+([`testing-workflow.md`](./testing-workflow.md) rule 1), the agent writes the report itself, in the
+same shape. **PASS** carries no feedback unless a tester would really need it, **FAIL** always
+carries a short one, and a test it did not run stays blank (the human's call, 2026-10-08).
 
 ## 5. Rejected
 

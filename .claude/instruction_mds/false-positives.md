@@ -14,7 +14,7 @@ Most suppressions live in tool config, not here: `.fallowignore`, `.oxlintrc.jso
    them from real ones and will strip `react-native-reanimated`, `react-native-web` and
    `react-native-gesture-handler` out of `package.json` and report success. Fix by hand.
 3. **A finding not listed here is not automatically false.** Establish each with evidence — a
-   dependent in `node_modules`, a reference in `app.json` or `tools/`, or a rule in `instruction_mds/`.
+   dependent in `node_modules`, a reference in `app.json` or `tools/`, or a rule in `.claude/instruction_mds/`.
 4. **Cannot establish it? Leave it.** Do not delete, suppress or tidy it away. Record it and surface
    it to the human.
 5. **Established a new one? Add it here in the same pass**, with its evidence, or add the suppression
@@ -133,7 +133,7 @@ Each is a deliberate decision, not a defect:
 
 ## 7. Skill contradictions
 
-Where a skill contradicts a rule in `instruction_mds/`, the doc wins and the finding is registered, not fixed.
+Where a skill contradicts a rule in `.claude/instruction_mds/`, the doc wins and the finding is registered, not fixed.
 The standing cases live with the rule they contradict, not here:
 
 - Frontend, styling, type and layout → [`frontend.md` §8](./frontend.md)

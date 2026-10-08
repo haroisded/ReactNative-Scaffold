@@ -20,7 +20,7 @@ type Props = {
   /** False while a request is genuinely in flight, so the backdrop and back button cannot close it. */
   dismissable?: boolean;
   kicker?: string;
-  /** `error` for a destructive confirm, `accent` otherwise (instruction_mds/frontend.md §2.3). */
+  /** `error` for a destructive confirm, `accent` otherwise (.claude/instruction_mds/frontend.md §2.3). */
   kickerTone?: 'accent' | 'error';
   title: string;
   children?: ReactNode;
@@ -29,7 +29,7 @@ type Props = {
 };
 
 /**
- * A confirm — the pair in instruction_mds/frontend.md §4.4, in two presentations:
+ * A confirm — the pair in .claude/instruction_mds/frontend.md §4.4, in two presentations:
  *
  * - **wide:** a Paper Dialog with a maximum width, mounted by the screen that opened it.
  * - **inSheet:** the body of a native formSheet route. Narrow confirms open that way.
@@ -64,7 +64,7 @@ export function AdaptiveDialog({
         onDismiss={onDismiss}
         dismissable={dismissable}
         dismissableBackButton={dismissable}
-        // Dialog has no maximum width of its own (instruction_mds/frontend.md §7).
+        // Dialog has no maximum width of its own (.claude/instruction_mds/frontend.md §7).
         style={styles.dialog}
       >
         {kicker ? (
@@ -72,7 +72,7 @@ export function AdaptiveDialog({
             {kicker}
           </Text>
         ) : null}
-        {/* No variant: Dialog.Title picks headlineSmall itself (instruction_mds/frontend.md §3.3). Its own
+        {/* No variant: Dialog.Title picks headlineSmall itself (.claude/instruction_mds/frontend.md §3.3). Its own
             top margin is Paper's, not rhythm between siblings; under a kicker it closes up. */}
         <Dialog.Title style={kicker ? styles.titleUnderKicker : undefined}>{title}</Dialog.Title>
         <Dialog.ScrollArea style={styles.scrollArea}>
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   sheetBody: { gap: spacing.ms, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  // The 2px primary rule on the sheet's top edge (instruction_mds/frontend.md §5).
+  // The 2px primary rule on the sheet's top edge (.claude/instruction_mds/frontend.md §5).
   routeSheet: { borderTopWidth: 2 },
   sheetHeader: { gap: spacing.xs, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   sheetActions: { gap: spacing.sm, padding: spacing.md, borderTopWidth: 1 },

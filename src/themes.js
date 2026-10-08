@@ -1,4 +1,4 @@
-// The app theme: colour keys, type scale, roundness, spacing and radius (instruction_mds/frontend.md §1).
+// The app theme: colour keys, type scale, roundness, spacing and radius (.claude/instruction_mds/frontend.md §1).
 import { MD3DarkTheme, MD3LightTheme, configureFonts } from 'react-native-paper';
 
 const lightColors = {
@@ -42,7 +42,7 @@ const lightColors = {
     level4: "#E8EDF4",
     level5: "#E4EAF2",
   },
-  // The Merchant keys (instruction_mds/frontend.md §2.2) — roles the app needs and MD3 lacks. Read
+  // The Merchant keys (.claude/instruction_mds/frontend.md §2.2) — roles the app needs and MD3 lacks. Read
   // them through useAppTheme() (src/lib/theme.ts); Paper's plain useTheme() types colors to MD3 only.
   accent: "#EC3013",
   onAccent: "#FFFFFF",
@@ -53,7 +53,7 @@ const lightColors = {
   primaryHighlight: "rgba(255, 255, 255, 0.14)",
   // The press colour for Pressable's android_ripple on a light surface. Paper's TouchableRipple
   // derived it from the text colour at 12%; Pressable reads nothing, so it is a key
-  // (instruction_mds/frontend.md §5). On `primary` the ripple is `primaryHighlight`.
+  // (.claude/instruction_mds/frontend.md §5). On `primary` the ripple is `primaryHighlight`.
   ripple: "rgba(30, 41, 59, 0.12)",
 };
 
@@ -114,7 +114,7 @@ const darkColors = {
 
 
 
-// The scale from instruction_mds/frontend.md §3.1, shared by both themes — size does not change with
+// The scale from .claude/instruction_mds/frontend.md §3.1, shared by both themes — size does not change with
 // the palette. Change a row there → change it here, same pass. Keyed by variant, never flat: a config
 // whose values are all non-objects is merged into ALL fifteen variants (fonts.tsx:88-98), so
 // `{ fontSize: 26 }` one level up would resize everything. Line height stays ≥ 1.2 × size and weight
@@ -161,12 +161,12 @@ const fonts = configureFonts({
 
 
 // Paper multiplies `roundness` into each component's corners — Button and SegmentedButtons ×5, Card
-// ×3, Dialog ×7, Chip ×2, TextInput, Menu and Snackbar ×1 (instruction_mds/frontend.md rule 7) — so this one
+// ×3, Dialog ×7, Chip ×2, TextInput, Menu and Snackbar ×1 (.claude/instruction_mds/frontend.md rule 7) — so this one
 // value rounds the whole app. 2 was chosen by the human on 2026-09-17 over 1 (barely rounded) and
 // MD3's 4 (pill buttons).
 const ROUNDNESS = 2;
 
-// The 4-point spacing scale (instruction_mds/frontend.md §4.5). `ms` and `ml` are the two in-between steps (12,
+// The 4-point spacing scale (.claude/instruction_mds/frontend.md §4.5). `ms` and `ml` are the two in-between steps (12,
 // 20). Exported as plain constants because StyleSheet.create runs at module scope, where no hook can
 // read the theme; the same objects ride on both themes for code that already holds the theme.
 export const spacing = { xs: 4, sm: 8, ms: 12, md: 16, ml: 20, lg: 24, xl: 32, xxl: 48 };
@@ -174,7 +174,7 @@ export const spacing = { xs: 4, sm: 8, ms: 12, md: 16, ml: 20, lg: 24, xl: 32, x
 // Radii for surfaces drawn by hand, in step with what Paper derives from ROUNDNESS: `sm` for a note
 // callout or an input-like box (×1), `md` for a badge or chip-like tag (×2), `lg` for a thumbnail or
 // card-like block (×3), `xl` for a modal surface that stands in for a Dialog (×7). Never a number at a
-// call site (instruction_mds/frontend.md rule 7).
+// call site (.claude/instruction_mds/frontend.md rule 7).
 export const radius = { sm: ROUNDNESS, md: ROUNDNESS * 2, lg: ROUNDNESS * 3, xl: ROUNDNESS * 7 };
 
 // Both themes need every key: they are separate objects, and a key on one never reaches the other.

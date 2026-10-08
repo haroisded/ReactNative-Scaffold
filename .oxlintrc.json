@@ -48,7 +48,7 @@
             "paths": [
               {
                 "name": "react-native-paper",
-                "message": "Import the primitive from src/components/<name>.tsx instead (instruction_mds/frontend.md rule 1). Press targets are Pressable, not TouchableRipple (instruction_mds/frontend.md rule 2)."
+                "message": "Import the primitive from src/components/<name>.tsx instead (.claude/instruction_mds/frontend.md rule 1). Press targets are Pressable, not TouchableRipple (.claude/instruction_mds/frontend.md rule 2)."
               }
             ]
           }

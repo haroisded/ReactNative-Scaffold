@@ -1,4 +1,4 @@
-# instruction_mds/
+# .claude/instruction_mds/
 
 Rules for building in this repo. Each file is **Rules first**, then numbered sections holding the
 detail those rules point at.
@@ -24,9 +24,9 @@ rule.** Never read a whole file for context — see [`context-policy.md`](./cont
 
 ## Precedence
 
-1. A rule in `instruction_mds/` beats a skill or a tool finding. On the frontend,
+1. A rule in `.claude/instruction_mds/` beats a skill or a tool finding. On the frontend,
    [`frontend.md`](./frontend.md) beats every other doc and comment too.
-2. Where `instruction_mds/` says nothing, follow the nearest existing screen and add the missing row
+2. Where `.claude/instruction_mds/` says nothing, follow the nearest existing screen and add the missing row
    in the same pass ([`frontend.md`](./frontend.md) rule 22).
 3. A new contradiction between a skill and a doc gets a row in the doc that owns the rule. Never a
    quiet change to the code.
