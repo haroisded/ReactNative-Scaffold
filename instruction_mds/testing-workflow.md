@@ -8,8 +8,10 @@ writing the acceptance tests the human runs ([`acceptance-tests.md`](./acceptanc
 
 1. **Never touch the emulator or a device unless the human allows it in this session.** No `adb`,
    `emulator`, `expo run:*`, `npm run android`, `npx expo start`, no screenshots, no UI dumps, no
-   starting or driving the app. `.claude/settings.json` puts these commands behind a permission
-   prompt; a prompt the human has not approved means stop, not retry another way.
+   starting or driving the app. Nothing in `.claude/settings.json` prompts for these any more (the
+   human removed the "ask" list on 2026-10-08), so this rule is the only gate: without the human's
+   go-ahead this session, stop, and do not try another way. When allowed, attach to the Metro the
+   human already has running (`adb reverse --list`) rather than starting a second one.
 2. **During planning, before code, list what only a device can prove** — auth transitions, offline,
    back navigation, tablet layout, anything outside the app (battery, network, interruptions). Those
    become the acceptance tests. Anything the code itself can settle — a mutation with no `onError`, a

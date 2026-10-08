@@ -6,8 +6,6 @@ MCP servers, skills, and plugins installed in this Claude Code environment, with
 
 | Name | Scope | Transport | Endpoint / command |
 | --- | --- | --- | --- |
-| `sgai` (ScrapeGraphAI) | user | http | `https://mcp.scrapegraphai.com/mcp`, `Authorization: Bearer ${SGAI_API_KEY}` |
-| `obscura` | user | stdio | `obscura mcp` |
 | `supabase` | project (**this** repo, via `.mcp.json`) | http | `https://mcp.supabase.com/mcp?project_ref=<ref>&features=docs,account,database,debugging,development,functions,branching` |
 | `Lucid` | claude.ai account connector | http | added in claude.ai → Settings → Connectors, not in `~/.claude.json` |
 | `expo` | shipped by the `expo` plugin | http | `https://mcp.expo.dev/mcp` — Expo docs search. **Needs a one-time authorization in `/mcp`**; unavailable until then ([`instruction_mds/expo.md` §5](./instruction_mds/expo.md#5-the-expo-mcp-server)) |
@@ -15,13 +13,6 @@ MCP servers, skills, and plugins installed in this Claude Code environment, with
 ### Install
 
 ```bash
-# sgai — set SGAI_API_KEY in the shell environment first
-claude mcp add --transport http --scope user sgai https://mcp.scrapegraphai.com/mcp \
-  --header "Authorization: Bearer ${SGAI_API_KEY}"
-
-# obscura — binary must be on PATH
-claude mcp add --scope user obscura obscura mcp
-
 # supabase — swap in the project ref; drop --scope for the current project only.
 # `.mcp.json` in this repo already declares it, pointed at this project's ref and NOT read-only —
 # apply_migration and generate_typescript_types both work through it, which is the way round the
@@ -93,18 +84,17 @@ After re-applying, verify in a fresh session: a task that should match loads tha
 
 ### From plugins — nothing extra to install
 
-Each plugin under [Plugins](#plugins) ships its own `skills/`, and two also ship `commands/`; caveman
-ships `agents/` as well. Installing the plugin installs all of it. Entry points worth knowing:
+Each plugin under [Plugins](#plugins) ships its own `skills/`, and `ponytail` also ships `commands/`.
+Installing the plugin installs all of it. Entry points worth knowing:
 
 | Plugin | Contributes | Start here |
 | --- | --- | --- |
 | `superpowers` | skills only | `superpowers:brainstorming` before creative work, `superpowers:systematic-debugging` before a fix, `superpowers:test-driven-development` before an implementation |
-| `caveman` | skills, commands, agents | `/caveman lite\|full\|ultra` sets prose intensity; `/caveman-help` lists the rest; `cavecrew-investigator` / `-builder` / `-reviewer` are its subagents |
 | `ponytail` | skills, commands | `/ponytail lite\|full\|ultra` sets laziness intensity; `/ponytail-help` lists the rest; `/ponytail-debt` harvests `ponytail:` comments |
 
-Both `caveman` and `ponytail` install a SessionStart hook, so their modes are **on by default in every
-session** — that is why this repo's replies are terse and its diffs small. Turn either off in-session
-with "stop caveman" / "stop ponytail"; the level persists until changed or the session ends.
+`ponytail` installs a SessionStart hook, so its mode is **on by default in every session** — that is
+why this repo's diffs are small. Turn it off in-session with "stop ponytail"; the level persists
+until changed or the session ends.
 
 Deliberately not enumerated here: the full skill list of each plugin. It changes on every plugin
 update, and a table that has quietly started lying is worse than no table. Run `/help` for the live
@@ -123,7 +113,6 @@ Verify all three groups: `/help`, or `claude plugin list` for the plugin half.
 
 | Plugin | Version | Marketplace | Repo | Scope |
 | --- | --- | --- | --- | --- |
-| `caveman` | `c72984e4` | `caveman` | `JuliusBrussee/caveman` | user |
 | `ponytail` | `4.9.0` | `ponytail` | `DietrichGebert/ponytail` | user |
 | `superpowers` | `6.3.0` | `claude-plugins-official` | `anthropics/claude-plugins-official` | user |
 | `feature-dev` | commit-pinned | `claude-plugins-official` | `anthropics/claude-plugins-official` | user |
@@ -166,10 +155,6 @@ narrows `react-native-best-practices`' description so it does not overlap the Ve
 ### Install
 
 ```bash
-# caveman
-claude plugin marketplace add JuliusBrussee/caveman
-claude plugin install caveman@caveman
-
 # ponytail
 claude plugin marketplace add DietrichGebert/ponytail
 claude plugin install ponytail@ponytail
@@ -205,12 +190,10 @@ Plugin enablement, the extra marketplaces, the model and effort defaults, and a 
   "autoUpdatesChannel": "latest",
   "theme": "dark",
   "enabledPlugins": {
-    "caveman@caveman": true,
     "ponytail@ponytail": true,
     "superpowers@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
-    "caveman":  { "source": { "source": "github", "repo": "JuliusBrussee/caveman"  } },
     "ponytail": { "source": { "source": "github", "repo": "DietrichGebert/ponytail" } }
   },
   "statusLine": {

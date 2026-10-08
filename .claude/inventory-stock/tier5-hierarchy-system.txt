@@ -1,6 +1,0 @@
-{ Tier 5 Hierarchy }:
-5) Unit Load 
-4) Pallet 
-3) Case
-2) Pack
-1) Base Unit

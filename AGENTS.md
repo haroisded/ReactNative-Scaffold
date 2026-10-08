@@ -2,5 +2,4 @@
 
 ## Expo HAS CHANGED
 
-> Read the exact versioned docs at <https://docs.expo.dev/versions/v57.0.0/> before writing any
-> code.
+> To keep updated on expo rules, check the already installed <claude plugin install expo@claude-plugins-official> before writing any > code.

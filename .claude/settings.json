@@ -2,20 +2,6 @@
   "enabledPlugins": {
     "expo@claude-plugins-official": true
   },
-  "permissions": {
-    "ask": [
-      "Bash(adb *)",
-      "PowerShell(adb *)",
-      "Bash(emulator *)",
-      "PowerShell(emulator *)",
-      "Bash(npx expo run*)",
-      "PowerShell(npx expo run*)",
-      "Bash(npx expo start*)",
-      "PowerShell(npx expo start*)",
-      "Bash(npm run android*)",
-      "PowerShell(npm run android*)"
-    ]
-  },
   "hooks": {
     "PreToolUse": [
       {
