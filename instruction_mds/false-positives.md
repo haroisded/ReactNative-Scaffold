@@ -48,6 +48,7 @@ relationships, none of which are `import` statements, and fallow's graph is buil
 | `react-native-vector-icons` | Paper imports it internally |
 | `expo-dev-client` | the development build itself |
 | `expo-atlas` (dev) | `tools/atlas.mjs` spawns it; `tools/` is outside the analysed graph |
+| `@expo/ui` | Kept on purpose, not imported yet (the human's call, 2026-10-08). [`frontend.md`](./frontend.md)'s Date / time field row uses its `DateTimePicker`, and it is a native module: removing it now costs one dev-build rebuild to drop it and another to re-add it with the rebuild's first date field. Delete this row and its `REGISTERED_DEPS` entry once a date field imports it |
 
 **Unverified — do not delete, do not suppress, do not classify.** No importer and no dependent found
 for `expo-device` and `expo-system-ui`. Listed so nobody re-investigates them by accident, not
